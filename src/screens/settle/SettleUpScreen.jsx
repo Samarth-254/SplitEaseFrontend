@@ -11,6 +11,7 @@ import {
 import { Screen, PageTitle } from '../../components/layout';
 import { Button, Card, Avatar, Badge, EmptyState, Modal } from '../../components/ui';
 import { useStore } from '../../store/useStore';
+import { getCurrencySymbol } from '../../utils/currency';
 
 /**
  * Settle Up Screen
@@ -111,20 +112,20 @@ export const SettleUpScreen = () => {
           <Card className="bg-gradient-to-br from-primary-800 to-primary-900">
             <div className="text-center mb-4">
               <p className="text-sm text-neutral-400 mb-1">Net Balance</p>
-              <p className={`text-3xl font-bold ?${totalBalance.netBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {totalBalance.netBalance >= 0 ? '+' : '-'}?${Math.abs(totalBalance.netBalance).toFixed(2)}
+              <p className={`text-3xl font-bold ${totalBalance.netBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {totalBalance.netBalance >= 0 ? '+' : '-'}{getCurrencySymbol('INR')}{Math.abs(totalBalance.netBalance).toFixed(2)}
               </p>
             </div>
             
             <div className="flex justify-center gap-8 text-sm">
               <div className="text-center">
                 <p className="text-green-400 font-medium">You get</p>
-                <p className="text-neutral-300">?${totalBalance.totalOwed.toFixed(2)}</p>
+                <p className="text-neutral-300">{getCurrencySymbol('INR')}{totalBalance.totalOwed.toFixed(2)}</p>
               </div>
               <div className="w-px bg-border" />
               <div className="text-center">
                 <p className="text-red-400 font-medium">You owe</p>
-                <p className="text-neutral-300">?${totalBalance.totalOwing.toFixed(2)}</p>
+                <p className="text-neutral-300">{getCurrencySymbol('INR')}{totalBalance.totalOwing.toFixed(2)}</p>
               </div>
             </div>
           </Card>
@@ -146,7 +147,7 @@ export const SettleUpScreen = () => {
                     <div className="flex-1">
                       <h3 className="font-medium text-neutral-100">{balance.user.name}</h3>
                       <p className="text-sm text-red-400">
-                        Total: ?${Math.abs(balance.amount).toFixed(2)}
+                        Total: {getCurrencySymbol('INR')}{Math.abs(balance.amount).toFixed(2)}
                       </p>
                     </div>
                   </div>
@@ -160,7 +161,7 @@ export const SettleUpScreen = () => {
                         <span className="text-sm text-neutral-400">{group.groupName}</span>
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-red-400">
-                            ?${Math.abs(group.amount).toFixed(2)}
+                            {getCurrencySymbol('INR')}{Math.abs(group.amount).toFixed(2)}
                           </span>
                           <Button 
                             size="sm" 
@@ -199,7 +200,7 @@ export const SettleUpScreen = () => {
                     </div>
                     <div className="text-right">
                       <p className="text-lg font-bold text-green-400">
-                        +?${balance.amount.toFixed(2)}
+                        +{getCurrencySymbol('INR')}{balance.amount.toFixed(2)}
                       </p>
                       <Badge variant="info" size="sm">Pending</Badge>
                     </div>
@@ -255,7 +256,7 @@ export const SettleUpScreen = () => {
               {selectedSettlement.balance.user.name}
             </p>
             <p className="text-3xl font-bold text-secondary-500">
-              ?${Math.abs(selectedSettlement.group.amount).toFixed(2)}
+              {getCurrencySymbol('INR')}{Math.abs(selectedSettlement.group.amount).toFixed(2)}
             </p>
             <p className="text-sm text-neutral-500 mt-2">
               for {selectedSettlement.group.groupName}

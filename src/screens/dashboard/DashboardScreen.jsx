@@ -7,6 +7,7 @@ import { Button, Card, Badge, EmptyState, Modal, Input } from '../../components/
 import { useStore } from '../../store/useStore';
 import { AddExpenseModal } from '../expense/AddExpenseModal';
 import { CreateGroupModal } from '../../components/groups/CreateGroupModal';
+import { getCurrencySymbol } from '../../utils/currency';
 
 
 export const DashboardScreen = () => {
@@ -191,8 +192,8 @@ export const DashboardScreen = () => {
               <span className="text-[10px] sm:text-xs text-neutral-500 font-medium">NET</span>
             </div>
             <div>
-              <p className={`text-xl sm:text-3xl font-bold mb-0.5 sm:mb-1 ?${balance.netBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {balance.netBalance >= 0 ? '+' : ''}{balance.netBalance.toFixed(0)}
+              <p className={`text-xl sm:text-3xl font-bold mb-0.5 sm:mb-1 ${balance.netBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {balance.netBalance >= 0 ? '+' : ''}{getCurrencySymbol('INR')}{balance.netBalance.toFixed(0)}
               </p>
               <p className="text-neutral-400 text-xs sm:text-sm">Net Balance</p>
             </div>
@@ -208,7 +209,7 @@ export const DashboardScreen = () => {
             </div>
             <div>
               <p className="text-xl sm:text-3xl font-bold text-green-400 mb-0.5 sm:mb-1">
-                {balance.totalOwed.toFixed(0)}
+                {getCurrencySymbol('INR')}{balance.totalOwed.toFixed(0)}
               </p>
               <p className="text-neutral-400 text-xs sm:text-sm">Total Owed</p>
             </div>
@@ -224,7 +225,7 @@ export const DashboardScreen = () => {
             </div>
             <div>
               <p className="text-xl sm:text-3xl font-bold text-red-400 mb-0.5 sm:mb-1">
-                {balance.totalOwing.toFixed(0)}
+                {getCurrencySymbol('INR')}{balance.totalOwing.toFixed(0)}
               </p>
               <p className="text-neutral-400 text-xs sm:text-sm">Total Owing</p>
             </div>
@@ -240,7 +241,7 @@ export const DashboardScreen = () => {
             </div>
             <div>
               <p className="text-xl sm:text-3xl font-bold text-neutral-100 mb-0.5 sm:mb-1">
-                {Math.abs(thisMonthTotal).toFixed(0)}
+                {getCurrencySymbol('INR')}{Math.abs(thisMonthTotal).toFixed(0)}
               </p>
               <p className="text-neutral-400 text-xs sm:text-sm">This Month</p>
             </div>
@@ -306,11 +307,11 @@ export const DashboardScreen = () => {
                               <Badge variant="info" size="sm">Settled</Badge>
                             ) : summary.net > 0 ? (
                               <p className="text-sm font-semibold text-green-400">
-                                +₹{summary.youGet.toFixed(2)}
+                                +{getCurrencySymbol('INR')}{summary.youGet.toFixed(2)}
                               </p>
                             ) : (
                               <p className="text-sm font-semibold text-red-400">
-                                -₹{summary.youOwe.toFixed(2)}
+                                -{getCurrencySymbol('INR')}{summary.youOwe.toFixed(2)}
                               </p>
                             )}
                           </div>
@@ -375,7 +376,7 @@ export const DashboardScreen = () => {
                                 </p>
                               </div>
                               <p className="text-lg font-bold text-red-400 ml-2">
-                                ₹{debt.amount.toFixed(2)}
+                                {getCurrencySymbol('INR')}{debt.amount.toFixed(2)}
                               </p>
                             </div>
                             
@@ -431,7 +432,7 @@ export const DashboardScreen = () => {
         {selectedDebt && (
           <div className="space-y-4">
             <p className="text-neutral-300">
-              You are about to settle ₹{selectedDebt.amount.toFixed(2)} with <strong>{selectedDebt.memberName}</strong> in <strong>{selectedDebt.groupEmoji} {selectedDebt.groupName}</strong>
+              You are about to settle {getCurrencySymbol('INR')}{selectedDebt.amount.toFixed(2)} with <strong>{selectedDebt.memberName}</strong> in <strong>{selectedDebt.groupEmoji} {selectedDebt.groupName}</strong>
             </p>
             <div className="flex gap-2 justify-end">
               <Button 

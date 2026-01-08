@@ -87,7 +87,7 @@ export const useStore = create((set, get) => ({
   loadGroups: async () => {
     try {
       const groups = await apiService.getGroups();
-      console.log('Loaded groups:', groups);
+      
       set({ groups });
       
       // Join socket rooms for all groups
@@ -560,7 +560,7 @@ export const useStore = create((set, get) => ({
       }
     });
     
-    console.log('Balance result:', result);
+    
     return result;
   },
   
@@ -765,16 +765,16 @@ export const useStore = create((set, get) => ({
 
     // Set up event listeners
     socketService.onExpenseCreated((expense) => {
-      console.log('Real-time expense created:', expense);
+      
       set(state => {
         // Check if expense already exists
         const exists = state.expenses.some(e => (e._id || e.id) === (expense._id || expense.id));
         if (exists) {
-          console.log('Expense already exists, skipping duplicate');
+          
           return state;
         }
         
-        console.log('Adding new expense to state');
+        
         return {
           expenses: [...state.expenses, expense]
         };
@@ -782,23 +782,23 @@ export const useStore = create((set, get) => ({
     });
 
     socketService.onExpenseDeleted(({ expenseId }) => {
-      console.log('Real-time expense deleted:', expenseId);
+      
       set(state => ({
         expenses: state.expenses.filter(e => (e._id || e.id) !== expenseId)
       }));
     });
 
     socketService.onSettlementCreated((settlement) => {
-      console.log('Real-time settlement created:', settlement);
+      
       set(state => {
         // Check if settlement already exists
         const exists = state.settlements.some(s => (s._id || s.id) === (settlement._id || settlement.id));
         if (exists) {
-          console.log('Settlement already exists, skipping duplicate');
+          
           return state;
         }
         
-        console.log('Adding new settlement to state');
+        
         return {
           settlements: [...state.settlements, settlement]
         };

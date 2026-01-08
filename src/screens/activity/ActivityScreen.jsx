@@ -5,6 +5,7 @@ import { Screen, PageTitle } from '../../components/layout';
 import { Card, Avatar, Badge, EmptyState } from '../../components/ui';
 import { useStore } from '../../store/useStore';
 import { getCategoryIcon } from '../../utils/categoryDetection';
+import { getCurrencySymbol } from '../../utils/currency';
 
 /**
  * Activity Screen
@@ -186,14 +187,14 @@ export const ActivityScreen = () => {
                             {isCurrentUserPayer ? (
                               <div>
                                 <p className="text-lg font-bold text-green-400">
-                                  +₹{(activity.amount - share).toFixed(2)}
+                                  +{getCurrencySymbol(activity.currency || 'INR')}{(activity.amount - share).toFixed(2)}
                                 </p>
                                 <p className="text-xs text-neutral-500">you lent</p>
                               </div>
                             ) : isInvolved ? (
                               <div>
                                 <p className="text-lg font-bold text-red-400">
-                                  -₹{share.toFixed(2)}
+                                  -{getCurrencySymbol(activity.currency || 'INR')}{share.toFixed(2)}
                                 </p>
                                 <p className="text-xs text-neutral-500">you borrowed</p>
                               </div>
@@ -236,7 +237,7 @@ export const ActivityScreen = () => {
                         <div className="text-right flex-shrink-0">
                           <div>
                             <p className={`text-lg font-bold ${isCurrentUserTo ? 'text-green-400' : 'text-neutral-300'}`}>
-                              ₹{activity.amount.toFixed(2)}
+                              {getCurrencySymbol(activity.currency || 'INR')}{activity.amount.toFixed(2)}
                             </p>
                             <Badge variant="positive" size="sm">Settled</Badge>
                           </div>

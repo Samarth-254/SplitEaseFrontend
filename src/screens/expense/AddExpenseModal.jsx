@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, IndianRupee, FileText, Users, Check, Percent, Tag, Trash2 } from 'lucide-react';
+import { X, IndianRupee, DollarSign, Euro, PoundSterling, FileText, Users, Check, Percent, Tag, Trash2, ChevronDown } from 'lucide-react';
 import { Button, Input, Modal } from '../../components/ui';
 import { useStore } from '../../store/useStore';
 import { detectCategory } from '../../utils/categoryDetection';
 import { expenseCategories } from '../../utils/categoryIcons';
+import { getCurrencySymbol } from '../../utils/currency';
 
 
 export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, expenseToEdit = null }) => {
@@ -21,6 +22,9 @@ export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, ex
   const [formError, setFormError] = useState('');
   const [category, setCategory] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showMemberDropdown, setShowMemberDropdown] = useState(false);
+  const [showPaidByDropdown, setShowPaidByDropdown] = useState(false);
+  const [currency, setCurrency] = useState('INR');
 
   const isEditMode = !!expenseToEdit;
 
@@ -54,6 +58,7 @@ export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, ex
     setAmount(String(expenseToEdit.amount ?? ''));
     setSplitType(expenseToEdit.splitType || 'equal');
     setCategory(expenseToEdit.category || '');
+    setCurrency(expenseToEdit.currency || 'INR');
     setFormError('');
     setShowDeleteConfirm(false);
 
@@ -95,8 +100,28 @@ export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, ex
   useEffect(() => {
     if (isOpen) {
       setFormError('');
+      setShowMemberDropdown(false);
+      setShowPaidByDropdown(false);
+      
+      // If opening for new expense (not editing), reset and select all members
+      if (!expenseToEdit && selectedGroup) {
+        const group = groups.find(g => (g._id || g.id) === selectedGroup);
+        if (group) {
+          const members = group.members;
+          const memberIds = Array.isArray(members) && members.length > 0 && typeof members[0] === 'object'
+            ? members.map(m => m._id || m.id)
+            : members;
+          setSplitBetween(memberIds);
+          const equalPercent = (100 / memberIds.length).toFixed(2);
+          const initialSplits = {};
+          memberIds.forEach(memberId => {
+            initialSplits[memberId] = equalPercent;
+          });
+          setCustomSplits(initialSplits);
+        }
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, expenseToEdit, selectedGroup, groups]);
 
 
   // When group changes, reset split selection to all members
@@ -146,10 +171,47 @@ export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, ex
   };
 
   const handleCustomSplitChange = (memberId, value) => {
-    setCustomSplits(prev => ({
-      ...prev,
-      [memberId]: value
-    }));
+    const newValue = parseFloat(value) || 0;
+    
+    setCustomSplits(prev => {
+      const updated = { ...prev, [memberId]: value };
+      
+      // Calculate total of manually entered percentages
+      let manualTotal = 0;
+      const manualMembers = [];
+      const autoMembers = [];
+      
+      splitBetween.forEach(id => {
+        if (id === memberId) {
+          manualTotal += newValue;
+          manualMembers.push(id);
+        } else if (updated[id] && updated[id] !== '') {
+          manualTotal += parseFloat(updated[id]) || 0;
+          manualMembers.push(id);
+        } else {
+          autoMembers.push(id);
+        }
+      });
+      
+      // Distribute remaining percentage among members without manual values
+      if (autoMembers.length > 0) {
+        const remaining = Math.max(0, 100 - manualTotal);
+        const basePercent = Math.floor((remaining / autoMembers.length) * 100) / 100;
+        const totalBase = basePercent * autoMembers.length;
+        const extraNeeded = Math.round((remaining - totalBase) * 100) / 100;
+        
+        autoMembers.forEach((id, index) => {
+          if (index === 0) {
+            // Give the first member the base + any extra needed to reach exactly 100%
+            updated[id] = (basePercent + extraNeeded).toFixed(2);
+          } else {
+            updated[id] = basePercent.toFixed(2);
+          }
+        });
+      }
+      
+      return updated;
+    });
   };
 
   const getTotalSplitPercentage = () => {
@@ -214,6 +276,7 @@ export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, ex
 
         splits = paiseSplits.map(s => ({ user: s.user, amount: s.paise / 100 }));
       } else {
+        // For equal split, use customSplits percentages if available, otherwise calculate equal
         const numberOfPeople = splitBetween.length;
         const base = Math.floor(amountInPaise / numberOfPeople);
         const rem = amountInPaise % numberOfPeople;
@@ -233,7 +296,8 @@ export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, ex
           paidBy: paidById,
           splitType,
           splits,
-          category: finalCategory
+          category: finalCategory,
+          currency
         });
 
         setIsSubmitting(false);
@@ -249,7 +313,8 @@ export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, ex
         splitBetween,
         splitType,
         category: finalCategory,
-        splits
+        splits,
+        currency
       });
 
       setAmount('');
@@ -259,6 +324,7 @@ export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, ex
       setCustomSplits({});
       setSplitType('equal');
       setCategory('');
+      setCurrency('INR');
       setIsSubmitting(false);
       onClose();
     } catch (err) {
@@ -341,17 +407,40 @@ export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, ex
                   {/* Amount */}
                   <div>
                     <label className="text-sm text-neutral-400 mb-1.5 block">Amount</label>
-                    <div className="relative">
-                      <IndianRupee size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
-                      <input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        className="w-full bg-neutral-800 border border-neutral-700 rounded-xl py-3 pl-10 pr-4 text-white text-lg font-semibold placeholder:text-neutral-600 focus:outline-none focus:border-orange-500 transition-colors"
-                        required
-                      />
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        {currency === 'INR' && <IndianRupee size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />}
+                        {(currency === 'USD' || currency === 'AUD' || currency === 'CAD') && <DollarSign size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />}
+                        {currency === 'EUR' && <Euro size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />}
+                        {currency === 'GBP' && <PoundSterling size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />}
+                        {(currency === 'JPY' || currency === 'CNY') && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 text-sm font-semibold">¥</span>}
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={amount}
+                          onChange={(e) => setAmount(e.target.value)}
+                          className="w-full bg-neutral-800 border border-neutral-700 rounded-xl py-3 pl-10 pr-4 text-white text-lg font-semibold placeholder:text-neutral-600 focus:outline-none focus:border-orange-500 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          required
+                        />
+                      </div>
+                      {/* <div className="relative w-28">
+                        <select
+                          value={currency}
+                          onChange={(e) => setCurrency(e.target.value)}
+                          className="w-full bg-neutral-800 border border-neutral-700 rounded-xl py-3 pl-4 pr-10 text-white focus:outline-none focus:border-orange-500 transition-colors appearance-none cursor-pointer h-full"
+                        >
+                          <option value="INR">₹ INR</option>
+                          <option value="USD">$ USD</option>
+                          <option value="EUR">€ EUR</option>
+                          <option value="GBP">£ GBP</option>
+                          <option value="AUD">A$ AUD</option>
+                          <option value="CAD">C$ CAD</option>
+                          <option value="JPY">¥ JPY</option>
+                          <option value="CNY">¥ CNY</option>
+                        </select>
+                        <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none" />
+                      </div> */}
                     </div>
                   </div>
 
@@ -364,11 +453,13 @@ export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, ex
                         type="text"
                         placeholder="What's this for?"
                         value={description}
-                        onChange={(e) => setDescription(e.target.value)}
+                        onChange={(e) => setDescription(e.target.value.slice(0, 100))}
+                        maxLength={100}
                         className="w-full bg-neutral-800 border border-neutral-700 rounded-xl py-3 pl-10 pr-4 text-white placeholder:text-neutral-500 focus:outline-none focus:border-orange-500 transition-colors"
                         required
                       />
                     </div>
+                    <p className="text-xs text-neutral-500 mt-1">{description.length}/100 characters</p>
                   </div>
 
                   {/* Category */}
@@ -379,7 +470,7 @@ export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, ex
                       <select
                         value={category || ''}
                         onChange={(e) => setCategory(e.target.value)}
-                        className="w-full bg-neutral-800 border border-neutral-700 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-orange-500 transition-colors appearance-none cursor-pointer"
+                        className="w-full bg-neutral-800 border border-neutral-700 rounded-xl py-3 pl-10 pr-10 text-white focus:outline-none focus:border-orange-500 transition-colors appearance-none cursor-pointer"
                       >
                         <option value="">Auto ({detectCategory(description || '')})</option>
                         {expenseCategories.map((c) => (
@@ -388,47 +479,79 @@ export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, ex
                           </option>
                         ))}
                       </select>
+                      <ChevronDown size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none" />
                     </div>
                   </div>
 
                   {/* Group Select */}
                   <div>
                     <label className="text-sm text-neutral-400 mb-1.5 block">Group</label>
-                    <select
-                      value={selectedGroup}
-                      onChange={(e) => handleGroupChange(e.target.value)}
-                      className="w-full bg-neutral-800 border border-neutral-700 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-orange-500 transition-colors appearance-none cursor-pointer"
-                      required
-                      disabled={!!preSelectedGroupId}
-                    >
-                      <option value="">Select a group</option>
-                      {groups.map(group => (
-                        <option key={group._id || group.id} value={group._id || group.id}>
-                          {group.emoji} {group.name}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative">
+                      <select
+                        value={selectedGroup}
+                        onChange={(e) => handleGroupChange(e.target.value)}
+                        className="w-full bg-neutral-800 border border-neutral-700 rounded-xl py-3 pl-4 pr-10 text-white focus:outline-none focus:border-orange-500 transition-colors appearance-none cursor-pointer"
+                        required
+                        disabled={!!preSelectedGroupId}
+                      >
+                        <option value="">Select a group</option>
+                        {groups.map(group => (
+                          <option key={group._id || group.id} value={group._id || group.id}>
+                            {group.emoji} {group.name}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none" />
+                    </div>
                   </div>
 
                   {/* Paid By */}
                   {selectedGroup && groupMembers.length > 0 && (
                     <div>
                       <label className="text-sm text-neutral-400 mb-1.5 block">Paid by</label>
-                      <select
-                        value={paidBy}
-                        onChange={(e) => setPaidBy(e.target.value)}
-                        className="w-full bg-neutral-800 border border-neutral-700 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-orange-500 transition-colors appearance-none cursor-pointer"
-                      >
-                        {groupMembers.map(member => {
-                          const memberId = member._id || member.id;
-                          const currentUserId = currentUser?._id || currentUser?.id;
-                          return (
-                            <option key={memberId} value={memberId}>
-                              {memberId === currentUserId ? 'You' : member.name}
-                            </option>
-                          );
-                        })}
-                      </select>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setShowPaidByDropdown(!showPaidByDropdown)}
+                          className="w-full bg-neutral-800 border border-neutral-700 rounded-xl py-3 px-4 text-left text-white focus:outline-none focus:border-orange-500 transition-colors flex items-center justify-between"
+                        >
+                          <span>
+                            {(() => {
+                              const member = groupMembers.find(m => (m._id || m.id) === paidBy);
+                              const currentUserId = currentUser?._id || currentUser?.id;
+                              return (member?._id || member?.id) === currentUserId ? 'You' : (member?.name || 'Select');
+                            })()}
+                          </span>
+                          <ChevronDown size={18} className={`text-neutral-500 transition-transform ${showPaidByDropdown ? 'rotate-180' : ''}`} />
+                        </button>
+                        
+                        {/* Dropdown Menu */}
+                        {showPaidByDropdown && (
+                          <div className="absolute z-10 w-full bottom-full mb-2 bg-neutral-800 border border-neutral-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                            {groupMembers.map(member => {
+                              const memberId = member._id || member.id;
+                              const currentUserId = currentUser?._id || currentUser?.id;
+                              const isSelected = paidBy === memberId;
+                              return (
+                                <button
+                                  key={memberId}
+                                  type="button"
+                                  onClick={() => {
+                                    setPaidBy(memberId);
+                                    setShowPaidByDropdown(false);
+                                  }}
+                                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-neutral-700 cursor-pointer transition-colors border-b border-neutral-700 last:border-b-0 text-left"
+                                >
+                                  <span className="text-sm text-white flex-1">
+                                    {memberId === currentUserId ? 'You' : member.name}
+                                  </span>
+                                  {isSelected && <Check size={16} className="text-orange-500" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
 
@@ -440,54 +563,75 @@ export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, ex
                       </label>
                       
                       {/* Split Type Toggle */}
-                      <div className="flex gap-2 mb-3">
+                      <div className="flex flex-wrap gap-2 mb-3">
                         <button
                           type="button"
                           onClick={() => handleSplitTypeChange('equal')}
-                          className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                          className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all ${
                             splitType === 'equal'
-                              ? 'bg-orange-500 text-white'
-                              : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
+                              ? 'bg-orange-500/20 border-orange-500 text-orange-400'
+                              : 'bg-neutral-800 border-neutral-700 text-neutral-400 hover:border-neutral-600'
                           }`}
                         >
-                          Split Equally
+                          {splitType === 'equal' && <Check size={14} />}
+                          <span className="text-sm">Split Equally</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => handleSplitTypeChange('custom')}
-                          className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                          className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all ${
                             splitType === 'custom'
-                              ? 'bg-orange-500 text-white'
-                              : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
+                              ? 'bg-orange-500/20 border-orange-500 text-orange-400'
+                              : 'bg-neutral-800 border-neutral-700 text-neutral-400 hover:border-neutral-600'
                           }`}
                         >
-                          Custom Split
+                          {splitType === 'custom' && <Check size={14} />}
+                          <span className="text-sm">Custom Split</span>
                         </button>
                       </div>
 
-                      <div className="flex flex-wrap gap-2">
-                        {groupMembers.map(member => {
-                          const memberId = member._id || member.id;
-                          const currentUserId = currentUser?._id || currentUser?.id;
-                          const isSelected = splitBetween.includes(memberId);
-                          return (
-                            <button
-                              key={memberId}
-                              type="button"
-                              onClick={() => toggleMember(memberId)}
-                              className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all ${
-                                isSelected
-                                  ? 'bg-orange-500/20 border-orange-500 text-orange-400'
-                                  : 'bg-neutral-800 border-neutral-700 text-neutral-400 hover:border-neutral-600'
-                              }`}
-                            >
-                              {isSelected && <Check size={14} />}
-                              <span className="text-sm">
-                                {memberId === currentUserId ? 'You' : member.name}
-                              </span>
-                            </button>
-                          );
-                        })}
+                      {/* Member Selection Dropdown */}
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setShowMemberDropdown(!showMemberDropdown)}
+                          className="w-full bg-neutral-800 border border-neutral-700 rounded-xl py-3 px-4 text-left text-white focus:outline-none focus:border-orange-500 transition-colors flex items-center justify-between"
+                        >
+                          <span>
+                            {splitBetween.length === groupMembers.length
+                              ? 'All members'
+                              : `${splitBetween.length} member${splitBetween.length !== 1 ? 's' : ''} selected`}
+                          </span>
+                          <ChevronDown size={18} className={`text-neutral-500 transition-transform ${showMemberDropdown ? 'rotate-180' : ''}`} />
+                        </button>
+                        
+                        {/* Dropdown Menu */}
+                        {showMemberDropdown && (
+                          <div className="absolute z-10 w-full bottom-full mb-2 bg-neutral-800 border border-neutral-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                            {groupMembers.map(member => {
+                              const memberId = member._id || member.id;
+                              const currentUserId = currentUser?._id || currentUser?.id;
+                              const isSelected = splitBetween.includes(memberId);
+                              return (
+                                <label
+                                  key={memberId}
+                                  className="flex items-center gap-3 px-4 py-3 hover:bg-neutral-700 cursor-pointer transition-colors border-b border-neutral-700 last:border-b-0"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => toggleMember(memberId)}
+                                    className="w-4 h-4 rounded border-neutral-600 bg-neutral-700 text-orange-500 focus:ring-orange-500 focus:ring-offset-0 cursor-pointer"
+                                  />
+                                  <span className="text-sm text-white flex-1">
+                                    {memberId === currentUserId ? 'You' : member.name}
+                                  </span>
+                                  {isSelected && <Check size={16} className="text-orange-500" />}
+                                </label>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                       
                       {/* Custom Split Inputs */}
@@ -510,7 +654,7 @@ export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, ex
                                     max="100"
                                     value={customSplits[memberId] || ''}
                                     onChange={(e) => handleCustomSplitChange(memberId, e.target.value)}
-                                    className="w-full bg-neutral-800 border border-neutral-700 rounded-lg py-1.5 pl-2 pr-7 text-white text-sm focus:outline-none focus:border-orange-500"
+                                    className="w-full bg-neutral-800 border border-neutral-700 rounded-lg py-1.5 pl-2 pr-7 text-white text-sm focus:outline-none focus:border-orange-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                     placeholder="0"
                                   />
                                   <Percent size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500" />
@@ -539,7 +683,7 @@ export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, ex
                               <div key={memberId} className="flex justify-between text-sm text-neutral-300 mb-1">
                                 <span>{(member?._id || member?.id) === currentUserId ? 'You' : member?.name}</span>
                                 <span className="font-medium">
-                                  ₹{splitAmount.toFixed(2)} <span className="text-neutral-500">({percentage.toFixed(1)}%)</span>
+                                  {getCurrencySymbol(currency)}{splitAmount.toFixed(2)} <span className="text-neutral-500">({percentage.toFixed(1)}%)</span>
                                 </span>
                               </div>
                             );

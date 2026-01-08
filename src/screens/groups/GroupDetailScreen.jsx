@@ -28,6 +28,7 @@ import { AddExpenseModal } from '../expense/AddExpenseModal';
 import { InviteMembersModal } from '../../components/groups/InviteMembersModal';
 import { useStore } from '../../store/useStore';
 import { getCategoryIcon } from '../../utils/categoryDetection';
+import { getCurrencySymbol } from '../../utils/currency';
 
 export const GroupDetailScreen = () => {
   const { groupId } = useParams();
@@ -184,7 +185,7 @@ export const GroupDetailScreen = () => {
               <div>
                 <p className="text-sm text-neutral-500 mb-1">Your balance</p>
                 <p className={`text-2xl font-bold ${summary.net >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {summary.net >= 0 ? '+' : '-'}₹{Math.round(Math.abs(summary.net) * 100) / 100}
+                  {summary.net >= 0 ? '+' : '-'}{getCurrencySymbol('INR')}{Math.round(Math.abs(summary.net) * 100) / 100}
                 </p>
               </div>
               {balances.length > 0 && (
@@ -208,7 +209,7 @@ export const GroupDetailScreen = () => {
                     </div>
                     <div className="flex items-center">
                       <p className={`text-sm font-semibold w-20 text-right ${youOwe ? 'text-red-400' : 'text-green-400'}`}>
-                        {youOwe ? '-' : '+'}₹{Math.round(Math.abs(amount) * 100) / 100}
+                        {youOwe ? '-' : '+'}{getCurrencySymbol('INR')}{Math.round(Math.abs(amount) * 100) / 100}
                       </p>
                       <div className="w-8 flex justify-center">
                         {!youOwe ? (
@@ -231,7 +232,7 @@ export const GroupDetailScreen = () => {
 
         {/* Tabs + Add Button (hidden on mobile) */}
         <div className="flex items-center justify-between gap-3 mb-4">
-          <div className="flex gap-2 overflow-x-auto">
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide">
             {tabs.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
@@ -257,7 +258,7 @@ export const GroupDetailScreen = () => {
             icon={<Plus size={16} />}
             onClick={() => setShowAddExpense(true)}
           >
-            Add
+            Add Expense
           </Button>
         </div>
 
@@ -296,8 +297,21 @@ export const GroupDetailScreen = () => {
                           const currentUserId = currentUser?._id || currentUser?.id;
                           const isCurrentUserPayer = payerId === currentUserId;
                           const splitMembers = expense.splits || expense.splitBetween || [];
-                          const shareCount = expense.splits ? expense.splits.length : (expense.splitBetween?.length || 1);
-                          const share = expense.amount / shareCount;
+                          
+                          // Calculate current user's share - use actual split amount if available
+                          let share = 0;
+                          if (expense.splits && Array.isArray(expense.splits)) {
+                            const userSplit = expense.splits.find(s => {
+                              const splitUserId = s.user?._id || s.user;
+                              return String(splitUserId) === String(currentUserId);
+                            });
+                            share = userSplit?.amount || 0;
+                          } else {
+                            // Fallback to equal split if no splits array
+                            const shareCount = expense.splitBetween?.length || 1;
+                            share = expense.amount / shareCount;
+                          }
+                          
                           const categoryInfo = getCategoryIcon(expense.category);
                           const CategoryIcon = categoryInfo.icon;
                           
@@ -321,7 +335,7 @@ export const GroupDetailScreen = () => {
                                     {expense.description}
                                   </h4>
                                   <p className="text-sm text-neutral-500">
-                                    {payer?.name || 'Unknown'} paid ₹{expense.amount.toFixed(2)}
+                                    {payer?.name || 'Unknown'} paid {getCurrencySymbol(expense.currency || 'INR')}{expense.amount.toFixed(2)}
                                   </p>
                                   <p className="text-xs text-neutral-600 mt-1">
                                     {formatTime(expense.createdAt || expense.date)}
@@ -332,14 +346,14 @@ export const GroupDetailScreen = () => {
                                   {isCurrentUserPayer ? (
                                     <>
                                       <p className="text-base font-semibold text-green-400">
-                                        +₹{(expense.amount - share).toFixed(2)}
+                                        +{getCurrencySymbol(expense.currency || 'INR')}{(expense.amount - share).toFixed(2)}
                                       </p>
                                       <p className="text-xs text-neutral-500">you lent</p>
                                     </>
                                   ) : (
                                     <>
                                       <p className="text-base font-semibold text-red-400">
-                                        -₹{share.toFixed(2)}
+                                        -{getCurrencySymbol(expense.currency || 'INR')}{share.toFixed(2)}
                                       </p>
                                       <p className="text-xs text-neutral-500">you borrowed</p>
                                     </>

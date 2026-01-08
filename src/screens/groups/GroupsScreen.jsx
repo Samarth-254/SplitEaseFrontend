@@ -6,6 +6,7 @@ import { Screen, PageTitle } from '../../components/layout';
 import { Button, Card, AvatarGroup, Badge, EmptyState } from '../../components/ui';
 import { CreateGroupModal } from '../../components/groups/CreateGroupModal';
 import { useStore } from '../../store/useStore';
+import { getCurrencySymbol } from '../../utils/currency';
 
 /**
  * Groups List Screen
@@ -91,7 +92,7 @@ export const GroupsScreen = () => {
                         </span>
                       </div>
                       <p className="text-xs text-neutral-600 mt-0.5 hidden sm:block">
-                        ₹{summary.totalSpent.toFixed(2)} total • {summary.expenseCount} expenses
+                        {getCurrencySymbol('INR')}{summary.totalSpent.toFixed(2)} total • {summary.expenseCount} expenses
                       </p>
                     </div>
                     
@@ -103,14 +104,14 @@ export const GroupsScreen = () => {
                         <div>
                           <p className="text-[10px] sm:text-xs text-green-400 mb-0.5">you get</p>
                           <p className="text-sm sm:text-base font-bold text-green-400">
-                            +₹{summary.youGet.toFixed(2)}
+                            +{getCurrencySymbol('INR')}{summary.youGet.toFixed(2)}
                           </p>
                         </div>
                       ) : (
                         <div>
                           <p className="text-[10px] sm:text-xs text-red-400 mb-0.5">you owe</p>
                           <p className="text-sm sm:text-base font-bold text-red-400">
-                            ₹{summary.youOwe.toFixed(2)}
+                            {getCurrencySymbol('INR')}{summary.youOwe.toFixed(2)}
                           </p>
                         </div>
                       )}

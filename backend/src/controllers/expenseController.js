@@ -3,7 +3,7 @@ const Group = require("../models/Group");
 
 exports.addExpense = async (req, res) => {
   try {
-    const { groupId, description, amount, splitType, splits, category, paidBy } = req.body;
+    const { groupId, description, amount, splitType, splits, category, paidBy, currency } = req.body;
 
     if (!groupId || !description || !amount) {
       return res.status(400).json({ message: "Missing required fields" });
@@ -31,7 +31,8 @@ exports.addExpense = async (req, res) => {
       createdBy: req.user._id,
       splits: Array.isArray(splits) ? splits : [],
       splitType: splitType || "equal",
-      category
+      category,
+      currency: currency || "INR"
     });
 
     await expense.populate('paidBy', 'name email profileImage mobile gender');
@@ -55,7 +56,7 @@ exports.addExpense = async (req, res) => {
 exports.updateExpense = async (req, res) => {
   try {
     const { expenseId } = req.params;
-    const { description, amount, splitType, splits, category, paidBy } = req.body;
+    const { description, amount, splitType, splits, category, paidBy, currency } = req.body;
 
     const expense = await Expense.findById(expenseId);
     if (!expense || expense.isDeleted) {
@@ -91,6 +92,7 @@ exports.updateExpense = async (req, res) => {
     expense.splits = Array.isArray(splits) ? splits : expense.splits;
     expense.category = category;
     expense.paidBy = paidById;
+    if (currency) expense.currency = currency;
 
     await expense.save();
 
