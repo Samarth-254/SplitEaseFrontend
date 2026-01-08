@@ -54,7 +54,7 @@ export const Header = ({
         
         {/* Center - Title */}
         <div className="flex-1 text-center min-w-0 px-2">
-          <h1 className="text-base font-semibold text-neutral-100 truncate">
+          <h1 className="text-lg sm:text-xl font-semibold text-neutral-100 truncate">
             {title}
           </h1>
           {subtitle && (

@@ -64,9 +64,9 @@ export const Modal = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="absolute inset-0 bg-primary-950 backdrop-blur-md"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={closeOnBackdrop ? onClose : undefined}
-            style={{ WebkitBackdropFilter: 'blur(12px)' }}
+            style={{ WebkitBackdropFilter: 'blur(4px)' }}
           />
           
           {/* Modal */}

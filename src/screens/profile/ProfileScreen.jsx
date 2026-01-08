@@ -232,6 +232,18 @@ export const ProfileScreen = () => {
           </div>
           </Card>
 
+          {/* Sign Out Button - Mobile Only */}
+          <div className="block sm:hidden">
+            <Button
+              variant="danger"
+              fullWidth
+              onClick={() => setShowLogoutConfirm(true)}
+            >
+              <LogOut size={18} className="mr-2" />
+              Sign Out
+            </Button>
+          </div>
+
         {/* <div className="text-center py-4">
           <p className="text-xs text-neutral-600">
             SplitEase v1.0.0

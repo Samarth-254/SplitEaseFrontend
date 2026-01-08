@@ -53,7 +53,7 @@ export const CreateGroupModal = ({ isOpen, onClose }) => {
                 key={emojiOption}
                 type="button"
                 onClick={() => setEmoji(emojiOption)}
-                className={`text-3xl p-3 rounded-xl transition-all ${
+                className={`text-2xl sm:text-3xl p-2 sm:p-3 rounded-xl transition-all ${
                   emoji === emojiOption
                     ? 'bg-secondary-500/20 ring-2 ring-secondary-500'
                     : 'bg-primary-800 hover:bg-primary-700'
