@@ -9,7 +9,6 @@ connectToDB();
 
 const PORT=process.env.PORT || 3000;
 
-// Create HTTP server and Socket.io instance
 const server = http.createServer(app);
 
 const allowedOrigins = (process.env.FRONTEND_URLS || process.env.FRONTEND_URL || 'http://localhost:5173')
@@ -25,17 +24,14 @@ const io = new Server(server, {
     }
 });
 
-// Socket.io connection handler
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
-    // Join group rooms
     socket.on('join-group', (groupId) => {
         socket.join(`group:${groupId}`);
         console.log(`User ${socket.id} joined group:${groupId}`);
     });
 
-    // Leave group room
     socket.on('leave-group', (groupId) => {
         socket.leave(`group:${groupId}`);
         console.log(`User ${socket.id} left group:${groupId}`);
@@ -46,7 +42,6 @@ io.on('connection', (socket) => {
     });
 });
 
-// Make io accessible to routes
 app.set('io', io);
 
 server.listen(PORT,()=>{
