@@ -3,7 +3,20 @@ const cloudinary=require('../config/cloudinary');
 const multer=require('multer');
 
 const storage=multer.memoryStorage();
-const upload=multer({storage:storage,limits:{fileSize:5*1024*1024}});
+const upload=multer({
+  storage:storage,
+  limits:{fileSize:5*1024*1024},
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|webp|heic|heif/;
+    const mimetype = allowedTypes.test(file.mimetype.toLowerCase());
+    const extname = allowedTypes.test(file.originalname.toLowerCase());
+    
+    if (mimetype || extname) {
+      return cb(null, true);
+    }
+    cb(new Error('Only image files are allowed!'));
+  }
+});
 
 exports.uploadMiddleware=upload.single('profileImage');
 
@@ -32,7 +45,12 @@ exports.updateProfile=async(req,res)=>{
     if(req.file){
       const uploadResult=await new Promise((resolve,reject)=>{
         const uploadStream=cloudinary.uploader.upload_stream(
-          {folder:'profile_images',transformation:[{width:400,height:400,crop:'fill'}]},
+          {
+            folder:'profile_images',
+            transformation:[{width:400,height:400,crop:'fill'}],
+            format: 'jpg', // Convert all formats (including HEIC) to JPEG
+            quality: 'auto'
+          },
           (error,result)=>{
             if(error)reject(error);
             else resolve(result);

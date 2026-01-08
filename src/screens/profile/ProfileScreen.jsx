@@ -245,7 +245,7 @@ export const ProfileScreen = () => {
 
       <Modal
         isOpen={showAvatarPicker}
-        onClose={() => setShowAvatarPicker(false)}
+        onClose={() => !uploading && setShowAvatarPicker(false)}
         title="Choose Profile Picture"
         size="md"
       >
@@ -254,13 +254,27 @@ export const ProfileScreen = () => {
             <label className="block w-full">
               <input
                 type="file"
-                accept="image/*"
+                accept="image/*,.heic,.heif"
                 onChange={handleImageUpload}
                 className="hidden"
+                disabled={uploading}
               />
-              <div className="w-full py-3 px-4 bg-orange-500 hover:bg-orange-600 rounded-lg text-white text-center font-medium cursor-pointer transition-colors">
-                <Upload size={18} className="inline mr-2" />
-                Upload Custom Photo
+              <div className={`w-full py-3 px-4 rounded-lg text-white text-center font-medium transition-colors ${
+                uploading 
+                  ? 'bg-neutral-700 cursor-not-allowed' 
+                  : 'bg-orange-500 hover:bg-orange-600 cursor-pointer'
+              }`}>
+                {uploading ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
+                    <span>Uploading...</span>
+                  </div>
+                ) : (
+                  <>
+                    <Upload size={18} className="inline mr-2" />
+                    Upload Custom Photo
+                  </>
+                )}
               </div>
             </label>
           </div>
@@ -272,11 +286,12 @@ export const ProfileScreen = () => {
                 <button
                   key={index}
                   onClick={() => handleAvatarSelect(avatar)}
+                  disabled={uploading}
                   className={`aspect-square rounded-lg overflow-hidden transition-all hover:ring-2 hover:ring-secondary-500 ${
                     currentUser?.profileImage === avatar 
                       ? 'ring-2 ring-secondary-500' 
                       : ''
-                  }`}
+                  } ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <img src={avatar} alt={`Avatar ${index + 1}`} className="w-full h-full object-cover" />
                 </button>

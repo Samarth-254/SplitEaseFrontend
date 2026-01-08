@@ -62,10 +62,31 @@
           navigator.serviceWorker.register('/sw.js')
             .then((registration) => {
               console.log('SW registered:', registration);
+              
+              // Check for updates periodically
+              setInterval(() => {
+                registration.update();
+              }, 60000); // Check every minute
+              
+              // Handle updates
+              registration.addEventListener('updatefound', () => {
+                const newWorker = registration.installing;
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    // New service worker available, reload to activate
+                    console.log('New SW available, reloading...');
+                  }
+                });
+              });
             })
             .catch((error) => {
               console.log('SW registration failed:', error);
             });
+        });
+        
+        // Listen for controller change (when new SW takes over)
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          console.log('Controller changed, SW updated');
         });
       }
     </script>

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'splitease-v1';
+const CACHE_NAME = 'splitease-v2';
 const urlsToCache = [
   '/',
   '/index.html',
