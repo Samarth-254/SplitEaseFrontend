@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Users, CheckCircle, XCircle, Loader } from 'lucide-react';
+import { Users, CheckCircle, XCircle, Loader, UserPlus } from 'lucide-react';
 import { Button } from '../../components/ui';
 import apiService from '../../services/api';
 import { useStore } from '../../store/useStore';
@@ -12,14 +12,22 @@ export const JoinGroupScreen = () => {
   const { addGroup } = useStore();
   const [status, setStatus] = useState('checking');
   const [group, setGroup] = useState(null);
+  const [inviteInfo, setInviteInfo] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const attemptJoin = async () => {
+    const checkInvite = async () => {
       // Check localStorage token directly instead of Zustand state
       const authToken = localStorage.getItem('token');
       
       if (!authToken) {
+        // Try to get invite info even without auth
+        try {
+          const info = await apiService.getInviteInfo(token);
+          setInviteInfo(info);
+        } catch (err) {
+          // Ignore error, will show generic message
+        }
         setStatus('needsAuth');
         return;
       }
@@ -41,7 +49,7 @@ export const JoinGroupScreen = () => {
       }
     };
 
-    attemptJoin();
+    checkInvite();
   }, [token]);
 
   return (
@@ -59,12 +67,32 @@ export const JoinGroupScreen = () => {
         <div className="bg-primary-900 border border-border rounded-2xl p-8 text-center">
           {status === 'needsAuth' && (
             <>
-              <Users size={48} className="text-secondary-500 mx-auto mb-4" />
+              <div className="w-16 h-16 rounded-full bg-orange-500/20 flex items-center justify-center mx-auto mb-4">
+                {inviteInfo?.groupEmoji ? (
+                  <span className="text-3xl">{inviteInfo.groupEmoji}</span>
+                ) : (
+                  <UserPlus size={32} className="text-orange-400" />
+                )}
+              </div>
               <h2 className="text-xl font-semibold text-neutral-100 mb-2">
-                Join Group
+                {inviteInfo?.groupName ? `Join ${inviteInfo.groupName}` : 'Join Group'}
               </h2>
-              <p className="text-neutral-400 mb-6">
-                Please log in to join this group
+              <p className="text-neutral-400 mb-1">
+                {inviteInfo?.invitedByName ? (
+                  <>
+                    <span className="font-medium text-neutral-300">{inviteInfo.invitedByName}</span> invited you to join this group
+                  </>
+                ) : (
+                  'You\'ve been invited to join a group'
+                )}
+              </p>
+              {inviteInfo?.memberCount && (
+                <p className="text-sm text-neutral-500 mb-6">
+                  {inviteInfo.memberCount} {inviteInfo.memberCount === 1 ? 'member' : 'members'} in this group
+                </p>
+              )}
+              <p className="text-sm text-neutral-400 mb-6">
+                Please log in to accept the invitation
               </p>
               <Button
                 fullWidth

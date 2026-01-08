@@ -75,6 +75,12 @@ class SocketService {
     }
   }
 
+  onExpenseUpdated(callback) {
+    if (this.socket) {
+      this.socket.on('expense:updated', callback);
+    }
+  }
+
   onSettlementCreated(callback) {
     if (this.socket) {
       this.socket.on('settlement:created', callback);
@@ -91,6 +97,12 @@ class SocketService {
   offExpenseDeleted(callback) {
     if (this.socket) {
       this.socket.off('expense:deleted', callback);
+    }
+  }
+
+  offExpenseUpdated(callback) {
+    if (this.socket) {
+      this.socket.off('expense:updated', callback);
     }
   }
 

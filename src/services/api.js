@@ -110,10 +110,17 @@ class ApiService {
     });
   }
 
-  async addExpense(groupId, description, amount, splitType, splits, category) {
+  async getInviteInfo(token) {
+    return this.request('/api/invites/info', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    });
+  }
+
+  async addExpense(groupId, description, amount, splitType, splits, category, paidBy, currency) {
     return this.request('/api/expenses', {
       method: 'POST',
-      body: JSON.stringify({ groupId, description, amount, splitType, splits, category }),
+      body: JSON.stringify({ groupId, description, amount, splitType, splits, category, paidBy, currency }),
     });
   }
 

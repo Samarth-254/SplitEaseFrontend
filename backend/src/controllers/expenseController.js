@@ -72,11 +72,7 @@ exports.updateExpense = async (req, res) => {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    const creatorId = expense.createdBy || expense.paidBy;
-    if (String(creatorId) !== String(req.user._id)) {
-      return res.status(403).json({ message: "Only the creator can update this expense" });
-    }
-
+    // Any group member can edit the expense
     if (!description || !amount) {
       return res.status(400).json({ message: "Missing required fields" });
     }
@@ -99,6 +95,13 @@ exports.updateExpense = async (req, res) => {
     await expense.populate('paidBy', 'name email profileImage mobile gender');
     await expense.populate('splits.user', 'name email profileImage mobile gender');
     await expense.populate('createdBy', 'name email profileImage mobile gender');
+
+    // Emit socket event to all group members
+    const io = req.app.get('io');
+    if (io) {
+      console.log(`Emitting expense:updated to group:${expense.groupId}`);
+      io.to(`group:${expense.groupId}`).emit('expense:updated', expense);
+    }
 
     res.json(expense);
   } catch (err) {
@@ -151,9 +154,9 @@ exports.deleteExpense = async (req, res) => {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    const creatorId = expense.createdBy || expense.paidBy;
-    if (String(creatorId) !== String(req.user._id)) {
-      return res.status(403).json({ message: "Only the creator can delete this expense" });
+    // Only the person who paid can delete the expense
+    if (String(expense.paidBy) !== String(req.user._id)) {
+      return res.status(403).json({ message: "Only the person who paid can delete this expense" });
     }
 
     // Permanent delete from database

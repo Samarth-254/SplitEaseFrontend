@@ -141,7 +141,7 @@ export const useStore = create((set, get) => ({
   // Expense Actions
   addExpense: async (expenseData) => {
     try {
-      const { groupId, description, amount, splitBetween, splitType, category, paidBy, splits: providedSplits } = expenseData;
+      const { groupId, description, amount, splitBetween, splitType, category, paidBy, splits: providedSplits, currency } = expenseData;
       
       // Convert amount to cents/paise (integer) to avoid floating point errors
       const amountInPaise = Math.round(amount * 100);
@@ -165,13 +165,13 @@ export const useStore = create((set, get) => ({
         amount,
         splitType || 'equal',
         splits,
-        category
+        category,
+        paidBy,
+        currency
       );
 
-      set(state => ({ 
-        expenses: [...state.expenses, expense],
-        isAddExpenseOpen: false,
-      }));
+      // Don't add to state here - socket event will handle it to avoid duplicates
+      set({ isAddExpenseOpen: false });
       
       return expense;
     } catch (err) {
@@ -785,6 +785,15 @@ export const useStore = create((set, get) => ({
       
       set(state => ({
         expenses: state.expenses.filter(e => (e._id || e.id) !== expenseId)
+      }));
+    });
+
+    socketService.onExpenseUpdated((updatedExpense) => {
+      
+      set(state => ({
+        expenses: state.expenses.map(e => 
+          (e._id || e.id) === (updatedExpense._id || updatedExpense.id) ? updatedExpense : e
+        )
       }));
     });
 

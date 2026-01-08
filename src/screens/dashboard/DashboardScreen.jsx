@@ -359,55 +359,45 @@ export const DashboardScreen = () => {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
                     >
-                      <Card padding="md" className="border-red-900/30 hover:border-red-800/50 transition-colors">
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-red-900/30 flex items-center justify-center flex-shrink-0">
-                            <DollarSign size={20} className="text-red-400" />
-                          </div>
-                          
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between mb-1">
-                              <div className="flex-1 min-w-0">
-                                <h3 className="font-semibold text-neutral-100 truncate">
-                                  {debt.memberName}
-                                </h3>
-                                <p className="text-xs text-neutral-500 mt-0.5">
-                                  {debt.groupEmoji} {debt.groupName}
-                                </p>
-                              </div>
-                              <p className="text-lg font-bold text-red-400 ml-2">
-                                {getCurrencySymbol('INR')}{debt.amount.toFixed(2)}
+                      <Card 
+                        padding="md" 
+                        className="border-red-900/30 hover:border-red-800/50 transition-colors cursor-pointer"
+                        onClick={() => navigate(`/group/${debt.groupId}`)}
+                      >
+                        <div className="space-y-3">
+                          {/* Member Info and Amount */}
+                          <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                              <DollarSign size={20} className="text-red-400" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-neutral-100 truncate text-sm sm:text-base">
+                                {debt.memberName}
+                              </h3>
+                              <p className="text-xs text-neutral-500 mt-0.5">
+                                {debt.groupEmoji} {debt.groupName}
                               </p>
                             </div>
+                            <p className="text-base sm:text-lg font-bold text-red-400 flex-shrink-0">
+                              {getCurrencySymbol('INR')}{debt.amount.toFixed(2)}
+                            </p>
+                          </div>
+                          
+                          {/* Actions Row */}
+                          <div className="flex items-center justify-between pt-2 border-t border-neutral-800">
+                            <span className={`text-xs px-2 py-1 rounded-md font-medium ${dueBadge.color}`}>
+                              {dueBadge.text} overdue
+                            </span>
                             
-                            <div className="flex items-center mt-3 pt-3 border-t border-neutral-800">
-                              <span className={`text-xs px-2 py-1 rounded-md font-medium ${dueBadge.color}`}>
-                                {dueBadge.text} overdue
-                              </span>
-                              
-                              <div className="flex items-center gap-2 ml-auto">
-                                <Button 
-                                  size="sm" 
-                                  variant="primary"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    handleSettleDebt(debt);
-                                  }}
-                                >
-                                  Settle Up
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    navigate(`/group/${debt.groupId}`);
-                                  }}
-                                >
-                                  View
-                                </Button>
-                              </div>
-                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSettleDebt(debt);
+                              }}
+                              className="text-sm font-medium text-orange-400 hover:text-orange-300 underline transition-colors"
+                            >
+                              Settle Up
+                            </button>
                           </div>
                         </div>
                       </Card>

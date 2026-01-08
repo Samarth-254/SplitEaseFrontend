@@ -100,3 +100,38 @@ exports.sendInviteEmail = async (req, res) => {
     });
   }
 };
+
+exports.getInviteInfo = async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ message: "Token is required" });
+    }
+
+    if (!process.env.INVITE_SECRET) {
+      return res.status(500).json({ message: "Invite config missing" });
+    }
+
+    const decoded = jwt.verify(token, process.env.INVITE_SECRET);
+    const group = await Group.findById(decoded.groupId).populate('members', 'name');
+    
+    if (!group || group.isArchived) {
+      return res.status(404).json({ message: "Group not found or invite expired" });
+    }
+
+    const inviter = group.members.find(m => String(m._id) === String(decoded.invitedBy));
+
+    res.json({
+      groupName: group.name,
+      groupEmoji: group.emoji,
+      memberCount: group.members?.length || 0,
+      invitedByName: inviter?.name || 'Someone'
+    });
+  } catch (err) {
+    if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
+      return res.status(400).json({ message: "Invalid or expired invite link" });
+    }
+    res.status(500).json({ message: "Failed to get invite info" });
+  }
+};
