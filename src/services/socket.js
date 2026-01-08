@@ -1,0 +1,114 @@
+import { io } from 'socket.io-client';
+
+class SocketService {
+  constructor() {
+    this.socket = null;
+    this.connected = false;
+  }
+
+  connect(token) {
+    if (this.socket?.connected) {
+      return this.socket;
+    }
+
+    const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    
+    this.socket = io(BACKEND_URL, {
+      auth: {
+        token
+      },
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 5
+    });
+
+    this.socket.on('connect', () => {
+      console.log('Socket connected:', this.socket.id);
+      this.connected = true;
+    });
+
+    this.socket.on('disconnect', () => {
+      console.log('Socket disconnected');
+      this.connected = false;
+    });
+
+    this.socket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+    });
+
+    return this.socket;
+  }
+
+  disconnect() {
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
+      this.connected = false;
+    }
+  }
+
+  joinGroup(groupId) {
+    if (this.socket?.connected) {
+      this.socket.emit('join-group', groupId);
+      console.log('Joined group:', groupId);
+    }
+  }
+
+  leaveGroup(groupId) {
+    if (this.socket?.connected) {
+      this.socket.emit('leave-group', groupId);
+      console.log('Left group:', groupId);
+    }
+  }
+
+  // Event listeners
+  onExpenseCreated(callback) {
+    if (this.socket) {
+      this.socket.on('expense:created', callback);
+    }
+  }
+
+  onExpenseDeleted(callback) {
+    if (this.socket) {
+      this.socket.on('expense:deleted', callback);
+    }
+  }
+
+  onSettlementCreated(callback) {
+    if (this.socket) {
+      this.socket.on('settlement:created', callback);
+    }
+  }
+
+  // Remove listeners
+  offExpenseCreated(callback) {
+    if (this.socket) {
+      this.socket.off('expense:created', callback);
+    }
+  }
+
+  offExpenseDeleted(callback) {
+    if (this.socket) {
+      this.socket.off('expense:deleted', callback);
+    }
+  }
+
+  offSettlementCreated(callback) {
+    if (this.socket) {
+      this.socket.off('settlement:created', callback);
+    }
+  }
+
+  getSocket() {
+    return this.socket;
+  }
+
+  isConnected() {
+    return this.connected && this.socket?.connected;
+  }
+}
+
+// Export singleton instance
+const socketService = new SocketService();
+export default socketService;
