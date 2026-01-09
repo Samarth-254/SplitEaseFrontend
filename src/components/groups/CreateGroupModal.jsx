@@ -6,23 +6,23 @@ import { useStore } from '../../store/useStore';
 
 const PRIMARY_EMOJIS = ['🏠', '🗽', '✈️', '🍕', '🍺', '⛰️', '🏖️', '🎬', '🎮', '💼', '🏋️', '🎓'];
 const ALL_EMOJIS = [
-  // Travel
+  // Travel (14)
   '🏠', '🗽', '✈️', '🚗', '🚂', '🚌', '🚢', '🏕️', '🏖️', '🏔️', '🌋', '🏜️', '🌊', '🏝️',
-  // Food & Drinks
+  // Food & Drinks (21)
   '🍕', '🍔', '🌮', '🍜', '🍣', '🍛', '🍲', '🥗', '🍝', '🍳', '🥞', '🧇', '🥐', '🍰',
   '🍩', '🍫', '🍦', '🍧', '🍨', '🍹', '🍷', '🍺', '🥃', '☕', '🧃',
-  // Sports & Fitness
+  // Sports & Fitness (25)
   '⚽', '🏀', '🏈', '⚾', '🥎', '🏐', '🏉', '🥏', '🎱', '🏏', '🥍', '🏒', '🏓', '🏸',
   '🏂', '⛷️', '🏄', '🏌️', '⛳', '🏆', '🥇', '🥈', '🥉', '🏅', '🏋️', '🚴', '🚵', '🏇',
-  // Entertainment
+  // Entertainment (16)
   '🎬', '🎥', '🎞️', '🎧', '🎤', '🎼', '🎹', '🥁', '🎸', '🎺', '🎻', '🎲', '🎯', '🎮',
   '🕹️', '🎪', '🎨', '🖼️', '🖌️', '✏️', '🖍️', '📚', '📖', '📰',
-  // Work & Education
+  // Work & Education (15)
   '💼', '👔', '💻', '⌨️', '🖱️', '🖥️', '🖨️', '📱', '📲', '💽', '💾', '💿', '📀',
   '🎓', '📚', '✏️', '📖', '📅', '📆', '📇', '📋', '📎', '📌', '📏', '📐',
-  // People & Groups
+  // People & Groups (10)
   '👥', '👤', '👩', '👨', '👧', '👦', '👩‍👩‍👧', '👨‍👩‍👦', '👨‍👩‍👦‍👦', '👨‍👨‍👧‍👧'
-];
+].filter((emoji, index, self) => self.indexOf(emoji) === index); // Remove duplicates
 
 export const CreateGroupModal = ({ isOpen, onClose }) => {
   const { addGroup } = useStore();
@@ -56,24 +56,26 @@ export const CreateGroupModal = ({ isOpen, onClose }) => {
     }
   };
 
+  const moreCount = ALL_EMOJIS.length - PRIMARY_EMOJIS.length;
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Create New Group" size="md">
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Primary Emojis - 2 Rows */}
+        {/* Primary Emojis - PERFECT MOBILE LAYOUT */}
         <div>
-          <label className="text-sm text-neutral-400 mb-3 block">Choose an emoji</label>
+          <label className="text-sm text-neutral-400 mb-4 block">Choose an emoji</label>
           
-          {/* Row 1 */}
-          <div className="grid grid-cols-6 gap-2 mb-2">
+          {/* Row 1: 6 Emojis */}
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-3 p-1">
             {PRIMARY_EMOJIS.slice(0, 6).map((emojiOption) => (
               <button
                 key={emojiOption}
                 type="button"
                 onClick={() => setEmoji(emojiOption)}
-                className={`text-2xl p-2 rounded-xl transition-all ${
+                className={`text-3xl sm:text-2xl p-3 rounded-xl transition-all flex items-center justify-center min-h-[56px] sm:min-h-0 ${
                   emoji === emojiOption
-                    ? 'bg-secondary-500/20 ring-2 ring-secondary-500'
-                    : 'bg-primary-800 hover:bg-primary-700'
+                    ? 'bg-secondary-500/30 ring-2 ring-secondary-400 shadow-lg'
+                    : 'bg-primary-800/50 hover:bg-primary-700 active:scale-95'
                 }`}
               >
                 {emojiOption}
@@ -81,30 +83,32 @@ export const CreateGroupModal = ({ isOpen, onClose }) => {
             ))}
           </div>
           
-          {/* Row 2 + More Button */}
-          <div className="grid grid-cols-6 gap-2">
-            {PRIMARY_EMOJIS.slice(6).map((emojiOption) => (
+          {/* Row 2: 5 Emojis + 1 More Button */}
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 p-1">
+            {PRIMARY_EMOJIS.slice(6, 11).map((emojiOption) => (
               <button
                 key={emojiOption}
                 type="button"
                 onClick={() => setEmoji(emojiOption)}
-                className={`text-2xl p-2 rounded-xl transition-all ${
+                className={`text-3xl sm:text-2xl p-3 rounded-xl transition-all flex items-center justify-center min-h-[56px] sm:min-h-0 ${
                   emoji === emojiOption
-                    ? 'bg-secondary-500/20 ring-2 ring-secondary-500'
-                    : 'bg-primary-800 hover:bg-primary-700'
+                    ? 'bg-secondary-500/30 ring-2 ring-secondary-400 shadow-lg'
+                    : 'bg-primary-800/50 hover:bg-primary-700 active:scale-95'
                 }`}
               >
                 {emojiOption}
               </button>
             ))}
+            {/* More Button - Perfectly sized */}
             <button
               type="button"
               onClick={() => setShowAllEmojis(true)}
-              className="text-2xl p-2 rounded-xl bg-primary-800 hover:bg-primary-700 border-2 border-dashed border-neutral-600 flex items-center justify-center text-neutral-400 hover:text-neutral-200 transition-all"
-              title="More emojis"
+              className="col-span-1 sm:col-span-1 text-lg sm:text-xl p-3 rounded-xl bg-gradient-to-br from-neutral-800 to-neutral-900 hover:from-neutral-700 border-2 border-dashed border-neutral-600 flex flex-col items-center justify-center min-h-[56px] sm:min-h-0 gap-1 text-neutral-400 hover:text-neutral-100 hover:border-neutral-500 transition-all shadow-md hover:shadow-lg active:scale-95"
+              title={`+${moreCount} more emojis`}
             >
-              +{ALL_EMOJIS.length - PRIMARY_EMOJIS.length}
-              <ChevronRight size={14} className="ml-1" />
+              <Plus size={18} className="sm:hidden" />
+              <ChevronRight size={16} className="hidden sm:block" />
+              <span className="text-xs sm:text-sm font-medium">+{moreCount}</span>
             </button>
           </div>
         </div>
@@ -132,15 +136,10 @@ export const CreateGroupModal = ({ isOpen, onClose }) => {
         </div>
       </form>
 
-      {/* All Emojis Popup */}
-      <Modal
-        isOpen={showAllEmojis}
-        onClose={() => setShowAllEmojis(false)}
-        title="Choose Emoji"
-        size="lg"
-      >
-        <div className="max-h-[400px] overflow-y-auto p-2">
-          <div className="grid grid-cols-8 sm:grid-cols-10 gap-2">
+      {/* All Emojis Popup - Mobile Optimized */}
+      <Modal isOpen={showAllEmojis} onClose={() => setShowAllEmojis(false)} title="Choose Emoji" size="lg">
+        <div className="max-h-[50vh] overflow-y-auto p-3 sm:p-4">
+          <div className="grid grid-cols-5 sm:grid-cols-8 lg:grid-cols-10 gap-2 sm:gap-3">
             {ALL_EMOJIS.map((emojiOption) => (
               <button
                 key={emojiOption}
@@ -149,10 +148,10 @@ export const CreateGroupModal = ({ isOpen, onClose }) => {
                   setEmoji(emojiOption);
                   setShowAllEmojis(false);
                 }}
-                className={`text-2xl p-3 rounded-xl transition-all ${
+                className={`text-xl sm:text-2xl p-2 sm:p-3 rounded-xl transition-all flex items-center justify-center min-h-[48px] sm:min-h-0 ${
                   emoji === emojiOption
-                    ? 'bg-secondary-500/30 ring-2 ring-secondary-500 scale-110'
-                    : 'bg-primary-800 hover:bg-primary-700 hover:scale-105'
+                    ? 'bg-secondary-500/40 ring-2 ring-secondary-400 shadow-lg scale-105'
+                    : 'bg-primary-800/70 hover:bg-primary-700 active:scale-[0.96] hover:shadow-md'
                 }`}
               >
                 {emojiOption}
@@ -161,12 +160,8 @@ export const CreateGroupModal = ({ isOpen, onClose }) => {
           </div>
         </div>
         
-        <div className="flex gap-3 pt-4 border-t border-neutral-800">
-          <Button 
-            variant="secondary" 
-            fullWidth
-            onClick={() => setShowAllEmojis(false)}
-          >
+        <div className="flex gap-3 pt-4 border-t border-neutral-800 px-2 sm:px-0">
+          <Button variant="secondary" className="flex-1" onClick={() => setShowAllEmojis(false)}>
             Cancel
           </Button>
         </div>
