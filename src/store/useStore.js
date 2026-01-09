@@ -65,7 +65,7 @@ export const useStore = create((set, get) => ({
   },
 
   setUser: async (user) => {
-    // Clear ALL old data - no auto-loading
+    // Set user and clear old data
     set({ 
       currentUser: user, 
       isAuthenticated: true,
@@ -78,6 +78,14 @@ export const useStore = create((set, get) => ({
     });
     // Initialize socket connection
     get().initializeSocket();
+    // Load fresh data after login
+    try {
+      await get().loadGroups();
+      await get().loadAllExpenses();
+      await get().loadAllSettlements();
+    } catch (err) {
+      console.error('Failed to load data after login:', err);
+    }
   },
   
   logout: () => {

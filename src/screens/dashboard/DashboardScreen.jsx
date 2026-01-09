@@ -12,32 +12,12 @@ import { getCurrencySymbol } from '../../utils/currency';
 
 export const DashboardScreen = () => {
   const navigate = useNavigate();
-  const { groups, expenses, settlements, getTotalBalance, getGroupSummary, getGroupMembers, currentUser, settleUp, getUserById, sendReminder, getGroupBalances, loadGroups, loadAllExpenses, loadAllSettlements } = useStore();
+  const { groups, expenses, settlements, getTotalBalance, getGroupSummary, getGroupMembers, currentUser, settleUp, getUserById, sendReminder, getGroupBalances } = useStore();
   const balance = getTotalBalance();
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [showSettleModal, setShowSettleModal] = useState(false);
   const [selectedDebt, setSelectedDebt] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  
-  // Fetch all data on mount
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        await Promise.all([
-          loadGroups(),
-          loadAllExpenses(),
-          loadAllSettlements()
-        ]);
-      } catch (err) {
-        console.error('Failed to load dashboard data:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
   
   const thisMonthExpenses = expenses.filter(e => {
     const expDate = new Date(e.createdAt || e.date);
@@ -164,19 +144,6 @@ export const DashboardScreen = () => {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0 }
   };
-
-  if (isLoading) {
-    return (
-      <Screen>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin h-12 w-12 border-4 border-orange-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-neutral-400">Loading dashboard...</p>
-          </div>
-        </div>
-      </Screen>
-    );
-  }
 
   return (
     <Screen>
