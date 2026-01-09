@@ -188,45 +188,54 @@ export const GroupDetailScreen = () => {
                   {summary.net >= 0 ? '+' : '-'}{getCurrencySymbol('INR')}{Math.round(Math.abs(summary.net) * 100) / 100}
                 </p>
               </div>
-              {balances.length > 0 && (
-                <Button 
-                  variant="primary"
-                  size="sm"
-                  onClick={() => setShowSettleUp(true)}
-                >
-                  Settle Up
-                </Button>
-              )}
+              <p className="text-sm text-neutral-500">{members.length} members</p>
             </div>
             
             {balances.length > 0 && (
               <div className="space-y-2 pt-3 border-t border-border">
                 {balances.map(({ user, amount, youOwe }) => (
-                  <div key={user._id || user.id} className="flex items-center justify-between">
+                  <div key={user._id || user.id} className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <Avatar name={user.name} src={user.profileImage} size="xs" />
-                      <span className="text-sm text-neutral-300 truncate">{user.name}</span>
-                    </div>
-                    <div className="flex items-center">
-                      <p className={`text-sm font-semibold w-20 text-right ${youOwe ? 'text-red-400' : 'text-green-400'}`}>
-                        {youOwe ? '-' : '+'}{getCurrencySymbol('INR')}{Math.round(Math.abs(amount) * 100) / 100}
+                      <Avatar name={user.name} src={user.profileImage} size="sm" />
+                      <p className="text-sm text-neutral-300">
+                        {youOwe ? (
+                          <>
+                            You owe <span className="font-semibold text-red-400">{user.name}</span>{' '}
+                            <span className={`font-bold text-red-400`}>
+                              {getCurrencySymbol('INR')}{Math.round(Math.abs(amount) * 100) / 100}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="font-semibold text-green-400">{user.name}</span> owes you{' '}
+                            <span className={`font-bold text-green-400`}>
+                              {getCurrencySymbol('INR')}{Math.round(Math.abs(amount) * 100) / 100}
+                            </span>
+                          </>
+                        )}
                       </p>
-                      <div className="w-8 flex justify-center">
-                        {!youOwe ? (
-                          <button 
-                            className="p-1.5 rounded-lg hover:bg-neutral-800 transition-colors"
-                            onClick={() => handleSendReminder(user._id || user.id, Math.abs(amount), user.name)}
-                          >
-                            <Bell size={14} className="text-neutral-400" />
-                          </button>
-                        ) : null}
-                      </div>
+                    </div>
+                    <div className="flex-shrink-0 flex items-center gap-3">
+                      {youOwe ? (
+                        <button
+                          onClick={() => setShowSettleUp(true)}
+                          className="text-sm font-medium text-orange-400 hover:text-orange-300 underline transition-colors"
+                        >
+                          Settle up
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleSendReminder(user._id || user.id, Math.abs(amount), user.name)}
+                          className="text-sm font-medium text-blue-400 hover:text-blue-300 underline transition-colors"
+                        >
+                          Remind them
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
             )}
-            <p className="text-xs text-neutral-500 mt-3">{members.length} members</p>
           </Card>
         </motion.div>
 
