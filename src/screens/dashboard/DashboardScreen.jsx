@@ -12,43 +12,12 @@ import { getCurrencySymbol } from '../../utils/currency';
 
 export const DashboardScreen = () => {
   const navigate = useNavigate();
-  const { groups, expenses, settlements, getTotalBalance, getGroupSummary, getGroupMembers, currentUser, loadGroups, loadAllExpenses, settleUp, getUserById, sendReminder, getGroupBalances } = useStore();
+  const { groups, expenses, settlements, getTotalBalance, getGroupSummary, getGroupMembers, currentUser, settleUp, getUserById, sendReminder, getGroupBalances } = useStore();
   const balance = getTotalBalance();
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [showSettleModal, setShowSettleModal] = useState(false);
   const [selectedDebt, setSelectedDebt] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Always fetch fresh data on mount - no caching
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        await loadGroups();
-        await loadAllExpenses();
-      } catch (err) {
-        console.error('Failed to load data:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
-  
-  // Show loading state while fetching data
-  if (isLoading) {
-    return (
-      <Screen>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin h-12 w-12 border-4 border-orange-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-neutral-400">Loading your data...</p>
-          </div>
-        </div>
-      </Screen>
-    );
-  }
   
   const thisMonthExpenses = expenses.filter(e => {
     const expDate = new Date(e.createdAt || e.date);

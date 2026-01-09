@@ -553,7 +553,6 @@ export const GroupDetailScreen = () => {
         <div className="space-y-3">
           {balances.filter(b => b.youOwe).map(({ user, amount }) => {
             const userId = user._id || user.id;
-            const [showConfirm, setShowConfirm] = useState(false);
             
             return (
               <Card 
@@ -574,7 +573,7 @@ export const GroupDetailScreen = () => {
                 <Button 
                   size="sm"
                   onClick={() => {
-                    const confirmed = confirm(`Confirm settlement of ₹${Math.abs(amount).toFixed(2)} to ${user.name}?`);
+                    const confirmed = window.confirm(`Confirm settlement of ₹${Math.abs(amount).toFixed(2)} to ${user.name}?`);
                     if (confirmed) {
                       handleSettleUp(userId, Math.abs(amount));
                     }

@@ -17,6 +17,7 @@ export const useStore = create((set, get) => ({
   // Loading states
   isLoadingGroups: false,
   isLoadingExpenses: false,
+  isInitialLoadComplete: false,
   
   // UI State
   activeGroupId: null,
@@ -40,11 +41,13 @@ export const useStore = create((set, get) => ({
         set({ 
           currentUser: user, 
           isAuthenticated: true,
-          isLoadingGroups: false
         });
         // Load initial data to prevent stale data
         await get().loadGroups();
         await get().loadAllExpenses();
+        await get().loadAllSettlements();
+        // Mark initial load as complete
+        set({ isInitialLoadComplete: true });
         // Initialize socket connection
         get().initializeSocket();
       } catch (err) {
@@ -53,11 +56,11 @@ export const useStore = create((set, get) => ({
         set({ 
           currentUser: null, 
           isAuthenticated: false,
-          isLoadingGroups: false
+          isInitialLoadComplete: true
         });
       }
     } else {
-      set({ isLoadingGroups: false });
+      set({ isInitialLoadComplete: true });
     }
   },
 

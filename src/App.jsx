@@ -48,19 +48,14 @@ const PublicRoute = ({ children }) => {
 };
 
 function App() {
-  const { initializeAuth } = useStore();
-  const [isInitializing, setIsInitializing] = useState(true);
+  const { initializeAuth, isInitialLoadComplete } = useStore();
 
   useEffect(() => {
-    const initialize = async () => {
-      await initializeAuth();
-      setIsInitializing(false);
-    };
-    initialize();
+    initializeAuth();
   }, []);
 
-  // Show loading screen while initializing auth
-  if (isInitializing) {
+  // Show loading screen while initializing auth and loading data
+  if (!isInitialLoadComplete) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-primary-pure">
         <div className="text-center">
