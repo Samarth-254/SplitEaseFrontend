@@ -44,9 +44,14 @@ export const useStore = create((set, get) => ({
   },
 
   setUser: async (user) => {
+    // Clear old data first to prevent showing stale content
     set({ 
       currentUser: user, 
-      isAuthenticated: true 
+      isAuthenticated: true,
+      users: [],
+      groups: [],
+      expenses: [],
+      settlements: []
     });
     // Load groups after login and wait for completion
     try {
