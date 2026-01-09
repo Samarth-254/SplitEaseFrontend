@@ -191,7 +191,15 @@ export const GroupDetailScreen = () => {
               <p className="text-sm text-neutral-500">{members.length} members</p>
             </div>
             
-            {balances.length > 0 && (
+            {balances.length === 0 ? (
+              <div className="pt-3 border-t border-border">
+                <div className="text-center py-6">
+                  <p className="text-4xl mb-2">🎉</p>
+                  <p className="text-base font-semibold text-green-400 mb-1">You're all settled!</p>
+                  <p className="text-sm text-neutral-500">No pending balances in this group</p>
+                </div>
+              </div>
+            ) : (
               <div className="space-y-2 pt-3 border-t border-border">
                 {balances.map(({ user, amount, youOwe }) => (
                   <div key={user._id || user.id} className="flex items-center justify-between gap-3">
