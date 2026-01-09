@@ -6,7 +6,8 @@ import {
   TrendingDown, 
   ArrowRight,
   Check,
-  Receipt
+  Receipt,
+  CheckCircle
 } from 'lucide-react';
 import { Screen, PageTitle } from '../../components/layout';
 import { Button, Card, Avatar, Badge, EmptyState, Modal } from '../../components/ui';
@@ -167,7 +168,8 @@ export const SettleUpScreen = () => {
                             size="sm" 
                             onClick={() => handleSettleClick(balance, group)}
                           >
-                            Pay
+                            <CheckCircle size={14} className="mr-1" />
+                            Settle
                           </Button>
                         </div>
                       </div>
@@ -229,7 +231,7 @@ export const SettleUpScreen = () => {
       <Modal
         isOpen={showConfirm}
         onClose={() => setShowConfirm(false)}
-        title="Confirm Payment"
+        title="Record Settlement"
         size="sm"
         footer={
           <div className="flex gap-3 justify-end">
@@ -237,7 +239,8 @@ export const SettleUpScreen = () => {
               Cancel
             </Button>
             <Button onClick={handleConfirmSettle} loading={loading}>
-              Confirm Payment
+              <CheckCircle size={16} className="mr-2" />
+              Mark as Paid
             </Button>
           </div>
         }
@@ -250,7 +253,7 @@ export const SettleUpScreen = () => {
               className="mx-auto mb-4"
             />
             <p className="text-neutral-300 mb-2">
-              Record payment to
+              Recording payment to
             </p>
             <p className="text-xl font-bold text-neutral-100 mb-4">
               {selectedSettlement.balance.user.name}
@@ -267,8 +270,3 @@ export const SettleUpScreen = () => {
     </Screen>
   );
 };
-
-
-
-
-
