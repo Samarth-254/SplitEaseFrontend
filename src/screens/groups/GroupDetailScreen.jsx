@@ -228,40 +228,42 @@ export const GroupDetailScreen = () => {
               <div className="space-y-2 pt-3 border-t border-border">
                 {balances.map(({ user, amount, youOwe }) => (
                   <div key={user._id || user.id} className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-1 min-w-0 whitespace-nowrap">
                       <Avatar name={user.name} src={user.profileImage} size="sm" className="hidden sm:flex" />
-                      <p className="text-sm text-neutral-300">
+                      <div className="text-sm text-neutral-300 flex items-center gap-1 min-w-0">
                         {youOwe ? (
                           <>
-                            You owe <span className="font-semibold text-red-400">{user.name}</span>{' '}
-                            <span className={`font-bold text-red-400`}>
+                            <span className="flex-shrink-0">You owe</span>
+                            <span className="font-semibold text-red-400 truncate">{user.name}</span>
+                            <span className={`font-bold text-red-400 flex-shrink-0`}>
                               {getCurrencySymbol('INR')}{Math.round(Math.abs(amount) * 100) / 100}
                             </span>
                           </>
                         ) : (
                           <>
-                            <span className="font-semibold text-green-400">{user.name}</span> owes you{' '}
-                            <span className={`font-bold text-green-400`}>
+                            <span className="font-semibold text-green-400 truncate">{user.name}</span>
+                            <span className="flex-shrink-0">owes you</span>
+                            <span className={`font-bold text-green-400 flex-shrink-0`}>
                               {getCurrencySymbol('INR')}{Math.round(Math.abs(amount) * 100) / 100}
                             </span>
                           </>
                         )}
-                      </p>
+                      </div>
                     </div>
                     <div className="flex-shrink-0 flex items-center gap-3">
                       {youOwe ? (
                         <button
                           onClick={() => setShowSettleUp(true)}
-                          className="text-sm font-medium text-orange-400 hover:text-orange-300 underline transition-colors"
+                          className="text-sm font-medium text-orange-400 hover:text-orange-300 underline transition-colors flex-shrink-0"
                         >
                           Settle up
                         </button>
                       ) : (
                         <button
                           onClick={() => handleSendReminder(user._id || user.id, Math.abs(amount), user.name)}
-                          className="text-sm font-medium text-blue-400 hover:text-blue-300 underline transition-colors"
+                          className="text-sm font-medium text-blue-400 hover:text-blue-300 underline transition-colors flex-shrink-0"
                         >
-                          Remind them
+                          Remind
                         </button>
                       )}
                     </div>
@@ -464,19 +466,19 @@ export const GroupDetailScreen = () => {
                               
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 justify-between">
-                                  <h4 className="font-medium text-neutral-100">
+                                  <h4 className="font-medium text-neutral-100 text-sm">
                                     {isCurrentUserFrom ? 'You' : from?.name} paid {isCurrentUserTo ? 'you' : to?.name}
                                   </h4>
-                                  <div className="flex items-center gap-2 flex-shrink-0">
-                                    <p className="text-lg font-bold text-green-400">
-                                      ₹{settlement.amount.toFixed(2)}
-                                    </p>
-                                    <Badge variant="positive" size="sm">Settled</Badge>
-                                  </div>
+                                  <p className="text-base font-bold text-green-400 flex-shrink-0">
+                                    ₹{settlement.amount.toFixed(2)}
+                                  </p>
                                 </div>
-                                <p className="text-xs text-neutral-500 mt-1">
-                                  {formatTime(settlement.settledAt || settlement.createdAt)}
-                                </p>
+                                <div className="flex items-center justify-between gap-2 mt-1">
+                                  <p className="text-xs text-neutral-500">
+                                    {formatTime(settlement.settledAt || settlement.createdAt)}
+                                  </p>
+                                  {/* <Badge variant="positive" size="sm" className="flex-shrink-0">Settled</Badge> */}
+                                </div>
                               </div>
                             </div>
                           </Card>

@@ -62,7 +62,7 @@ export const ProfileScreen = () => {
 
   const handleNameUpdate = async () => {
     if (editName.trim() && editName !== currentUser?.name) {
-      await updateProfile({ name: editName });
+      await updateProfile({ name: editName, profileImage: currentUser?.profileImage });
     }
   };
 
@@ -75,13 +75,13 @@ export const ProfileScreen = () => {
 
   const handleMobileUpdate = async () => {
     if (mobile !== currentUser?.mobile) {
-      await updateProfile({ mobile });
+      await updateProfile({ mobile, profileImage: currentUser?.profileImage });
     }
   };
 
   const handleGenderUpdate = async (newGender) => {
     setGender(newGender);
-    await updateProfile({ gender: newGender });
+    await updateProfile({ gender: newGender, profileImage: currentUser?.profileImage });
   };
 
   const handleImageUpload = async (e) => {
