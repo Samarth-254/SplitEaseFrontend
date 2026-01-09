@@ -243,7 +243,7 @@ export const DashboardScreen = () => {
               <p className="text-xl sm:text-3xl font-bold text-neutral-100 mb-0.5 sm:mb-1">
                 {getCurrencySymbol('INR')}{Math.abs(thisMonthTotal).toFixed(0)}
               </p>
-              <p className="text-neutral-400 text-xs sm:text-sm">This Month</p>
+              <p className="text-neutral-400 text-xs sm:text-sm">Net This Month</p>
             </div>
           </div>
         </motion.div>
