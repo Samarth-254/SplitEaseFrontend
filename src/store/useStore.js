@@ -7,11 +7,15 @@ export const useStore = create((set, get) => ({
   currentUser: null,
   isAuthenticated: false,
   
-  // Data
+  // Data - Keep minimal, mostly for real-time updates
   users: [],
   groups: [],
   expenses: [],
   settlements: [],
+  
+  // Loading states
+  isLoadingGroups: false,
+  isLoadingExpenses: false,
   
   // UI State
   activeGroupId: null,
@@ -44,22 +48,25 @@ export const useStore = create((set, get) => ({
   },
 
   setUser: async (user) => {
-    // Clear old data first to prevent showing stale content
+    // Clear ALL old data immediately and set loading states
     set({ 
       currentUser: user, 
       isAuthenticated: true,
       users: [],
       groups: [],
       expenses: [],
-      settlements: []
+      settlements: [],
+      isLoadingGroups: true,
+      isLoadingExpenses: false
     });
-    // Load groups after login and wait for completion
+    // Load groups after login
     try {
       await get().loadGroups();
       // Initialize socket connection
       get().initializeSocket();
     } catch (err) {
       console.error('Failed to load groups after login:', err);
+      set({ isLoadingGroups: false });
     }
   },
   
@@ -91,9 +98,10 @@ export const useStore = create((set, get) => ({
   
   loadGroups: async () => {
     try {
+      set({ isLoadingGroups: true });
       const groups = await apiService.getGroups();
       
-      set({ groups });
+      set({ groups, isLoadingGroups: false });
       
       // Join socket rooms for all groups
       if (socketService.isConnected()) {

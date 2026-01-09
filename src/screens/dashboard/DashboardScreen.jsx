@@ -12,18 +12,34 @@ import { getCurrencySymbol } from '../../utils/currency';
 
 export const DashboardScreen = () => {
   const navigate = useNavigate();
-  const { groups, expenses, settlements, getTotalBalance, getGroupSummary, getGroupMembers, currentUser, loadAllExpenses, settleUp, getUserById, sendReminder, getGroupBalances } = useStore();
+  const { groups, expenses, settlements, getTotalBalance, getGroupSummary, getGroupMembers, currentUser, loadAllExpenses, settleUp, getUserById, sendReminder, getGroupBalances, isLoadingGroups, isLoadingExpenses } = useStore();
   const balance = getTotalBalance();
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [showSettleModal, setShowSettleModal] = useState(false);
   const [selectedDebt, setSelectedDebt] = useState(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   useEffect(() => {
-    if (expenses.length === 0 && groups.length > 0) {
+    if (groups.length > 0 && expenses.length === 0 && isInitialLoad) {
       loadAllExpenses();
+      setIsInitialLoad(false);
     }
   }, [groups.length]);
+  
+  // Show loading state until groups are loaded
+  if (isLoadingGroups || (groups.length === 0 && isInitialLoad)) {
+    return (
+      <Screen>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin h-12 w-12 border-4 border-orange-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-neutral-400">Loading your data...</p>
+          </div>
+        </div>
+      </Screen>
+    );
+  }
   
   const thisMonthExpenses = expenses.filter(e => {
     const expDate = new Date(e.createdAt || e.date);
