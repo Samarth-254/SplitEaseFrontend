@@ -463,20 +463,20 @@ export const GroupDetailScreen = () => {
                               </div>
                               
                               <div className="flex-1 min-w-0">
-                                <h4 className="font-medium text-neutral-100">
-                                  {isCurrentUserFrom ? 'You' : from?.name} paid {isCurrentUserTo ? 'you' : to?.name}
-                                </h4>
+                                <div className="flex items-center gap-2 justify-between">
+                                  <h4 className="font-medium text-neutral-100">
+                                    {isCurrentUserFrom ? 'You' : from?.name} paid {isCurrentUserTo ? 'you' : to?.name}
+                                  </h4>
+                                  <div className="flex items-center gap-2 flex-shrink-0">
+                                    <p className="text-lg font-bold text-green-400">
+                                      ₹{settlement.amount.toFixed(2)}
+                                    </p>
+                                    <Badge variant="positive" size="sm">Settled</Badge>
+                                  </div>
+                                </div>
                                 <p className="text-xs text-neutral-500 mt-1">
-                                  {settlement.note && `${settlement.note} • `}
                                   {formatTime(settlement.settledAt || settlement.createdAt)}
                                 </p>
-                              </div>
-                              
-                              <div className="text-right flex items-center gap-2">
-                                <p className="text-lg font-bold text-green-400">
-                                  ₹{settlement.amount.toFixed(2)}
-                                </p>
-                                <Badge variant="positive" size="sm">Settled</Badge>
                               </div>
                             </div>
                           </Card>
@@ -572,12 +572,7 @@ export const GroupDetailScreen = () => {
                 </div>
                 <Button 
                   size="sm"
-                  onClick={() => {
-                    const confirmed = window.confirm(`Confirm settlement of ₹${Math.abs(amount).toFixed(2)} to ${user.name}?`);
-                    if (confirmed) {
-                      handleSettleUp(userId, Math.abs(amount));
-                    }
-                  }}
+                  onClick={() => handleSettleUp(userId, Math.abs(amount))}
                 >
                   Settle ₹{Math.abs(amount).toFixed(2)}
                 </Button>
