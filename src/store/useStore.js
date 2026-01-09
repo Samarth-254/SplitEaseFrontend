@@ -7,7 +7,8 @@ export const useStore = create((set, get) => ({
   currentUser: null,
   isAuthenticated: false,
   
-  // Data - Keep minimal, mostly for real-time updates
+  // NO DATA CACHING - Always fetch fresh from backend
+  // Keep only for real-time socket updates
   users: [],
   groups: [],
   expenses: [],
@@ -25,30 +26,40 @@ export const useStore = create((set, get) => ({
   // Auth Actions
   initializeAuth: async () => {
     const token = localStorage.getItem('token');
+    
+    // Listen for unauthorized events from API
+    window.addEventListener('unauthorized', () => {
+      get().logout();
+      window.location.href = '/login';
+    });
+    
     if (token) {
       try {
         apiService.setToken(token);
         const { user } = await apiService.getMe();
         set({ 
           currentUser: user, 
-          isAuthenticated: true 
+          isAuthenticated: true,
+          isLoadingGroups: false
         });
-        // Load groups after authentication
-        await get().loadGroups();
         // Initialize socket connection
         get().initializeSocket();
       } catch (err) {
+        console.error('Auth initialization failed:', err);
         localStorage.removeItem('token');
         set({ 
           currentUser: null, 
-          isAuthenticated: false 
+          isAuthenticated: false,
+          isLoadingGroups: false
         });
       }
+    } else {
+      set({ isLoadingGroups: false });
     }
   },
 
   setUser: async (user) => {
-    // Clear ALL old data immediately and set loading states
+    // Clear ALL old data - no auto-loading
     set({ 
       currentUser: user, 
       isAuthenticated: true,
@@ -56,18 +67,11 @@ export const useStore = create((set, get) => ({
       groups: [],
       expenses: [],
       settlements: [],
-      isLoadingGroups: true,
+      isLoadingGroups: false,
       isLoadingExpenses: false
     });
-    // Load groups after login
-    try {
-      await get().loadGroups();
-      // Initialize socket connection
-      get().initializeSocket();
-    } catch (err) {
-      console.error('Failed to load groups after login:', err);
-      set({ isLoadingGroups: false });
-    }
+    // Initialize socket connection
+    get().initializeSocket();
   },
   
   logout: () => {
@@ -110,11 +114,9 @@ export const useStore = create((set, get) => ({
           socketService.joinGroup(groupId);
         });
       }
-      
-      await get().loadAllExpenses();
-      await get().loadAllSettlements();
     } catch (err) {
       console.error('Failed to load groups:', err);
+      set({ isLoadingGroups: false });
     }
   },
   

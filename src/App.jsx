@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { useStore } from './store/useStore';
@@ -49,10 +49,27 @@ const PublicRoute = ({ children }) => {
 
 function App() {
   const { initializeAuth } = useStore();
+  const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
-    initializeAuth();
+    const initialize = async () => {
+      await initializeAuth();
+      setIsInitializing(false);
+    };
+    initialize();
   }, []);
+
+  // Show loading screen while initializing auth
+  if (isInitializing) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-primary-pure">
+        <div className="text-center">
+          <div className="animate-spin h-12 w-12 border-4 border-orange-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-neutral-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>

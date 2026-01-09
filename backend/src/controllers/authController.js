@@ -32,7 +32,20 @@ const googleLogin = async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    res.json({ token: jwtToken, user });
+    // Generate default avatar if no profile image
+    const profileImage = user.profileImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name.replace(/\s+/g, '')}`;
+
+    res.json({ 
+      token: jwtToken, 
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        profileImage,
+        mobile: user.mobile,
+        gender: user.gender
+      }
+    });
 
   } catch (err) {
     res.status(401).json({ message: "Google auth failed" });
@@ -70,13 +83,19 @@ const normalLogin=async(req,res)=>{
         { expiresIn: "7d" }
     );
 
+    // Generate default avatar if no profile image
+    const profileImage = user.profileImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name.replace(/\s+/g, '')}`;
+
     return res.status(200).json({
       message: "Login successful",
       token,
       user: {
         id: user._id,
         email: user.email,
-        name: user.name
+        name: user.name,
+        profileImage,
+        mobile: user.mobile,
+        gender: user.gender
       }
     });
 }catch(err){
@@ -116,12 +135,18 @@ const register = async (req, res) => {
       { expiresIn: "7d" }
     );
 
+    // Generate default avatar if no profile image
+    const profileImage = user.profileImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name.replace(/\s+/g, '')}`;
+
     res.status(201).json({
       token,
       user: {
         id: user._id,
         name: user.name,
-        email: user.email
+        email: user.email,
+        profileImage,
+        mobile: user.mobile,
+        gender: user.gender
       }
     });
 
@@ -136,7 +161,20 @@ const getMe = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    res.json({ user });
+    
+    // Generate default avatar if no profile image
+    const profileImage = user.profileImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name.replace(/\s+/g, '')}`;
+    
+    res.json({ 
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        profileImage,
+        mobile: user.mobile,
+        gender: user.gender
+      }
+    });
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }

@@ -19,12 +19,38 @@ import { getCurrencySymbol } from '../../utils/currency';
  */
 
 export const GroupsScreen = () => {
-  const { groups, getGroupSummary, getGroupMembers, loadGroups, expenses, settlements } = useStore();
+  const { groups, getGroupSummary, getGroupMembers, loadGroups, loadAllExpenses, expenses, settlements } = useStore();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
+  // Always fetch fresh data on mount
   useEffect(() => {
-    loadGroups();
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        await loadGroups();
+        await loadAllExpenses();
+      } catch (err) {
+        console.error('Failed to load data:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
   }, []);
+
+  if (isLoading) {
+    return (
+      <Screen>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin h-12 w-12 border-4 border-orange-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-neutral-400">Loading groups...</p>
+          </div>
+        </div>
+      </Screen>
+    );
+  }
 
   const containerVariants = {
     hidden: { opacity: 0 },

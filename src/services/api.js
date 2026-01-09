@@ -40,6 +40,12 @@ class ApiService {
       const data = await response.json();
 
       if (!response.ok) {
+        // Handle 401 Unauthorized - token expired or invalid
+        if (response.status === 401) {
+          this.clearToken();
+          // Trigger logout in store by dispatching custom event
+          window.dispatchEvent(new CustomEvent('unauthorized'));
+        }
         throw new Error(data.message || 'Something went wrong');
       }
 

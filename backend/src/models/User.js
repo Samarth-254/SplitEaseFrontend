@@ -27,4 +27,18 @@ const user=new mongoose.Schema({
 },{timestamps:true}
 );
 
+// Virtual to get profile image or generate default
+user.virtual('avatar').get(function() {
+    if (this.profileImage) {
+        return this.profileImage;
+    }
+    // Generate default avatar from name
+    const seed = this.name ? this.name.replace(/\s+/g, '') : this.email;
+    return `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`;
+});
+
+// Ensure virtuals are included in JSON
+user.set('toJSON', { virtuals: true });
+user.set('toObject', { virtuals: true });
+
 module.exports=mongoose.model("User",user);

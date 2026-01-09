@@ -12,23 +12,32 @@ import { getCurrencySymbol } from '../../utils/currency';
 
 export const DashboardScreen = () => {
   const navigate = useNavigate();
-  const { groups, expenses, settlements, getTotalBalance, getGroupSummary, getGroupMembers, currentUser, loadAllExpenses, settleUp, getUserById, sendReminder, getGroupBalances, isLoadingGroups, isLoadingExpenses } = useStore();
+  const { groups, expenses, settlements, getTotalBalance, getGroupSummary, getGroupMembers, currentUser, loadGroups, loadAllExpenses, settleUp, getUserById, sendReminder, getGroupBalances } = useStore();
   const balance = getTotalBalance();
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [showSettleModal, setShowSettleModal] = useState(false);
   const [selectedDebt, setSelectedDebt] = useState(null);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
+  // Always fetch fresh data on mount - no caching
   useEffect(() => {
-    if (groups.length > 0 && expenses.length === 0 && isInitialLoad) {
-      loadAllExpenses();
-      setIsInitialLoad(false);
-    }
-  }, [groups.length]);
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        await loadGroups();
+        await loadAllExpenses();
+      } catch (err) {
+        console.error('Failed to load data:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
   
-  // Show loading state until groups are loaded
-  if (isLoadingGroups || (groups.length === 0 && isInitialLoad)) {
+  // Show loading state while fetching data
+  if (isLoading) {
     return (
       <Screen>
         <div className="flex items-center justify-center min-h-screen">

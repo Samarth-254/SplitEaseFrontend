@@ -43,6 +43,7 @@ export const GroupDetailScreen = () => {
   const [remindData, setRemindData] = useState(null);
   const [isSendingReminder, setIsSendingReminder] = useState(false);
   const [reminderSent, setReminderSent] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   
   const { 
     getGroupById, 
@@ -54,6 +55,7 @@ export const GroupDetailScreen = () => {
     getUserById,
     currentUser,
     settleUp,
+    loadGroups,
     loadGroupExpenses,
     loadGroupSettlements,
     sendReminder,
@@ -61,11 +63,23 @@ export const GroupDetailScreen = () => {
     settlements: allSettlements
   } = useStore();
   
+  // Always fetch fresh data on mount
   useEffect(() => {
-    if (groupId) {
-      loadGroupExpenses(groupId);
-      loadGroupSettlements(groupId);
-    }
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        await loadGroups();
+        if (groupId) {
+          await loadGroupExpenses(groupId);
+          await loadGroupSettlements(groupId);
+        }
+      } catch (err) {
+        console.error('Failed to load group data:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
   }, [groupId]);
   
   const group = getGroupById(groupId);
@@ -73,8 +87,19 @@ export const GroupDetailScreen = () => {
   const expenses = getGroupExpenses(groupId);
   const balances = getGroupBalances(groupId);
   const summary = getGroupSummary(groupId);
-  
-  if (!group) {
+    if (isLoading) {
+    return (
+      <Screen>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin h-12 w-12 border-4 border-orange-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-neutral-400">Loading group...</p>
+          </div>
+        </div>
+      </Screen>
+    );
+  }
+    if (!group) {
     return (
       <Screen>
         <EmptyState
