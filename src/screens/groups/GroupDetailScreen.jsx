@@ -196,7 +196,7 @@ export const GroupDetailScreen = () => {
                 {balances.map(({ user, amount, youOwe }) => (
                   <div key={user._id || user.id} className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <Avatar name={user.name} src={user.profileImage} size="sm" />
+                      <Avatar name={user.name} src={user.profileImage} size="sm" className="hidden sm:flex" />
                       <p className="text-sm text-neutral-300">
                         {youOwe ? (
                           <>
