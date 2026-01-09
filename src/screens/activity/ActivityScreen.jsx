@@ -15,8 +15,28 @@ import { getCurrencySymbol } from '../../utils/currency';
  */
 
 export const ActivityScreen = () => {
-  const { expenses, settlements, getUserById, getGroupById, currentUser, groups } = useStore();
+  const { expenses, settlements, getUserById, getGroupById, currentUser, groups, loadGroups, loadAllExpenses, loadAllSettlements } = useStore();
   const [selectedGroupId, setSelectedGroupId] = useState('all');
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch all data on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        await Promise.all([
+          loadGroups(),
+          loadAllExpenses(),
+          loadAllSettlements()
+        ]);
+      } catch (err) {
+        console.error('Failed to load activity data:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const activities = useMemo(() => {
     const all = [
@@ -89,6 +109,19 @@ export const ActivityScreen = () => {
     hidden: { opacity: 0, x: -20 },
     visible: { opacity: 1, x: 0 }
   };
+
+  if (isLoading) {
+    return (
+      <Screen>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin h-12 w-12 border-4 border-orange-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-neutral-400">Loading activity...</p>
+          </div>
+        </div>
+      </Screen>
+    );
+  }
 
   return (
     <Screen>
