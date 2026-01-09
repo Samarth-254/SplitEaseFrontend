@@ -185,12 +185,21 @@ export const useStore = create((set, get) => ({
         currency
       );
 
-      // Add to state immediately so creator sees it instantly
-      // Socket will also emit but duplicate check will prevent adding twice
-      set(state => ({
-        expenses: [...state.expenses, expense],
-        isAddExpenseOpen: false
-      }));
+      // ONLY socket event will add it to state - prevents duplicates
+      // This means creator will see it when socket broadcasts it
+      set({ isAddExpenseOpen: false });
+      
+      // Manually trigger socket handler for immediate display to creator
+      const expenseToAdd = expense;
+      set(state => {
+        const exists = state.expenses.some(e => (e._id || e.id) === (expenseToAdd._id || expenseToAdd.id));
+        if (exists) {
+          return state;
+        }
+        return {
+          expenses: [...state.expenses, expenseToAdd]
+        };
+      });
       
       return expense;
     } catch (err) {
