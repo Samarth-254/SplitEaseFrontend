@@ -21,7 +21,17 @@ exports.createGroup = async (req, res) => {
     await group.populate('members', 'name email profileImage mobile gender');
     await group.populate('createdBy', 'name email profileImage mobile gender');
 
-    res.status(201).json(group);
+    // Add default avatars for members without profile images
+    const groupObj = group.toObject();
+    groupObj.members = groupObj.members.map(member => ({
+      ...member,
+      profileImage: member.profileImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${member.name.replace(/\s+/g, '')}`
+    }));
+    if (groupObj.createdBy) {
+      groupObj.createdBy.profileImage = groupObj.createdBy.profileImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${groupObj.createdBy.name.replace(/\s+/g, '')}`;
+    }
+
+    res.status(201).json(groupObj);
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
@@ -73,7 +83,17 @@ exports.joinGroup = async (req, res) => {
     await group.populate('members', 'name email profileImage mobile gender');
     await group.populate('createdBy', 'name email profileImage mobile gender');
 
-    res.json(group);
+    // Add default avatars for members without profile images
+    const groupObj = group.toObject();
+    groupObj.members = groupObj.members.map(member => ({
+      ...member,
+      profileImage: member.profileImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${member.name.replace(/\s+/g, '')}`
+    }));
+    if (groupObj.createdBy) {
+      groupObj.createdBy.profileImage = groupObj.createdBy.profileImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${groupObj.createdBy.name.replace(/\s+/g, '')}`;
+    }
+
+    res.json(groupObj);
   } catch (err) {
     res.status(400).json({ message: "Invalid or expired invite" });
   }
@@ -89,7 +109,20 @@ exports.getUserGroups = async (req, res) => {
       .populate('createdBy', 'name email profileImage mobile gender')
       .sort({ updatedAt: -1 });
 
-    res.json(groups);
+    // Add default avatars for members without profile images
+    const groupsWithAvatars = groups.map(group => {
+      const groupObj = group.toObject();
+      groupObj.members = groupObj.members.map(member => ({
+        ...member,
+        profileImage: member.profileImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${member.name.replace(/\s+/g, '')}`
+      }));
+      if (groupObj.createdBy) {
+        groupObj.createdBy.profileImage = groupObj.createdBy.profileImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${groupObj.createdBy.name.replace(/\s+/g, '')}`;
+      }
+      return groupObj;
+    });
+
+    res.json(groupsWithAvatars);
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
