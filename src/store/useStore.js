@@ -42,6 +42,9 @@ export const useStore = create((set, get) => ({
           isAuthenticated: true,
           isLoadingGroups: false
         });
+        // Load initial data to prevent stale data
+        await get().loadGroups();
+        await get().loadAllExpenses();
         // Initialize socket connection
         get().initializeSocket();
       } catch (err) {

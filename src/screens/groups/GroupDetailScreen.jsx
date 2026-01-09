@@ -553,13 +553,14 @@ export const GroupDetailScreen = () => {
         <div className="space-y-3">
           {balances.filter(b => b.youOwe).map(({ user, amount }) => {
             const userId = user._id || user.id;
+            const [showConfirm, setShowConfirm] = useState(false);
+            
             return (
               <Card 
                 key={userId} 
                 variant="interactive" 
                 padding="md"
-                onClick={() => handleSettleUp(userId, Math.abs(amount))}
-                className="flex items-center justify-between cursor-pointer"
+                className="flex items-center justify-between"
               >
                 <div className="flex items-center gap-3">
                   <Avatar name={user.name} src={user.profileImage} size="md" />
@@ -570,8 +571,16 @@ export const GroupDetailScreen = () => {
                     </p>
                   </div>
                 </div>
-                <Button size="sm">
-                  Pay ₹{Math.abs(amount).toFixed(2)}
+                <Button 
+                  size="sm"
+                  onClick={() => {
+                    const confirmed = confirm(`Confirm settlement of ₹${Math.abs(amount).toFixed(2)} to ${user.name}?`);
+                    if (confirmed) {
+                      handleSettleUp(userId, Math.abs(amount));
+                    }
+                  }}
+                >
+                  Settle ₹{Math.abs(amount).toFixed(2)}
                 </Button>
               </Card>
             );
