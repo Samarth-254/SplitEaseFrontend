@@ -38,16 +38,31 @@ exports.addExpense = async (req, res) => {
     await expense.populate('paidBy', 'name email profileImage mobile gender');
     await expense.populate('splits.user', 'name email profileImage mobile gender');
 
+    // Add default avatars for users without profile images
+    const expenseObj = expense.toObject();
+    if (expenseObj.paidBy) {
+      expenseObj.paidBy.profileImage = expenseObj.paidBy.profileImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${expenseObj.paidBy.name.replace(/\s+/g, '')}`;
+    }
+    if (expenseObj.splits && expenseObj.splits.length > 0) {
+      expenseObj.splits = expenseObj.splits.map(split => ({
+        ...split,
+        user: split.user ? {
+          ...split.user,
+          profileImage: split.user.profileImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${split.user.name.replace(/\s+/g, '')}`
+        } : split.user
+      }));
+    }
+
     // Emit socket event to all group members
     const io = req.app.get('io');
     if (io) {
       console.log(`Emitting expense:created to group:${groupId}`);
-      io.to(`group:${groupId}`).emit('expense:created', expense);
+      io.to(`group:${groupId}`).emit('expense:created', expenseObj);
     } else {
       console.log('Socket.io not available');
     }
 
-    res.status(201).json(expense);
+    res.status(201).json(expenseObj);
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }

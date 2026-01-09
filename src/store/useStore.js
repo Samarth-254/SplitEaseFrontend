@@ -185,8 +185,12 @@ export const useStore = create((set, get) => ({
         currency
       );
 
-      // Don't add to state here - socket event will handle it to avoid duplicates
-      set({ isAddExpenseOpen: false });
+      // Add to state immediately so creator sees it instantly
+      // Socket will also emit but duplicate check will prevent adding twice
+      set(state => ({
+        expenses: [...state.expenses, expense],
+        isAddExpenseOpen: false
+      }));
       
       return expense;
     } catch (err) {
