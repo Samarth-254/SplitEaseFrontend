@@ -136,6 +136,13 @@ class ApiService {
     });
   }
 
+  async detectCategory(description) {
+    return this.request('/api/expenses/detect-category', {
+      method: 'POST',
+      body: JSON.stringify({ description }),
+    });
+  }
+
   async deleteExpense(expenseId) {
     return this.request(`/api/expenses/${expenseId}`, {
       method: 'DELETE',

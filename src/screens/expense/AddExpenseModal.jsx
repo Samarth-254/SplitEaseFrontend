@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, IndianRupee, DollarSign, Euro, PoundSterling, FileText, Users, Check, Percent, Tag, Trash2, ChevronDown } from 'lucide-react';
+import { X, IndianRupee, DollarSign, Euro, PoundSterling, FileText, Users, Check, Percent, Trash2, ChevronDown } from 'lucide-react';
 import { Button, Input, Modal } from '../../components/ui';
 import { useStore } from '../../store/useStore';
-import { detectCategory } from '../../utils/categoryDetection';
-import { expenseCategories } from '../../utils/categoryIcons';
 import { getCurrencySymbol } from '../../utils/currency';
+import { getCategoryIcon } from '../../utils/categoryDetection';
 
 
 export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, expenseToEdit = null }) => {
@@ -20,13 +19,47 @@ export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, ex
   const [customSplits, setCustomSplits] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
-  const [category, setCategory] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showMemberDropdown, setShowMemberDropdown] = useState(false);
   const [showPaidByDropdown, setShowPaidByDropdown] = useState(false);
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [currency, setCurrency] = useState('INR');
+  const [category, setCategory] = useState('');
 
   const isEditMode = !!expenseToEdit;
+
+  // All available categories
+  const allCategories = [
+    'Food & Dining',
+    'Transportation',
+    'Travel',
+    'Accommodation',
+    'Tourism & Attractions',
+    'Entertainment & Recreation',
+    'Shopping & Retail',
+    'Groceries & Household',
+    'Healthcare & Medical',
+    'Sports',
+    'Fitness',
+    'Alcohol & Bars',
+    'Coffee & Cafes',
+    'Utilities & Bills',
+    'Rent & Housing',
+    'Education & Learning',
+    'Personal Care & Beauty',
+    'Gifts & Donations',
+    'Insurance',
+    'Pet Care',
+    'Home Improvement & Repairs',
+    'Professional Services',
+    'Subscriptions & Memberships',
+    'Telecommunications',
+    'Clothing & Accessories',
+    'Gaming & Hobbies',
+    'Childcare & Baby',
+    'Investments & Savings',
+    'Other'
+  ];
 
 
   // Get members of selected group
@@ -57,8 +90,8 @@ export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, ex
     setDescription(expenseToEdit.description || '');
     setAmount(String(expenseToEdit.amount ?? ''));
     setSplitType(expenseToEdit.splitType || 'equal');
-    setCategory(expenseToEdit.category || '');
     setCurrency(expenseToEdit.currency || 'INR');
+    setCategory(expenseToEdit.category || '');
     setFormError('');
     setShowDeleteConfirm(false);
 
@@ -102,6 +135,7 @@ export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, ex
       setFormError('');
       setShowMemberDropdown(false);
       setShowPaidByDropdown(false);
+      setShowCategoryDropdown(false);
       
       // If opening for new expense (not editing), reset and select all members
       if (!expenseToEdit && selectedGroup) {
@@ -249,9 +283,6 @@ export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, ex
     setFormError('');
     
     try {
-      const detectedCategory = detectCategory(description);
-      const finalCategory = category || detectedCategory;
-
       // Build splits array from percentages using paise so totals match exactly
       const amountInPaise = Math.round(parseFloat(amount) * 100);
       let splits = [];
@@ -296,8 +327,8 @@ export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, ex
           paidBy: paidById,
           splitType,
           splits,
-          category: finalCategory,
-          currency
+          currency,
+          category: category || undefined
         });
 
         setIsSubmitting(false);
@@ -312,7 +343,6 @@ export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, ex
         paidBy: paidById,
         splitBetween,
         splitType,
-        category: finalCategory,
         splits,
         currency
       });
@@ -323,7 +353,6 @@ export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, ex
       setSplitBetween([]);
       setCustomSplits({});
       setSplitType('equal');
-      setCategory('');
       setCurrency('INR');
       setIsSubmitting(false);
       onClose();
@@ -460,28 +489,68 @@ export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, ex
                       />
                     </div>
                     <p className="text-xs text-neutral-500 mt-1">{description.length}/100 characters</p>
+                    {!isEditMode && <p className="text-xs text-orange-400 mt-1">💡 Category will be auto-detected by AI</p>}
                   </div>
 
-                  {/* Category */}
-                  <div>
-                    <label className="text-sm text-neutral-400 mb-1.5 block">Category</label>
-                    <div className="relative">
-                      <Tag size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
-                      <select
-                        value={category || ''}
-                        onChange={(e) => setCategory(e.target.value)}
-                        className="w-full bg-neutral-800 border border-neutral-700 rounded-xl py-3 pl-10 pr-10 text-white focus:outline-none focus:border-orange-500 transition-colors appearance-none cursor-pointer"
-                      >
-                        <option value="">Auto ({detectCategory(description || '')})</option>
-                        {expenseCategories.map((c) => (
-                          <option key={c.value} value={c.value}>
-                            {c.label}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none" />
+                  {/* Category (only show in edit mode) */}
+                  {isEditMode && (
+                    <div>
+                      <label className="text-sm text-neutral-400 mb-1.5 block">Category</label>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
+                          className="w-full bg-neutral-800 border border-neutral-700 rounded-xl py-3 px-4 text-left text-white focus:outline-none focus:border-orange-500 transition-colors flex items-center justify-between"
+                        >
+                          <span className="flex items-center gap-2">
+                            {category && (() => {
+                              const categoryInfo = getCategoryIcon(category);
+                              const CategoryIcon = categoryInfo.icon;
+                              return (
+                                <>
+                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${categoryInfo.color}`}>
+                                    <CategoryIcon size={16} />
+                                  </div>
+                                  <span>{category}</span>
+                                </>
+                              );
+                            })()}
+                            {!category && <span className="text-neutral-500">Auto-detected</span>}
+                          </span>
+                          <ChevronDown size={18} className={`text-neutral-500 transition-transform ${showCategoryDropdown ? 'rotate-180' : ''}`} />
+                        </button>
+                        
+                        {/* Category Dropdown Menu */}
+                        {showCategoryDropdown && (
+                          <div className="absolute z-10 w-full bottom-full mb-2 bg-neutral-800 border border-neutral-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                            {allCategories.map((cat) => {
+                              const categoryInfo = getCategoryIcon(cat);
+                              const CategoryIcon = categoryInfo.icon;
+                              return (
+                                <button
+                                  key={cat}
+                                  type="button"
+                                  onClick={() => {
+                                    setCategory(cat);
+                                    setShowCategoryDropdown(false);
+                                  }}
+                                  className={`w-full px-4 py-3 text-left hover:bg-neutral-700 transition-colors flex items-center gap-3 ${
+                                    category === cat ? 'bg-neutral-700' : ''
+                                  }`}
+                                >
+                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${categoryInfo.color}`}>
+                                    <CategoryIcon size={16} />
+                                  </div>
+                                  <span className="text-white">{cat}</span>
+                                  {category === cat && <Check size={16} className="ml-auto text-orange-400" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Group Select */}
                   <div>

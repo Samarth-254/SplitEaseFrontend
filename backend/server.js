@@ -1,10 +1,11 @@
+// Load environment variables FIRST before any other imports
+const dotenv=require("dotenv");
+dotenv.config();
+
 const app=require("./src/app");
 const {connectToDB}=require("./src/config/db");
-const dotenv=require("dotenv");
 const http = require('http');
 const { Server } = require('socket.io');
-
-dotenv.config();
 connectToDB();
 
 const PORT=process.env.PORT || 3000;

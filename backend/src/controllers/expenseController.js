@@ -1,5 +1,6 @@
 const Expense = require("../models/Expense");
 const Group = require("../models/Group");
+const aiCategoryService = require("../services/aiCategoryService");
 
 exports.addExpense = async (req, res) => {
   try {
@@ -23,6 +24,9 @@ exports.addExpense = async (req, res) => {
       return res.status(400).json({ message: "Paid by user must be a group member" });
     }
 
+    // Auto-detect category if not provided
+    const finalCategory = category || await aiCategoryService.detectCategory(description);
+
     const expense = await Expense.create({
       groupId,
       description,
@@ -31,7 +35,7 @@ exports.addExpense = async (req, res) => {
       createdBy: req.user._id,
       splits: Array.isArray(splits) ? splits : [],
       splitType: splitType || "equal",
-      category,
+      category: finalCategory,
       currency: currency || "INR"
     });
 
@@ -97,11 +101,14 @@ exports.updateExpense = async (req, res) => {
       return res.status(400).json({ message: "Paid by user must be a group member" });
     }
 
+    // Auto-detect category if not provided
+    const finalCategory = category || await aiCategoryService.detectCategory(description);
+
     expense.description = description;
     expense.amount = amount;
     expense.splitType = splitType || expense.splitType;
     expense.splits = Array.isArray(splits) ? splits : expense.splits;
-    expense.category = category;
+    expense.category = finalCategory;
     expense.paidBy = paidById;
     if (currency) expense.currency = currency;
 
