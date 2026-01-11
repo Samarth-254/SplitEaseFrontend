@@ -1,4 +1,3 @@
-// Load environment variables FIRST before any other imports
 const dotenv=require("dotenv");
 dotenv.config();
 
@@ -27,6 +26,11 @@ const io = new Server(server, {
 
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
+
+    socket.on('join-user-room', (userId) => {
+        socket.join(`user:${userId}`);
+        console.log(`User ${socket.id} joined user room:${userId}`);
+    });
 
     socket.on('join-group', (groupId) => {
         socket.join(`group:${groupId}`);

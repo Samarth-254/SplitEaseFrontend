@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, ChevronRight, Users } from 'lucide-react';
+import { Plus, ChevronRight, Users, Search } from 'lucide-react';
 import { Screen, PageTitle } from '../../components/layout';
-import { Button, Card, AvatarGroup, Badge, EmptyState } from '../../components/ui';
+import { Button, Card, AvatarGroup, Badge, EmptyState, Input } from '../../components/ui';
 import { CreateGroupModal } from '../../components/groups/CreateGroupModal';
 import { useStore } from '../../store/useStore';
 import { getCurrencySymbol } from '../../utils/currency';
@@ -21,6 +21,7 @@ import { getCurrencySymbol } from '../../utils/currency';
 export const GroupsScreen = () => {
   const { groups, getGroupSummary, getGroupMembers, expenses, settlements } = useStore();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -47,6 +48,18 @@ export const GroupsScreen = () => {
         }
       />
 
+      {/* {groups.length > 0 && (
+        <div className="mb-4">
+          <Input
+            placeholder="Search..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            icon={<Search size={16} />}
+            className="text-xs sm:text-sm py-0.5 h-7"
+          />
+        </div>
+      )} */}
+
       {groups.length === 0 ? (
         <EmptyState
           icon={<Users size={48} />}
@@ -62,7 +75,9 @@ export const GroupsScreen = () => {
           animate="visible"
           className="space-y-3"
         >
-          {groups.map((group, index) => {
+          {groups
+            .filter(group => group.name.toLowerCase().includes(searchQuery.toLowerCase()))
+            .map((group, index) => {
             const groupId = group._id || group.id;
             const summary = getGroupSummary(groupId);
             const members = getGroupMembers(groupId);
@@ -83,9 +98,9 @@ export const GroupsScreen = () => {
                       </h3>
                       <div className="flex items-center gap-2 mt-1">
                         <AvatarGroup users={members} size="xs" max={3} />
-                        <span className="text-xs sm:text-sm text-neutral-500">
+                        {/* <span className="text-xs sm:text-sm text-neutral-500">
                           {members.length} members
-                        </span>
+                        </span> */}
                       </div>
                       <p className="text-xs text-neutral-600 mt-0.5 hidden sm:block">
                         {getCurrencySymbol('INR')}{summary.totalSpent.toFixed(2)} total • {summary.expenseCount} expenses

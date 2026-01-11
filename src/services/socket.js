@@ -48,6 +48,13 @@ class SocketService {
     }
   }
 
+  joinUserRoom(userId) {
+    if (this.socket?.connected) {
+      this.socket.emit('join-user-room', userId);
+      console.log('Joined user room:', userId);
+    }
+  }
+
   joinGroup(groupId) {
     if (this.socket?.connected) {
       this.socket.emit('join-group', groupId);
@@ -87,6 +94,24 @@ class SocketService {
     }
   }
 
+  onMemberJoined(callback) {
+    if (this.socket) {
+      this.socket.on('member-joined', callback);
+    }
+  }
+
+  onMembersAdded(callback) {
+    if (this.socket) {
+      this.socket.on('members-added', callback);
+    }
+  }
+
+  onFriendAddedToGroup(callback) {
+    if (this.socket) {
+      this.socket.on('friend-added-to-group', callback);
+    }
+  }
+
   // Remove listeners
   offExpenseCreated(callback) {
     if (this.socket) {
@@ -109,6 +134,24 @@ class SocketService {
   offSettlementCreated(callback) {
     if (this.socket) {
       this.socket.off('settlement:created', callback);
+    }
+  }
+
+  offMemberJoined(callback) {
+    if (this.socket) {
+      this.socket.off('member-joined', callback);
+    }
+  }
+
+  offMembersAdded(callback) {
+    if (this.socket) {
+      this.socket.off('members-added', callback);
+    }
+  }
+
+  offFriendAddedToGroup(callback) {
+    if (this.socket) {
+      this.socket.off('friend-added-to-group', callback);
     }
   }
 

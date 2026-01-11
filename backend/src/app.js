@@ -20,6 +20,7 @@ app.use("/api/groups", require("./routes/groupRoutes"));
 app.use("/api/invites", require("./routes/inviteRoutes"));
 app.use("/api/expenses", require("./routes/expenseRoutes"));
 app.use("/api/settlements", require("./routes/settlementRoutes"));
+app.use("/api/friends", require("./routes/friendRoutes"));
 
 app.get("/health",(req,res)=>{
     res.json({status:"OK"});

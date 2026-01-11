@@ -293,20 +293,28 @@ export const useStore = create((set, get) => ({
   },
   
   // Settlement Actions
-  settleUp: async (toUserId, amount, groupId, note) => {
-    try {
-      const settlement = await apiService.recordSettlement(groupId, toUserId, amount, note);
-      set(state => ({ 
-        settlements: [...state.settlements, settlement],
-        isSettleUpOpen: false,
-      }));
-      await get().loadGroupExpenses(groupId);
-      return settlement;
-    } catch (err) {
-      console.error('Failed to record settlement:', err);
-      throw err;
-    }
-  },
+  // ✅ REPLACE your settleUp function ONLY
+// ✅ REPLACE settleUp in store/useStore.js
+settleUp: async (toUserId, amount, groupId, note) => {
+  try {
+    const settlement = await apiService.recordSettlement(groupId, toUserId, amount, note);
+    
+    set(state => ({ 
+      settlements: [...state.settlements, settlement],
+      isSettleUpOpen: false,
+    }));
+    
+    await get().loadGroupExpenses(groupId);
+    await get().loadGroupSettlements(groupId);
+    
+    return settlement;
+  } catch (err) {
+    console.error('Failed to record settlement:', err);
+    throw err;
+  }
+},
+
+
 
   loadGroupSettlements: async (groupId) => {
     try {
@@ -798,6 +806,12 @@ export const useStore = create((set, get) => ({
     // Connect to socket
     socketService.connect(token);
 
+    // Join user room for personal notifications
+    const { currentUser } = get();
+    if (currentUser?._id) {
+      socketService.joinUserRoom(currentUser._id);
+    }
+
     // Join all groups
     const { groups } = get();
     groups.forEach(group => {
@@ -854,6 +868,62 @@ export const useStore = create((set, get) => ({
           settlements: [...state.settlements, settlement]
         };
       });
+    });
+
+    // Listen for new members joining groups
+    socketService.onMemberJoined(({ groupId, userId, user }) => {
+      console.log('Member joined:', user.name, 'in group:', groupId);
+      set(state => ({
+        groups: state.groups.map(g => {
+          if ((g._id || g.id) === groupId) {
+            // Add new member if not already present
+            const memberExists = g.members.some(m => (m._id || m.id) === userId);
+            if (!memberExists) {
+              return { ...g, members: [...g.members, user] };
+            }
+          }
+          return g;
+        })
+      }));
+    });
+
+    // Listen for multiple members being added to groups
+    socketService.onMembersAdded(({ groupId, addedBy, members }) => {
+      console.log('Members added to group:', groupId, members);
+      const { currentUser } = get();
+      
+      // Only update if you're not one of the newly added members
+      const isCurrentUserAdded = members.some(m => (m._id || m.id).toString() === currentUser._id.toString());
+      
+      if (!isCurrentUserAdded) {
+        set(state => ({
+          groups: state.groups.map(g => {
+            if ((g._id || g.id) === groupId) {
+              // Add new members that aren't already present
+              const existingIds = g.members.map(m => (m._id || m.id).toString());
+              const newMembers = members.filter(m => !existingIds.includes((m._id || m.id).toString()));
+              if (newMembers.length > 0) {
+                return { ...g, members: [...g.members, ...newMembers] };
+              }
+            }
+            return g;
+          })
+        }));
+      } else {
+        // If you were added, refresh the entire groups list
+        console.log('You were added to a group, refreshing...');
+        get().loadGroups();
+      }
+    });
+
+    // Listen for being added to a group as a friend
+    socketService.onFriendAddedToGroup(({ userId, groupId, groupName, groupEmoji }) => {
+      const { currentUser } = get();
+      if (currentUser?._id === userId) {
+        console.log('You were added to group:', groupName);
+        // Refresh groups list
+        get().loadGroups();
+      }
     });
   },
 

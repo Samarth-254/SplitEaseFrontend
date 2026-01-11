@@ -1,10 +1,11 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Home, Users, Plus, Receipt, User, LogOut } from 'lucide-react';
+import { Home, Users, Plus, Receipt, User, LogOut, UserPlus } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { useState } from 'react';
 import { Modal, Button } from '../ui';
 import { AddExpenseModal } from '../../screens/expense/AddExpenseModal';
+
 
 /**
  * Bottom Navigation
@@ -13,15 +14,18 @@ import { AddExpenseModal } from '../../screens/expense/AddExpenseModal';
  * - Large touch targets (48px min)
  * - Clear active states
  * - Safe area padding for notched devices
+ * - FAB positioned in thumb zone (bottom-right)
  */
+
 
 const navItems = [
   { path: '/dashboard', icon: Home, label: 'Home' },
   { path: '/groups', icon: Users, label: 'Groups' },
-  { path: '/add-expense', icon: Plus, label: 'Add', isAction: true },
+  { path: '/friends', icon: UserPlus, label: 'Friends' },
   { path: '/activity', icon: Receipt, label: 'Activity' },
   { path: '/profile', icon: User, label: 'Profile' },
 ];
+
 
 export const BottomNav = () => {
   const location = useLocation();
@@ -29,52 +33,50 @@ export const BottomNav = () => {
   
   return (
     <>
+      {/* Floating Action Button - Positioned in thumb zone */}
+      <button
+        onClick={() => setShowAddExpense(true)}
+        aria-label="Add expense"
+        className="
+          fixed bottom-20 right-4
+          w-14 h-14
+          bg-secondary-500 hover:bg-secondary-600
+          rounded-full
+          flex items-center justify-center
+          shadow-lg shadow-secondary-500/30
+          z-50
+          lg:hidden
+          transition-all duration-200
+          active:scale-95
+        "
+      >
+        <Plus size={24} className="text-black" strokeWidth={2.5} />
+      </button>
+
       <nav className="
         fixed bottom-0 left-0 right-0
         bg-primary-950/95 backdrop-blur-lg
         border-t border-border
         safe-bottom
-        z-[--z-sticky]
+        z-40
         lg:hidden
       ">
         <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-2">
-          {navItems.map(({ path, icon: Icon, label, isAction }) => {
-            const isActive = location.pathname === path || 
+          {navItems.map(({ path, icon: Icon, label }) => {
+            const isActive = location.pathname === path ||
               (path === '/groups' && location.pathname.startsWith('/group/'));
-            
-            if (isAction) {
-              return (
-                <button
-                  key={path}
-                  onClick={() => setShowAddExpense(true)}
-                  className="flex items-center justify-center -mt-4"
-                >
-                  <motion.div
-                    whileTap={{ scale: 0.95 }}
-                    className="
-                      w-14 h-14
-                      bg-secondary-500
-                      rounded-full
-                      flex items-center justify-center
-                      shadow-lg shadow-secondary-500/30
-                    "
-                  >
-                    <Icon size={24} className="text-black" strokeWidth={2.5} />
-                  </motion.div>
-                </button>
-              );
-            }
-            
+
             return (
               <NavLink
                 key={path}
                 to={path}
-                className={({ isActive }) => `
+                className={`
                   relative
                   flex flex-col items-center justify-center
-                  w-16 h-full
+                  min-w-[64px] h-full
                   transition-colors duration-200
-                  ${isActive ? 'text-secondary-500' : 'text-neutral-500'}
+                  ${isActive ? 'text-secondary-500' : 'text-neutral-400'}
+                  hover:text-neutral-200
                 `}
               >
                 {isActive && (
@@ -85,7 +87,7 @@ export const BottomNav = () => {
                   />
                 )}
                 <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
-                <span className="text-xs mt-1 font-medium">{label}</span>
+                <span className="text-[10px] mt-1 font-medium">{label}</span>
               </NavLink>
             );
           })}
@@ -101,6 +103,7 @@ export const BottomNav = () => {
   );
 };
 
+
 /**
  * Desktop Sidebar Navigation
  */
@@ -112,6 +115,7 @@ export const Sidebar = () => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showAddExpense, setShowAddExpense] = useState(false);
 
+
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -120,8 +124,10 @@ export const Sidebar = () => {
   const sidebarItems = [
     { path: '/dashboard', icon: Home, label: 'Dashboard' },
     { path: '/groups', icon: Users, label: 'Groups' },
+    { path: '/friends', icon: UserPlus, label: 'Friends' },
     { path: '/activity', icon: Receipt, label: 'Activity' },
   ];
+
 
   return (
     <aside className="
@@ -145,12 +151,12 @@ export const Sidebar = () => {
       {/* Balance Summary */}
       {/* <div className="p-4 mx-4 mt-4 rounded-xl bg-primary-900 border border-border">
         <p className="text-xs text-neutral-500 uppercase tracking-wider mb-2">Your Balance</p>
-        <p className={`text-2xl font-bold ?${balance.netBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-          {balance.netBalance >= 0 ? '+' : '-'}?${Math.abs(balance.netBalance).toFixed(2)}
+        <p className={`text-2xl font-bold ${balance.netBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+          {balance.netBalance >= 0 ? '+' : '-'}${Math.abs(balance.netBalance).toFixed(2)}
         </p>
         <div className="flex gap-4 mt-2 text-xs">
-          <span className="text-green-400">+?${balance.totalOwed.toFixed(2)} owed</span>
-          <span className="text-red-400">-?${balance.totalOwing.toFixed(2)} owing</span>
+          <span className="text-green-400">+${balance.totalOwed.toFixed(2)} owed</span>
+          <span className="text-red-400">-${balance.totalOwing.toFixed(2)} owing</span>
         </div>
       </div> */}
       
@@ -237,6 +243,7 @@ export const Sidebar = () => {
         </div>
       </div>
 
+
       {/* Logout Confirmation Modal */}
       <Modal
         isOpen={showLogoutConfirm}
@@ -259,6 +266,7 @@ export const Sidebar = () => {
         </p>
       </Modal>
 
+
       {/* Add Expense Modal */}
       <AddExpenseModal 
         isOpen={showAddExpense} 
@@ -267,8 +275,3 @@ export const Sidebar = () => {
     </aside>
   );
 };
-
-
-
-
-

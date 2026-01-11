@@ -4,7 +4,10 @@ const {
   generateInviteLink,
   joinGroup,
   getUserGroups,
-  sendPaymentReminder
+  sendPaymentReminder,
+  addFriendsToGroup,
+  recordSettlement,
+  getGroupSettlements
 } = require("../controllers/groupController");
 const { protect } = require("../middleware/authMiddleware");
 
@@ -15,5 +18,8 @@ router.post("/", protect, createGroup);
 router.post("/:groupId/invite", protect, generateInviteLink);
 router.post("/join", protect, joinGroup);
 router.post("/:groupId/remind", protect, sendPaymentReminder);
+router.post("/:groupId/add-friends", protect, addFriendsToGroup);
+router.post("/:groupId/settlements", protect, recordSettlement);
+router.get("/:groupId/settlements", protect, getGroupSettlements);
 
 module.exports = router;

@@ -14,6 +14,7 @@ import {
   ActivityScreen,
   ProfileScreen,
 } from './screens';
+import { FriendsScreen } from './screens/friends';
 
 /**
  * App Root Component
@@ -138,6 +139,14 @@ function App() {
           element={
             <ProtectedRoute>
               <ActivityScreen />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/friends" 
+          element={
+            <ProtectedRoute>
+              <FriendsScreen />
             </ProtectedRoute>
           } 
         />

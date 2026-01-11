@@ -450,40 +450,45 @@ export const GroupDetailScreen = () => {
                       {date}
                     </h3>
                     <div className="space-y-2">
-                      {dateSettlements.map((settlement) => {
-                        const from = settlement.from?._id ? settlement.from : getUserById(settlement.from);
-                        const to = settlement.to?._id ? settlement.to : getUserById(settlement.to);
-                        const currentUserId = currentUser?._id || currentUser?.id;
-                        const isCurrentUserFrom = (settlement.from?._id || settlement.from) === currentUserId;
-                        const isCurrentUserTo = (settlement.to?._id || settlement.to) === currentUserId;
+{dateSettlements.map((settlement) => {
+  const from = settlement.from?._id ? settlement.from : getUserById(settlement.from);
+  const to = settlement.to?._id ? settlement.to : getUserById(settlement.to);
+  const currentUserId = currentUser?._id || currentUser?.id;
+  const isCurrentUserFrom = (settlement.from?._id || settlement.from) === currentUserId;
+  const isCurrentUserTo = (settlement.to?._id || settlement.to) === currentUserId;
 
-                        return (
-                          <Card key={settlement._id || settlement.id} padding="md" className="border-green-900/30">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-green-900/30 flex items-center justify-center flex-shrink-0">
-                                <TrendingUp size={20} className="text-green-400" />
-                              </div>
-                              
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 justify-between">
-                                  <h4 className="font-medium text-neutral-100 text-sm">
-                                    {isCurrentUserFrom ? 'You' : from?.name} paid {isCurrentUserTo ? 'you' : to?.name}
-                                  </h4>
-                                  <p className="text-base font-bold text-green-400 flex-shrink-0">
-                                    ₹{settlement.amount.toFixed(2)}
-                                  </p>
-                                </div>
-                                <div className="flex items-center justify-between gap-2 mt-1">
-                                  <p className="text-xs text-neutral-500">
-                                    {formatTime(settlement.settledAt || settlement.createdAt)}
-                                  </p>
-                                  {/* <Badge variant="positive" size="sm" className="flex-shrink-0">Settled</Badge> */}
-                                </div>
-                              </div>
-                            </div>
-                          </Card>
-                        );
-                      })}
+  return (
+    <Card key={settlement._id || settlement.id} padding="md" className="border-green-900/30">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-green-900/30 flex items-center justify-center flex-shrink-0">
+          <TrendingUp size={20} className="text-green-400" />
+        </div>
+        
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 justify-between flex-wrap">
+            <h4 className="font-medium text-neutral-100 text-sm">
+              {isCurrentUserFrom ? 'You paid' : `${from?.name} paid`}{' '}
+              {isCurrentUserTo ? 'you' : to?.name}
+              {/* {settlement.note && settlement.note.includes('Net Settlement') && (
+                <span className="ml-1 text-xs bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full">
+                  {settlement.note}
+                </span>
+              )} */}
+            </h4>
+            <p className="text-base font-bold text-green-400 flex-shrink-0">
+              ₹{settlement.amount.toFixed(2)}
+            </p>
+          </div>
+          <p className="text-xs text-neutral-500 mt-1">
+            {formatTime(settlement.settledAt || settlement.createdAt)}
+          </p>
+        </div>
+      </div>
+    </Card>
+  );
+})}
+
+
                     </div>
                   </div>
                 ));
@@ -615,6 +620,7 @@ export const GroupDetailScreen = () => {
         onClose={() => setShowInviteModal(false)}
         groupId={groupId}
         groupName={group.name}
+        existingMembers={group.members || []}
       />
 
       {/* Remind Confirmation Modal */}

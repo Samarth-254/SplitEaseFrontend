@@ -40,10 +40,8 @@ class ApiService {
       const data = await response.json();
 
       if (!response.ok) {
-        // Handle 401 Unauthorized - token expired or invalid
         if (response.status === 401) {
           this.clearToken();
-          // Trigger logout in store by dispatching custom event
           window.dispatchEvent(new CustomEvent('unauthorized'));
         }
         throw new Error(data.message || 'Something went wrong');
@@ -55,7 +53,32 @@ class ApiService {
     }
   }
 
-  // Auth endpoints
+  async get(endpoint) {
+    return this.request(endpoint, {
+      method: 'GET',
+    });
+  }
+
+  async post(endpoint, data) {
+    return this.request(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async put(endpoint, data) {
+    return this.request(endpoint, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async delete(endpoint) {
+    return this.request(endpoint, {
+      method: 'DELETE',
+    });
+  }
+
   async googleLogin(token) {
     return this.request('/api/auth/google-login', {
       method: 'POST',
@@ -162,15 +185,18 @@ class ApiService {
     });
   }
 
-  async recordSettlement(groupId, to, amount, note) {
-    return this.request('/api/settlements', {
-      method: 'POST',
-      body: JSON.stringify({ groupId, to, amount, note }),
-    });
-  }
+  // In services/api.js
+async recordSettlement(groupId, fromUserId, toUserId, amount, note) {
+  return this.request(`/api/groups/${groupId}/settlements`, {
+    method: 'POST',
+    body: JSON.stringify({ from: fromUserId, to: toUserId, amount, note }),
+  });
+}
 
+
+  // ✅ FIXED - getGroupSettlements using groups endpoint
   async getGroupSettlements(groupId) {
-    return this.request(`/api/settlements/group/${groupId}`, {
+    return this.request(`/api/groups/${groupId}/settlements`, {
       method: 'GET',
     });
   }
@@ -208,6 +234,19 @@ class ApiService {
   async deleteProfileImage() {
     return this.request('/api/profile/image', {
       method: 'DELETE',
+    });
+  }
+
+  async getFriends() {
+    return this.request('/api/friends', {
+      method: 'GET',
+    });
+  }
+
+  async addFriendsToGroup(groupId, friendIds) {
+    return this.request(`/api/groups/${groupId}/add-friends`, {
+      method: 'POST',
+      body: JSON.stringify({ friendIds }),
     });
   }
 }
