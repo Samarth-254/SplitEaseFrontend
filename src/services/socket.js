@@ -24,12 +24,12 @@ class SocketService {
     });
 
     this.socket.on('connect', () => {
-      console.log('Socket connected:', this.socket.id);
+      
       this.connected = true;
     });
 
     this.socket.on('disconnect', () => {
-      console.log('Socket disconnected');
+      
       this.connected = false;
     });
 
@@ -51,21 +51,21 @@ class SocketService {
   joinUserRoom(userId) {
     if (this.socket?.connected) {
       this.socket.emit('join-user-room', userId);
-      console.log('Joined user room:', userId);
+      
     }
   }
 
   joinGroup(groupId) {
     if (this.socket?.connected) {
       this.socket.emit('join-group', groupId);
-      console.log('Joined group:', groupId);
+      
     }
   }
 
   leaveGroup(groupId) {
     if (this.socket?.connected) {
       this.socket.emit('leave-group', groupId);
-      console.log('Left group:', groupId);
+      
     }
   }
 

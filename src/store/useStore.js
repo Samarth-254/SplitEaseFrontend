@@ -872,7 +872,7 @@ settleUp: async (toUserId, amount, groupId, note) => {
 
     // Listen for new members joining groups
     socketService.onMemberJoined(({ groupId, userId, user }) => {
-      console.log('Member joined:', user.name, 'in group:', groupId);
+      
       set(state => ({
         groups: state.groups.map(g => {
           if ((g._id || g.id) === groupId) {
@@ -889,7 +889,7 @@ settleUp: async (toUserId, amount, groupId, note) => {
 
     // Listen for multiple members being added to groups
     socketService.onMembersAdded(({ groupId, addedBy, members }) => {
-      console.log('Members added to group:', groupId, members);
+      
       const { currentUser } = get();
       
       // Only update if you're not one of the newly added members
@@ -911,7 +911,7 @@ settleUp: async (toUserId, amount, groupId, note) => {
         }));
       } else {
         // If you were added, refresh the entire groups list
-        console.log('You were added to a group, refreshing...');
+        
         get().loadGroups();
       }
     });
@@ -920,7 +920,7 @@ settleUp: async (toUserId, amount, groupId, note) => {
     socketService.onFriendAddedToGroup(({ userId, groupId, groupName, groupEmoji }) => {
       const { currentUser } = get();
       if (currentUser?._id === userId) {
-        console.log('You were added to group:', groupName);
+        
         // Refresh groups list
         get().loadGroups();
       }
