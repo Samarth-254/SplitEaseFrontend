@@ -30,7 +30,7 @@ export const DashboardScreen = () => {
   const [selectedDebt, setSelectedDebt] = useState(null);
   
   // Show loading state until data is loaded
-  const isDataLoading = !isInitialLoadComplete || (groups.length === 0 && expenses.length === 0 && settlements.length === 0);
+const isDataLoading = !isInitialLoadComplete;
   
   // ✅ REACTIVE: Recalculate when expenses/settlements change
   const balance = useMemo(() => getTotalBalance(), [expenses, settlements, currentUser]);

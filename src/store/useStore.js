@@ -312,27 +312,35 @@ export const useStore = create((set, get) => ({
   },
   
   // Settlement Actions
-  settleUp: async (toUserId, amount, groupId, note) => {
-    try {
-      const { currentUser } = get();
-      const fromUserId = currentUser._id || currentUser.id;
-      
-      const settlement = await apiService.recordSettlement(groupId, fromUserId, toUserId, amount, note || 'Payment');
-      
-      set(state => ({ 
-        settlements: [...state.settlements, settlement],
-        isSettleUpOpen: false,
-      }));
-      
-      await get().loadGroupExpenses(groupId);
-      await get().loadGroupSettlements(groupId);
-      
-      return settlement;
-    } catch (err) {
-      console.error('Failed to record settlement:', err);
-      throw err;
-    }
-  },
+ settleUp: async (toUserId, amount, groupId, note) => {
+  try {
+    const { currentUser } = get();
+    const fromUserId = currentUser._id || currentUser.id;
+    
+    const settlement = await apiService.recordSettlement(groupId, fromUserId, toUserId, amount, note || 'Payment');
+    
+    // ✅ Emit socket event
+    // if (socketService.isConnected()) {
+    //   socketService.emit('settlement:created', {
+    //     settlement,
+    //     groupId,
+    //   });
+    // }
+    
+    set(state => ({ 
+      settlements: [...state.settlements, settlement],
+      isSettleUpOpen: false,
+    }));
+    
+    await get().loadGroupExpenses(groupId);
+    await get().loadGroupSettlements(groupId);
+    
+    return settlement;
+  } catch (err) {
+    console.error('Failed to record settlement:', err);
+    throw err;
+  }
+},
 
 
   loadGroupSettlements: async (groupId) => {

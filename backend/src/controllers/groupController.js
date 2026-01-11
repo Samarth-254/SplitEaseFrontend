@@ -599,10 +599,10 @@ exports.recordSettlement = async (req, res) => {
 
     const io = req.app.get('io');
     if (io) {
-      // ✅ Emit to group room
-      io.to(`group:${groupId}`).emit('settlement-created', settlement);
+      // ✅ ONLY THIS LINE - Use colon format
+      io.to(`group:${groupId}`).emit('settlement:created', settlement);
       
-      // ✅ Emit to recipient's personal room for real-time notification
+      // Notification
       const fromUser = settlement.from;
       io.to(`user:${toUserId}`).emit('notification', {
         type: 'settlement_received',
@@ -621,10 +621,10 @@ exports.recordSettlement = async (req, res) => {
         read: false
       });
 
-      console.log(`✅ Settlement notification sent to user:${toUserId}`);
+      console.log(`✅ Settlement emitted to group:${groupId}`);
     }
 
-    // ✅ Send push notification to receiver
+    // Push notification
     await sendNotification(
       toUserId,
       `✅ Payment received in ${group.name}`,
@@ -638,6 +638,7 @@ exports.recordSettlement = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 
 

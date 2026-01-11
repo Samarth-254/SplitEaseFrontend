@@ -5,7 +5,7 @@ class SocketService {
     this.socket = null;
     this.connected = false;
     this.userId = null;
-    this.joinedGroups = new Set(); // ✅ Track joined groups
+    this.joinedGroups = new Set();
   }
 
   connect(token) {
@@ -22,15 +22,13 @@ class SocketService {
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      reconnectionAttempts: Infinity, // ✅ Keep trying
+      reconnectionAttempts: Infinity,
       timeout: 20000
     });
 
     this.socket.on('connect', () => {
       console.log('🟢 Socket connected:', this.socket.id);
       this.connected = true;
-      
-      // ✅ Auto-rejoin rooms on reconnect
       this.rejoinRooms();
     });
 
@@ -42,8 +40,6 @@ class SocketService {
     this.socket.on('reconnect', (attemptNumber) => {
       console.log('🔄 Socket reconnected after', attemptNumber, 'attempts');
       this.connected = true;
-      
-      // ✅ Rejoin rooms after reconnection
       this.rejoinRooms();
     });
 
@@ -66,17 +62,14 @@ class SocketService {
     return this.socket;
   }
 
-  // ✅ NEW: Rejoin all rooms
   rejoinRooms() {
     console.log('🔄 Rejoining rooms...');
     
-    // Rejoin user room
     if (this.userId) {
       this.socket.emit('join-user-room', this.userId);
       console.log('👤 Rejoined user room:', this.userId);
     }
     
-    // Rejoin all group rooms
     this.joinedGroups.forEach(groupId => {
       this.socket.emit('join-group', groupId);
       console.log('🏠 Rejoined group:', groupId);
@@ -98,7 +91,7 @@ class SocketService {
 
   joinUserRoom(userId) {
     if (this.socket?.connected) {
-      this.userId = userId; // ✅ Store user ID
+      this.userId = userId;
       this.socket.emit('join-user-room', userId);
       console.log('👤 Joined user room:', userId);
     }
@@ -106,7 +99,7 @@ class SocketService {
 
   joinGroup(groupId) {
     if (this.socket?.connected) {
-      this.joinedGroups.add(groupId); // ✅ Track group
+      this.joinedGroups.add(groupId);
       this.socket.emit('join-group', groupId);
       console.log('🏠 Joined group:', groupId);
     }
@@ -114,13 +107,25 @@ class SocketService {
 
   leaveGroup(groupId) {
     if (this.socket?.connected) {
-      this.joinedGroups.delete(groupId); // ✅ Remove from tracking
+      this.joinedGroups.delete(groupId);
       this.socket.emit('leave-group', groupId);
       console.log('🚪 Left group:', groupId);
     }
   }
 
-  // ✅ EXPENSE EVENTS
+  // ✅ GENERIC EMIT METHOD - ADD THIS!
+  emit(event, data) {
+    if (this.socket && this.isConnected()) {
+      console.log(`📤 Emitting ${event}:`, data);
+      this.socket.emit(event, data);
+      return true;
+    } else {
+      console.warn(`⚠️ Cannot emit ${event} - socket not connected`);
+      return false;
+    }
+  }
+
+  // EXPENSE EVENTS
   onExpenseCreated(callback) {
     if (this.socket) {
       this.socket.off('expense:created');
@@ -151,7 +156,7 @@ class SocketService {
     }
   }
 
-  // ✅ SETTLEMENT EVENTS
+  // SETTLEMENT EVENTS
   onSettlementCreated(callback) {
     if (this.socket) {
       this.socket.off('settlement:created');
@@ -162,7 +167,7 @@ class SocketService {
     }
   }
 
-  // ✅ MEMBER EVENTS
+  // MEMBER EVENTS
   onMemberJoined(callback) {
     if (this.socket) {
       this.socket.off('member:joined');
@@ -193,7 +198,7 @@ class SocketService {
     }
   }
 
-  // ✅ NOTIFICATION EVENTS
+  // NOTIFICATION EVENTS
   onNotification(callback) {
     if (this.socket) {
       this.socket.off('notification');
@@ -262,6 +267,5 @@ class SocketService {
   }
 }
 
-// Export singleton instance
 const socketService = new SocketService();
 export default socketService;
