@@ -6,6 +6,7 @@ import { Button } from '../../components/ui';
 import apiService from '../../services/api';
 import { useStore } from '../../store/useStore';
 
+
 export const JoinGroupScreen = () => {
   const { token } = useParams();
   const navigate = useNavigate();
@@ -15,18 +16,17 @@ export const JoinGroupScreen = () => {
   const [inviteInfo, setInviteInfo] = useState(null);
   const [error, setError] = useState('');
 
+
   useEffect(() => {
     const checkInvite = async () => {
-      // Check localStorage token directly instead of Zustand state
       const authToken = localStorage.getItem('token');
       
       if (!authToken) {
-        // Try to get invite info even without auth
         try {
           const info = await apiService.getInviteInfo(token);
           setInviteInfo(info);
         } catch (err) {
-          // Ignore error, will show generic message
+          // Ignore error
         }
         setStatus('needsAuth');
         return;
@@ -52,75 +52,90 @@ export const JoinGroupScreen = () => {
     checkInvite();
   }, [token]);
 
+
   return (
-    <div className="min-h-screen bg-primary-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-primary-950 flex flex-col items-center justify-center p-4">
+      {/* Logo & App Name - Same Line */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center gap-3 mb-12"
+      >
+        <img 
+          src="/icon-192.png" 
+          alt="SplitEase" 
+          className="w-16 h-16 rounded-2xl shadow-lg shadow-secondary-500/20"
+        />
+        <h1 className="text-4xl font-bold text-neutral-100">SplitEase</h1>
+      </motion.div>
+
+      {/* Main Content - Centered */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
         className="w-full max-w-md"
       >
-        <div className="text-center mb-8">
-          <div className="text-5xl mb-4">💸</div>
-          <h1 className="text-2xl font-bold text-neutral-100">SplitEase</h1>
-        </div>
-
         <div className="bg-primary-900 border border-border rounded-2xl p-8 text-center">
           {status === 'needsAuth' && (
             <>
-              <div className="w-16 h-16 rounded-full bg-orange-500/20 flex items-center justify-center mx-auto mb-4">
+              <div className="w-20 h-20 rounded-full bg-orange-500/20 flex items-center justify-center mx-auto mb-6">
                 {inviteInfo?.groupEmoji ? (
-                  <span className="text-3xl">{inviteInfo.groupEmoji}</span>
+                  <span className="text-4xl">{inviteInfo.groupEmoji}</span>
                 ) : (
-                  <UserPlus size={32} className="text-orange-400" />
+                  <UserPlus size={40} className="text-orange-400" />
                 )}
               </div>
-              <h2 className="text-xl font-semibold text-neutral-100 mb-2">
+              <h2 className="text-2xl font-semibold text-neutral-100 mb-3">
                 {inviteInfo?.groupName ? `Join ${inviteInfo.groupName}` : 'Join Group'}
               </h2>
-              <p className="text-neutral-400 mb-1">
+              <p className="text-neutral-300 mb-2">
                 {inviteInfo?.invitedByName ? (
                   <>
-                    <span className="font-medium text-neutral-300">{inviteInfo.invitedByName}</span> invited you to join this group
+                    <span className="font-semibold text-neutral-100">{inviteInfo.invitedByName}</span> invited you to join this group
                   </>
                 ) : (
                   'You\'ve been invited to join a group'
                 )}
               </p>
               {inviteInfo?.memberCount && (
-                <p className="text-sm text-neutral-500 mb-6">
+                <p className="text-sm text-neutral-500 mb-8">
                   {inviteInfo.memberCount} {inviteInfo.memberCount === 1 ? 'member' : 'members'} in this group
                 </p>
               )}
-              <p className="text-sm text-neutral-400 mb-6">
+              <p className="text-sm text-neutral-400 mb-8">
                 Please log in to accept the invitation
               </p>
-              <Button
-                fullWidth
-                onClick={() => {
-                  localStorage.setItem('inviteToken', token);
-                  navigate('/login');
-                }}
-              >
-                Log In
-              </Button>
-              <Button
-                variant="ghost"
-                fullWidth
-                className="mt-2"
-                onClick={() => {
-                  localStorage.setItem('inviteToken', token);
-                  navigate('/signup');
-                }}
-              >
-                Sign Up
-              </Button>
+              <div className="space-y-3">
+                <Button
+                  fullWidth
+                  size="xl"
+                  onClick={() => {
+                    localStorage.setItem('inviteToken', token);
+                    navigate('/login');
+                  }}
+                >
+                  Log In
+                </Button>
+                <Button
+                  variant="ghost"
+                  fullWidth
+                  size="xl"
+                  onClick={() => {
+                    localStorage.setItem('inviteToken', token);
+                    navigate('/signup');
+                  }}
+                >
+                  Sign Up
+                </Button>
+              </div>
             </>
           )}
 
           {status === 'loading' && (
             <>
-              <Loader size={48} className="text-secondary-500 animate-spin mx-auto mb-4" />
-              <h2 className="text-xl font-semibold text-neutral-100 mb-2">
+              <Loader size={56} className="text-secondary-500 animate-spin mx-auto mb-6" />
+              <h2 className="text-2xl font-semibold text-neutral-100 mb-3">
                 Joining Group...
               </h2>
               <p className="text-neutral-400">Please wait while we add you to the group</p>
@@ -129,8 +144,8 @@ export const JoinGroupScreen = () => {
 
           {status === 'success' && (
             <>
-              <CheckCircle size={48} className="text-green-500 mx-auto mb-4" />
-              <h2 className="text-xl font-semibold text-neutral-100 mb-2">
+              <CheckCircle size={56} className="text-green-500 mx-auto mb-6" />
+              <h2 className="text-2xl font-semibold text-neutral-100 mb-3">
                 Welcome to {group?.emoji} {group?.name}!
               </h2>
               <p className="text-neutral-400 mb-4">
@@ -144,13 +159,14 @@ export const JoinGroupScreen = () => {
 
           {status === 'error' && (
             <>
-              <XCircle size={48} className="text-red-500 mx-auto mb-4" />
-              <h2 className="text-xl font-semibold text-neutral-100 mb-2">
+              <XCircle size={56} className="text-red-500 mx-auto mb-6" />
+              <h2 className="text-2xl font-semibold text-neutral-100 mb-3">
                 Unable to Join Group
               </h2>
-              <p className="text-neutral-400 mb-6">{error}</p>
+              <p className="text-neutral-400 mb-8">{error}</p>
               <Button
                 fullWidth
+                size="xl"
                 onClick={() => navigate('/groups')}
               >
                 Go to Groups

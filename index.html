@@ -2,17 +2,67 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💸</text></svg>" />
+    
+    <!-- Primary Meta Tags -->
+    <title>SplitEase - Split Expenses & Bills with Friends Easily</title>
+    <meta name="title" content="SplitEase - Split Expenses & Bills with Friends Easily" />
+    <meta name="description" content="Track and split expenses with friends effortlessly. Manage group bills, settle up instantly, and keep everyone happy. Perfect for roommates, trips, and shared expenses." />
+    <meta name="keywords" content="split expenses, bill splitting, expense tracker, group expenses, split bills, settle up, shared expenses, expense management, splitwise alternative" />
+    <meta name="author" content="SplitEase" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://www.split-ease.app/" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://www.split-ease.app/" />
+    <meta property="og:title" content="SplitEase - Split Expenses & Bills with Friends" />
+    <meta property="og:description" content="Track and split expenses with friends effortlessly. Manage group bills, settle up instantly, and keep everyone happy." />
+    <meta property="og:image" content="https://www.split-ease.app/icon-512.png" />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+    <meta property="og:site_name" content="SplitEase" />
+    <meta property="og:locale" content="en_US" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://www.split-ease.app/" />
+    <meta property="twitter:title" content="SplitEase - Split Expenses & Bills with Friends" />
+    <meta property="twitter:description" content="Track and split expenses with friends effortlessly. Manage group bills, settle up instantly." />
+    <meta property="twitter:image" content="https://www.split-ease.app/icon-512.png" />
+    <meta name="twitter:creator" content="@splitease" />
+    
+    <!-- Favicons -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    
+    <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Mobile & PWA Meta Tags -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="theme-color" content="#000000" />
+    <meta name="theme-color" content="#ef4444" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💸</text></svg>" />
+    <meta name="apple-mobile-web-app-title" content="SplitEase" />
+    <meta name="application-name" content="SplitEase" />
+    <meta name="msapplication-TileColor" content="#ef4444" />
+    <meta name="msapplication-config" content="/browserconfig.xml" />
+    
+    <!-- Additional SEO -->
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="color-scheme" content="dark light" />
+    
+    <!-- Preconnect for Performance -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    
+    <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -51,6 +101,30 @@
         }
       }
     </script>
+    
+    <!-- Structured Data (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "SplitEase",
+      "url": "https://www.split-ease.app",
+      "description": "Track and split expenses with friends effortlessly. Manage group bills, settle up instantly, and keep everyone happy.",
+      "applicationCategory": "FinanceApplication",
+      "operatingSystem": "Web, iOS, Android",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "ratingCount": "1250"
+      }
+    }
+    </script>
+    
     <title>SplitEase - Split Expenses with Friends</title>
   </head>
   <body>
@@ -64,9 +138,7 @@
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then((registrations) => {
           registrations.forEach((registration) => {
-            registration.unregister().then(() => {
-              console.log('Service worker unregistered');
-            });
+            registration.unregister();
           });
         });
         

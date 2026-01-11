@@ -114,9 +114,13 @@ export const SignupScreen = () => {
               initial={{ scale: 0.8 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
-              className="text-5xl mb-4"
+              className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-secondary-500 mb-4 overflow-hidden"
             >
-              💸
+              <img 
+                src="/icon-192.png" 
+                alt="SplitEase" 
+                className="w-full h-full object-cover"
+              />
             </motion.div>
             <h1 className="text-2xl font-bold text-neutral-100 mb-2">
               Create account

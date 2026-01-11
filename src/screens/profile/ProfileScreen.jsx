@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -13,23 +13,12 @@ import {
   Trash2,
   Upload,
   ChevronRight,
-  Settings,
-  Shield
+  Bell
 } from 'lucide-react';
 import { Screen, PageTitle } from '../../components/layout';
 import { Button, Card, Avatar, Modal } from '../../components/ui';
 import { useStore } from '../../store/useStore';
-
-
-/**
- * Profile Screen
- * 
- * User profile and settings with improved UX
- * - Clear visual hierarchy
- * - Inline editing with immediate feedback
- * - Touch-friendly 48px targets
- * - Grouped settings sections
- */
+import pushNotificationService from '../../services/pushNotification';
 
 
 export const ProfileScreen = () => {
@@ -43,7 +32,8 @@ export const ProfileScreen = () => {
   const [uploading, setUploading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
-
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [togglingNotifications, setTogglingNotifications] = useState(false);
 
   const predefinedAvatars = [
     '/avatars/female-brown-box.png',
@@ -68,12 +58,32 @@ export const ProfileScreen = () => {
     '/avatars/male-white-phone.png',
   ];
 
+  // ✅ Check notification status only when page loads or becomes visible
+useEffect(() => {
+  const checkNotificationStatus = () => {
+    // ✅ Use isSubscribed instead of isPermissionGranted
+    setNotificationsEnabled(pushNotificationService.isSubscribed());
+  };
+
+  checkNotificationStatus();
+
+  const handleVisibilityChange = () => {
+    if (!document.hidden) {
+      checkNotificationStatus();
+    }
+  };
+
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+
+  return () => {
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
+  };
+}, []);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
-
 
   const handleNameUpdate = async () => {
     if (editName.trim() && editName !== currentUser?.name) {
@@ -85,14 +95,12 @@ export const ProfileScreen = () => {
     }
   };
 
-
   const handleMobileChange = (e) => {
     const value = e.target.value.replace(/\D/g, '');
     if (value.length <= 10) {
       setMobile(value);
     }
   };
-
 
   const handleMobileUpdate = async () => {
     if (mobile !== currentUser?.mobile) {
@@ -104,12 +112,10 @@ export const ProfileScreen = () => {
     }
   };
 
-
   const handleGenderUpdate = async (newGender) => {
     setGender(newGender);
     await updateProfile({ gender: newGender });
   };
-
 
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -127,7 +133,6 @@ export const ProfileScreen = () => {
     }
   };
 
-
   const handleAvatarSelect = async (avatarUrl) => {
     setUploading(true);
     await updateProfile({ profileImage: avatarUrl });
@@ -135,12 +140,33 @@ export const ProfileScreen = () => {
     setShowAvatarPicker(false);
   };
 
-
   const handleDeleteImage = async () => {
     await deleteProfileImage();
     setShowDeleteConfirm(false);
   };
 
+  // ✅ Toggle notifications
+ const handleToggleNotifications = async () => {
+  if (togglingNotifications) return;
+
+  setTogglingNotifications(true);
+  
+  if (notificationsEnabled) {
+    // Disable
+    await pushNotificationService.unsubscribe();
+    setNotificationsEnabled(false);
+    
+  } else {
+    // Enable
+    const granted = await pushNotificationService.requestPermission();
+    setNotificationsEnabled(granted);
+    if (granted) {
+      
+    }
+  }
+  
+  setTogglingNotifications(false);
+};
 
   return (
     <Screen>
@@ -178,7 +204,6 @@ export const ProfileScreen = () => {
                 )}
               </button>
 
-
               {/* Delete button */}
               {currentUser?.profileImage && (
                 <button
@@ -190,7 +215,6 @@ export const ProfileScreen = () => {
               )}
             </div>
 
-
             {/* Name */}
             <h2 className="text-2xl font-bold text-white mb-1">
               {currentUser?.name || 'User'}
@@ -200,7 +224,6 @@ export const ProfileScreen = () => {
             </p>
           </div>
         </Card>
-
 
         {/* Personal Information Section */}
         <div>
@@ -278,7 +301,6 @@ export const ProfileScreen = () => {
               </AnimatePresence>
             </div>
 
-
             {/* Email Field (Read-only) */}
             <div className="p-4">
               <label className="text-xs font-medium text-neutral-500 uppercase tracking-wider block mb-2">
@@ -291,7 +313,6 @@ export const ProfileScreen = () => {
                 </span>
               </div>
             </div>
-
 
             {/* Mobile Field */}
             <div className="p-4">
@@ -367,7 +388,6 @@ export const ProfileScreen = () => {
               </AnimatePresence>
             </div>
 
-
             {/* Gender Field */}
             <div className="p-4">
               <label className="text-xs font-medium text-neutral-500 uppercase tracking-wider block mb-3">
@@ -392,6 +412,79 @@ export const ProfileScreen = () => {
           </Card>
         </div>
 
+        {/* ✅ SIMPLIFIED Notification Settings with Description */}
+        {pushNotificationService.isSupported && (
+          <div>
+            <h3 className="text-sm font-semibold text-neutral-400 uppercase tracking-wider mb-3 px-1">
+              Notifications
+            </h3>
+            <Card>
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${notificationsEnabled ? 'bg-green-500/10' : 'bg-neutral-700/50'}`}>
+                      <Bell size={20} className={notificationsEnabled ? 'text-green-400' : 'text-neutral-500'} />
+                    </div>
+                    <div>
+                      <p className="font-medium text-white">Push Notifications</p>
+                      <p className="text-sm text-neutral-400">
+                        {notificationsEnabled ? 'Enabled' : 'Get real-time updates'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* ✅ Toggle Switch */}
+                  <button
+                    onClick={handleToggleNotifications}
+                    disabled={togglingNotifications || pushNotificationService.isPermissionDenied()}
+                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                      notificationsEnabled ? 'bg-green-500' : 'bg-neutral-700'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                        notificationsEnabled ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* ✅ Description of what notifications will be sent */}
+                {!pushNotificationService.isPermissionDenied() && (
+                  <div className="bg-primary-900 border border-neutral-700 rounded-lg p-3">
+                    <p className="text-xs text-neutral-400 mb-2">
+                      {notificationsEnabled ? "You'll receive notifications for:" : "Enable to get notified about:"}
+                    </p>
+                    <ul className="text-xs text-neutral-300 space-y-1">
+                      <li className="flex items-start gap-2">
+                        <span className="text-secondary-500 mt-0.5">•</span>
+                        <span>New expenses added to your groups</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-secondary-500 mt-0.5">•</span>
+                        <span>Settlement payments received or requested</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-secondary-500 mt-0.5">•</span>
+                        <span>Group invitations and member updates</span>
+                      </li>
+                    </ul>
+                  </div>
+                )}
+
+                {/* ✅ Show help text only if blocked */}
+                {pushNotificationService.isPermissionDenied() && (
+                  <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3">
+                    <p className="text-xs text-red-400 font-medium mb-1">Notifications Blocked</p>
+                    <p className="text-xs text-neutral-400">
+                      Enable in browser settings: <span className="text-white">🔒 → Notifications → Allow</span>
+                    </p>
+                  </div>
+                )}
+              </div>
+            </Card>
+          </div>
+        )}
 
         {/* Account Actions */}
         <div>
@@ -414,7 +507,6 @@ export const ProfileScreen = () => {
           </Card>
         </div>
 
-
         {/* App Info */}
         <div className="text-center py-6 space-y-1">
           <p className="text-xs text-neutral-600">
@@ -430,7 +522,6 @@ export const ProfileScreen = () => {
           </p>
         </div>
       </div>
-
 
       {/* Avatar Picker Modal */}
       <Modal
@@ -473,7 +564,6 @@ export const ProfileScreen = () => {
             </p>
           </div>
 
-
           {/* Divider */}
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
@@ -483,7 +573,6 @@ export const ProfileScreen = () => {
               <span className="px-2 bg-primary-950 text-neutral-500">Or choose an avatar</span>
             </div>
           </div>
-
 
           {/* Predefined Avatars */}
           <div className="grid grid-cols-4 gap-3 max-h-96 overflow-y-auto p-1">
@@ -509,7 +598,6 @@ export const ProfileScreen = () => {
         </div>
       </Modal>
 
-
       {/* Delete Image Confirmation */}
       <Modal
         isOpen={showDeleteConfirm}
@@ -531,7 +619,6 @@ export const ProfileScreen = () => {
           Are you sure you want to delete your profile image? This action cannot be undone.
         </p>
       </Modal>
-
 
       {/* Logout Confirmation */}
       <Modal

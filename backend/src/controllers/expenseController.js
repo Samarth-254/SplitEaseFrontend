@@ -1,6 +1,8 @@
 const Expense = require("../models/Expense");
 const Group = require("../models/Group");
 const aiCategoryService = require("../services/aiCategoryService");
+const { sendBulkNotifications } = require('./notificationController');
+
 
 exports.addExpense = async (req, res) => {
   try {
@@ -66,11 +68,27 @@ exports.addExpense = async (req, res) => {
       console.log('Socket.io not available');
     }
 
+    // ✅ Send push notifications to all group members except creator
+    const memberIds = group.members
+      .filter(m => m.toString() !== req.user._id.toString())
+      .map(m => m.toString());
+    
+    if (memberIds.length > 0) {
+      await sendBulkNotifications(
+        memberIds,
+        `💸 New expense in ${group.name}`,
+        `${req.user.name} added "${expense.description}" - ₹${expense.amount}`,
+        `/group/${groupId}`
+      );
+    }
+
     res.status(201).json(expenseObj);
   } catch (err) {
+    console.error('Add expense error:', err);
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 exports.updateExpense = async (req, res) => {
   try {
@@ -91,7 +109,6 @@ exports.updateExpense = async (req, res) => {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    // Any group member can edit the expense
     if (!description || !amount) {
       return res.status(400).json({ message: "Missing required fields" });
     }
@@ -125,11 +142,27 @@ exports.updateExpense = async (req, res) => {
       io.to(`group:${expense.groupId}`).emit('expense:updated', expense);
     }
 
+    // ✅ Send push notifications for expense update
+    const memberIds = group.members
+      .filter(m => m.toString() !== req.user._id.toString())
+      .map(m => m.toString());
+    
+    if (memberIds.length > 0) {
+      await sendBulkNotifications(
+        memberIds,
+        `✏️ Expense updated in ${group.name}`,
+        `${req.user.name} updated "${expense.description}" - ₹${expense.amount}`,
+        `/group/${expense.groupId}`
+      );
+    }
+
     res.json(expense);
   } catch (err) {
+    console.error('Update expense error:', err);
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 exports.getGroupExpenses = async (req, res) => {
   try {
@@ -154,9 +187,11 @@ exports.getGroupExpenses = async (req, res) => {
 
     res.json(expenses);
   } catch (err) {
+    console.error('Get expenses error:', err);
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 exports.deleteExpense = async (req, res) => {
   try {
@@ -197,6 +232,7 @@ exports.deleteExpense = async (req, res) => {
     res.status(500).json({ message: err.message || "Server error" });
   }
 };
+
 
 exports.calculateBalances = async (req, res) => {
   try {
@@ -276,6 +312,24 @@ exports.calculateBalances = async (req, res) => {
 
     res.json(simplifiedBalances);
   } catch (err) {
+    console.error('Calculate balances error:', err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+exports.detectCategory = async (req, res) => {
+  try {
+    const { description } = req.body;
+    
+    if (!description) {
+      return res.status(400).json({ message: "Description required" });
+    }
+
+    const category = await aiCategoryService.detectCategory(description);
+    res.json({ category });
+  } catch (err) {
+    console.error('Detect category error:', err);
     res.status(500).json({ message: "Server error" });
   }
 };

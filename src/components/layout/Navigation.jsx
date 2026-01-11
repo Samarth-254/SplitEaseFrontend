@@ -7,6 +7,7 @@ import { Modal, Button } from '../ui';
 import { AddExpenseModal } from '../../screens/expense/AddExpenseModal';
 
 
+
 /**
  * Bottom Navigation
  * 
@@ -18,6 +19,7 @@ import { AddExpenseModal } from '../../screens/expense/AddExpenseModal';
  */
 
 
+
 const navItems = [
   { path: '/dashboard', icon: Home, label: 'Home' },
   { path: '/groups', icon: Users, label: 'Groups' },
@@ -25,6 +27,7 @@ const navItems = [
   { path: '/activity', icon: Receipt, label: 'Activity' },
   { path: '/profile', icon: User, label: 'Profile' },
 ];
+
 
 
 export const BottomNav = () => {
@@ -53,6 +56,7 @@ export const BottomNav = () => {
         <Plus size={24} className="text-black" strokeWidth={2.5} />
       </button>
 
+
       <nav className="
         fixed bottom-0 left-0 right-0
         bg-primary-950/95 backdrop-blur-lg
@@ -65,6 +69,7 @@ export const BottomNav = () => {
           {navItems.map(({ path, icon: Icon, label }) => {
             const isActive = location.pathname === path ||
               (path === '/groups' && location.pathname.startsWith('/group/'));
+
 
             return (
               <NavLink
@@ -104,6 +109,7 @@ export const BottomNav = () => {
 };
 
 
+
 /**
  * Desktop Sidebar Navigation
  */
@@ -114,6 +120,7 @@ export const Sidebar = () => {
   const balance = getTotalBalance();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showAddExpense, setShowAddExpense] = useState(false);
+
 
 
   const handleLogout = () => {
@@ -127,6 +134,7 @@ export const Sidebar = () => {
     { path: '/friends', icon: UserPlus, label: 'Friends' },
     { path: '/activity', icon: Receipt, label: 'Activity' },
   ];
+
 
 
   return (
@@ -143,7 +151,11 @@ export const Sidebar = () => {
       {/* Logo */}
       <div className="p-6 border-b border-border">
         <h1 className="text-xl font-bold text-neutral-100 flex items-center gap-2">
-          <span className="text-2xl">💸</span>
+          <img 
+            src="/icon-192.png" 
+            alt="SplitEase" 
+            className="w-8 h-8 rounded-lg"
+          />
           SplitEase
         </h1>
       </div>
@@ -244,6 +256,7 @@ export const Sidebar = () => {
       </div>
 
 
+
       {/* Logout Confirmation Modal */}
       <Modal
         isOpen={showLogoutConfirm}
@@ -265,6 +278,7 @@ export const Sidebar = () => {
           Are you sure you want to sign out? You'll need to sign in again to access your account.
         </p>
       </Modal>
+
 
 
       {/* Add Expense Modal */}

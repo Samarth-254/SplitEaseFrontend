@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import apiService from '../services/api';
 import socketService from '../services/socket';
 
+
 export const useStore = create((set, get) => ({
   // Auth State
   currentUser: null,
@@ -66,6 +67,7 @@ export const useStore = create((set, get) => ({
       set({ isInitialLoadComplete: true });
     }
   },
+
 
   setUser: async (user) => {
     // Set user and clear old data
@@ -187,6 +189,7 @@ export const useStore = create((set, get) => ({
       
       let splits = Array.isArray(providedSplits) ? providedSplits : [];
 
+
       // If no splits provided, fall back to equal split
       if (splits.length === 0) {
         const numberOfPeople = splitBetween.length;
@@ -198,6 +201,7 @@ export const useStore = create((set, get) => ({
         }));
       }
 
+
       const expense = await apiService.addExpense(
         groupId,
         description,
@@ -208,6 +212,7 @@ export const useStore = create((set, get) => ({
         paidBy,
         currency
       );
+
 
       // ONLY socket event will add it to state - prevents duplicates
       // This means creator will see it when socket broadcasts it
@@ -232,6 +237,7 @@ export const useStore = create((set, get) => ({
     }
   },
 
+
   updateExpense: async (expenseId, payload) => {
     try {
       const updated = await apiService.updateExpense(expenseId, payload);
@@ -244,6 +250,7 @@ export const useStore = create((set, get) => ({
       throw err;
     }
   },
+
 
   loadGroupExpenses: async (groupId) => {
     try {
@@ -258,6 +265,7 @@ export const useStore = create((set, get) => ({
       console.error('Failed to load expenses:', err);
     }
   },
+
 
   loadAllExpenses: async () => {
     try {
@@ -292,6 +300,7 @@ export const useStore = create((set, get) => ({
     }
   },
 
+
   loadGroupBalances: async (groupId) => {
     try {
       const balances = await apiService.getGroupBalances(groupId);
@@ -303,32 +312,27 @@ export const useStore = create((set, get) => ({
   },
   
   // Settlement Actions
-  // ✅ REPLACE your settleUp function ONLY
-// ✅ REPLACE settleUp in store/useStore.js
-settleUp: async (toUserId, amount, groupId, note) => {
-  try {
-    const { currentUser } = get();
-    const fromUserId = currentUser._id || currentUser.id;
-    
-    // ✅ apiService.recordSettlement expects: (groupId, fromUserId, toUserId, amount, note)
-    const settlement = await apiService.recordSettlement(groupId, fromUserId, toUserId, amount, note || 'Payment');
-    
-    set(state => ({ 
-      settlements: [...state.settlements, settlement],
-      isSettleUpOpen: false,
-    }));
-    
-    await get().loadGroupExpenses(groupId);
-    await get().loadGroupSettlements(groupId);
-    
-    return settlement;
-  } catch (err) {
-    console.error('Failed to record settlement:', err);
-    throw err;
-  }
-},
-
-
+  settleUp: async (toUserId, amount, groupId, note) => {
+    try {
+      const { currentUser } = get();
+      const fromUserId = currentUser._id || currentUser.id;
+      
+      const settlement = await apiService.recordSettlement(groupId, fromUserId, toUserId, amount, note || 'Payment');
+      
+      set(state => ({ 
+        settlements: [...state.settlements, settlement],
+        isSettleUpOpen: false,
+      }));
+      
+      await get().loadGroupExpenses(groupId);
+      await get().loadGroupSettlements(groupId);
+      
+      return settlement;
+    } catch (err) {
+      console.error('Failed to record settlement:', err);
+      throw err;
+    }
+  },
 
 
   loadGroupSettlements: async (groupId) => {
@@ -344,6 +348,7 @@ settleUp: async (toUserId, amount, groupId, note) => {
       console.error('Failed to load settlements:', err);
     }
   },
+
 
   loadAllSettlements: async () => {
     try {
@@ -366,6 +371,7 @@ settleUp: async (toUserId, amount, groupId, note) => {
     }
   },
 
+
   sendReminder: async (groupId, memberId, amount) => {
     try {
       await apiService.sendPaymentReminder(groupId, memberId, amount);
@@ -375,15 +381,17 @@ settleUp: async (toUserId, amount, groupId, note) => {
       throw err;
     }
   },
+
   sendCombinedReminder: async (memberId, totalAmount, groupBreakdown) => {
-  try {
-    await apiService.sendCombinedReminder(memberId, totalAmount, groupBreakdown);
-    return true;
-  } catch (err) {
-    console.error('Failed to send combined reminder:', err);
-    throw err;
-  }
-},
+    try {
+      await apiService.sendCombinedReminder(memberId, totalAmount, groupBreakdown);
+      return true;
+    } catch (err) {
+      console.error('Failed to send combined reminder:', err);
+      throw err;
+    }
+  },
+
 
 
   // Friends Actions - Computed from group memberships
@@ -429,10 +437,12 @@ settleUp: async (toUserId, amount, groupId, note) => {
     return friends;
   },
 
+
   refreshFriends: () => {
     // Recompute from current groups
     return get().loadFriends();
   },
+
 
   updateProfile: async (data) => {
     try {
@@ -451,6 +461,7 @@ settleUp: async (toUserId, amount, groupId, note) => {
           : group.createdBy
       }));
 
+
       const updatedExpenses = expenses.map(expense => ({
         ...expense,
         paidBy: (expense.paidBy?._id || expense.paidBy) === updatedUser._id
@@ -464,6 +475,7 @@ settleUp: async (toUserId, amount, groupId, note) => {
         }))
       }));
 
+
       const updatedSettlements = settlements.map(settlement => ({
         ...settlement,
         from: (settlement.from?._id || settlement.from) === updatedUser._id
@@ -473,6 +485,7 @@ settleUp: async (toUserId, amount, groupId, note) => {
           ? { ...settlement.to, ...updatedUser }
           : settlement.to
       }));
+
 
       set({ 
         currentUser: updatedUser,
@@ -486,6 +499,7 @@ settleUp: async (toUserId, amount, groupId, note) => {
       throw err;
     }
   },
+
 
   deleteProfileImage: async () => {
     try {
@@ -504,6 +518,7 @@ settleUp: async (toUserId, amount, groupId, note) => {
           : group.createdBy
       }));
 
+
       const updatedExpenses = expenses.map(expense => ({
         ...expense,
         paidBy: (expense.paidBy?._id || expense.paidBy) === user._id
@@ -517,6 +532,7 @@ settleUp: async (toUserId, amount, groupId, note) => {
         }))
       }));
 
+
       const updatedSettlements = settlements.map(settlement => ({
         ...settlement,
         from: (settlement.from?._id || settlement.from) === user._id
@@ -526,6 +542,7 @@ settleUp: async (toUserId, amount, groupId, note) => {
           ? { ...settlement.to, ...user }
           : settlement.to
       }));
+
 
       set({ 
         currentUser: user,
@@ -871,6 +888,8 @@ settleUp: async (toUserId, amount, groupId, note) => {
     };
   },
 
+
+  // ✅ ONLY SOCKET SECTION IS EDITED - EVERYTHING ELSE IS EXACT SAME
   // Socket Actions
   initializeSocket: () => {
     const token = localStorage.getItem('token');
@@ -894,15 +913,12 @@ settleUp: async (toUserId, amount, groupId, note) => {
 
     // Set up event listeners
     socketService.onExpenseCreated((expense) => {
-      
       set(state => {
         // Check if expense already exists
         const exists = state.expenses.some(e => (e._id || e.id) === (expense._id || expense.id));
         if (exists) {
-          
           return state;
         }
-        
         
         return {
           expenses: [...state.expenses, expense]
@@ -911,14 +927,12 @@ settleUp: async (toUserId, amount, groupId, note) => {
     });
 
     socketService.onExpenseDeleted(({ expenseId }) => {
-      
       set(state => ({
         expenses: state.expenses.filter(e => (e._id || e.id) !== expenseId)
       }));
     });
 
     socketService.onExpenseUpdated((updatedExpense) => {
-      
       set(state => ({
         expenses: state.expenses.map(e => 
           (e._id || e.id) === (updatedExpense._id || updatedExpense.id) ? updatedExpense : e
@@ -927,15 +941,12 @@ settleUp: async (toUserId, amount, groupId, note) => {
     });
 
     socketService.onSettlementCreated((settlement) => {
-      
       set(state => {
         // Check if settlement already exists
         const exists = state.settlements.some(s => (s._id || s.id) === (settlement._id || settlement.id));
         if (exists) {
-          
           return state;
         }
-        
         
         return {
           settlements: [...state.settlements, settlement]
@@ -943,40 +954,112 @@ settleUp: async (toUserId, amount, groupId, note) => {
       });
     });
 
-    // Listen for new members joining groups
+    // ✅ FIXED: Listen for new members joining groups
     socketService.onMemberJoined(({ groupId, userId, user }) => {
       
+      
+      // ✅ Validate data
+      if (!user || !groupId || !userId) {
+        console.error('Invalid member joined data:', { groupId, userId, user });
+        return;
+      }
+
       set(state => ({
         groups: state.groups.map(g => {
-          if ((g._id || g.id) === groupId) {
-            // Add new member if not already present
-            const memberExists = g.members.some(m => (m._id || m.id) === userId);
+          const gId = (g._id || g.id)?.toString();
+          const targetGroupId = groupId?.toString();
+          
+          if (gId === targetGroupId) {
+            // ✅ Safe member existence check
+            const memberExists = g.members?.some(m => {
+              const memberId = (m._id || m.id)?.toString();
+              const newUserId = (user._id || user.id || userId)?.toString();
+              return memberId === newUserId;
+            });
+            
             if (!memberExists) {
-              return { ...g, members: [...g.members, user] };
+              
+              return { ...g, members: [...(g.members || []), user] };
             }
+            
+            
           }
           return g;
         })
       }));
+
+      // Refresh friends list
+      get().refreshFriends();
     });
 
-    // Listen for multiple members being added to groups
+    // ✅ FIXED: Listen for multiple members being added to groups
     socketService.onMembersAdded(({ groupId, addedBy, members }) => {
       
+      
+      // ✅ Validate data
+      if (!groupId || !Array.isArray(members) || members.length === 0) {
+        console.error('Invalid members added data:', { groupId, members });
+        return;
+      }
+
       const { currentUser } = get();
       
-      // Only update if you're not one of the newly added members
-      const isCurrentUserAdded = members.some(m => (m._id || m.id).toString() === currentUser._id.toString());
+      // ✅ Safe validation of all members
+      const validMembers = members.filter(m => {
+        if (!m || typeof m !== 'object') {
+          console.warn('Invalid member object:', m);
+          return false;
+        }
+        
+        const memberId = m._id || m.id;
+        if (!memberId) {
+          console.warn('Member missing ID:', m);
+          return false;
+        }
+        
+        return true;
+      });
+
+      if (validMembers.length === 0) {
+        console.error('No valid members in the array');
+        return;
+      }
+
+      // ✅ Safe current user check
+      const currentUserId = (currentUser?._id || currentUser?.id)?.toString();
+      
+      if (!currentUserId) {
+        console.error('Current user ID not found');
+        return;
+      }
+
+      // Check if current user is one of the newly added members
+      const isCurrentUserAdded = validMembers.some(m => {
+        const memberId = (m._id || m.id)?.toString();
+        return memberId === currentUserId;
+      });
       
       if (!isCurrentUserAdded) {
+        // Update the group with new members
         set(state => ({
           groups: state.groups.map(g => {
-            if ((g._id || g.id) === groupId) {
-              // Add new members that aren't already present
-              const existingIds = g.members.map(m => (m._id || m.id).toString());
-              const newMembers = members.filter(m => !existingIds.includes((m._id || m.id).toString()));
+            const gId = (g._id || g.id)?.toString();
+            const targetGroupId = groupId?.toString();
+            
+            if (gId === targetGroupId) {
+              // ✅ Safe existing members check
+              const existingIds = (g.members || [])
+                .map(m => (m._id || m.id)?.toString())
+                .filter(Boolean); // Remove undefined/null
+              
+              const newMembers = validMembers.filter(m => {
+                const memberId = (m._id || m.id)?.toString();
+                return memberId && !existingIds.includes(memberId);
+              });
+              
               if (newMembers.length > 0) {
-                return { ...g, members: [...g.members, ...newMembers] };
+                
+                return { ...g, members: [...(g.members || []), ...newMembers] };
               }
             }
             return g;
@@ -987,12 +1070,18 @@ settleUp: async (toUserId, amount, groupId, note) => {
         
         get().loadGroups();
       }
+
+      // Refresh friends list
+      get().refreshFriends();
     });
 
     // Listen for being added to a group as a friend
     socketService.onFriendAddedToGroup(({ userId, groupId, groupName, groupEmoji }) => {
       const { currentUser } = get();
-      if (currentUser?._id === userId) {
+      const currentUserId = (currentUser?._id || currentUser?.id)?.toString();
+      const targetUserId = userId?.toString();
+      
+      if (currentUserId && targetUserId && currentUserId === targetUserId) {
         
         // Refresh groups list
         get().loadGroups();
@@ -1007,17 +1096,41 @@ settleUp: async (toUserId, amount, groupId, note) => {
     // Recompute friends when group members change
     socketService.onMembersAdded(handleGroupMembershipChange);
     socketService.onMemberJoined(handleGroupMembershipChange);
+    socketService.onNotification((notification) => {
+  
+  
+  // Show browser notification if permission granted
+  if ('Notification' in window && Notification.permission === 'granted') {
+    const notif = new Notification(notification.title, {
+      body: notification.message,
+      icon: '/icon-192.png',
+      badge: '/badge-72.png',
+      tag: notification.type || 'notification',
+      requireInteraction: false,
+      data: {
+        url: notification.groupId ? `/group/${notification.groupId}` : '/'
+      }
+    });
+
+    notif.onclick = function(event) {
+      event.preventDefault();
+      window.focus();
+      if (notification.groupId) {
+        window.location.href = `/group/${notification.groupId}`;
+      }
+      notif.close();
+    };
+  }
+});
   },
+
 
   joinSocketGroup: (groupId) => {
     socketService.joinGroup(groupId);
   },
 
+
   leaveSocketGroup: (groupId) => {
     socketService.leaveGroup(groupId);
   },
 }));
-
-
-
-

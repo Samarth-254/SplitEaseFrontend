@@ -1,7 +1,7 @@
 const express=require('express');
 const cors=require('cors');
 const authRoutes=require("../src/routes/authRoutes");
-
+const notificationRoutes = require('../src/routes/notificationRoutes');
 const app=express();
 
 const allowedOrigins = (process.env.FRONTEND_URLS || process.env.FRONTEND_URL || 'http://localhost:5173')
@@ -21,6 +21,7 @@ app.use("/api/invites", require("./routes/inviteRoutes"));
 app.use("/api/expenses", require("./routes/expenseRoutes"));
 app.use("/api/settlements", require("./routes/settlementRoutes"));
 app.use("/api/friends", require("./routes/friendRoutes"));
+app.use('/api/notifications', notificationRoutes);
 
 app.get("/health",(req,res)=>{
     res.json({status:"OK"});

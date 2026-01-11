@@ -8,6 +8,7 @@ import { Button, Input } from '../../components/ui';
 import { useStore } from '../../store/useStore';
 import apiService from '../../services/api';
 
+
 /**
  * Login Screen
  * 
@@ -18,6 +19,7 @@ import apiService from '../../services/api';
  * - Clear visual hierarchy
  */
 
+
 export const LoginScreen = () => {
   const navigate = useNavigate();
   const { setUser } = useStore();
@@ -25,6 +27,7 @@ export const LoginScreen = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
 
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
@@ -56,6 +59,7 @@ export const LoginScreen = () => {
       setLoading(false);
     }
   };
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -94,6 +98,7 @@ export const LoginScreen = () => {
     }
   };
 
+
   return (
     <AuthScreen>
       <div className="flex-1 flex flex-col justify-center px-6 py-12 sm:px-8 lg:px-12">
@@ -109,9 +114,13 @@ export const LoginScreen = () => {
               initial={{ scale: 0.8 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
-              className="text-5xl mb-4"
+              className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-secondary-500 mb-4 overflow-hidden"
             >
-              💸
+              <img 
+                src="/icon-192.png" 
+                alt="SplitEase" 
+                className="w-full h-full object-cover"
+              />
             </motion.div>
             <h1 className="text-2xl font-bold text-neutral-100 mb-2">
               Welcome back
@@ -120,6 +129,7 @@ export const LoginScreen = () => {
               Sign in to manage your expenses
             </p>
           </div>
+
 
           {/* Google Sign In */}
           <div className="mb-6">
@@ -133,6 +143,7 @@ export const LoginScreen = () => {
             />
           </div>
 
+
           {/* Divider */}
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
@@ -142,6 +153,7 @@ export const LoginScreen = () => {
               <span className="px-4 bg-primary-950 text-neutral-500">Or continue with email</span>
             </div>
           </div>
+
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -156,6 +168,7 @@ export const LoginScreen = () => {
               size="lg"
             />
 
+
             <Input
               label="Password"
               type="password"
@@ -167,6 +180,7 @@ export const LoginScreen = () => {
               size="lg"
             />
 
+
             {error && (
               <motion.p
                 initial={{ opacity: 0, y: -10 }}
@@ -176,6 +190,7 @@ export const LoginScreen = () => {
                 {error}
               </motion.p>
             )}
+
 
             <Button
               type="submit"
@@ -188,6 +203,7 @@ export const LoginScreen = () => {
               Sign In
             </Button>
           </form>
+
 
           {/* Footer */}
           <p className="mt-8 text-center text-sm text-neutral-500">
@@ -204,7 +220,3 @@ export const LoginScreen = () => {
     </AuthScreen>
   );
 };
-
-
-
-
