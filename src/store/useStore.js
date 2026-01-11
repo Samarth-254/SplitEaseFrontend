@@ -774,7 +774,7 @@ export const useStore = create((set, get) => ({
         
         const settlementInPaise = Math.round(settlement.amount * 100);
         balances[fromId][toId] += settlementInPaise;
-        balances[toId][fromIn] -= settlementInPaise;
+        balances[toId][fromId] -= settlementInPaise;
       });
       
       const currentUserId = currentUser._id || currentUser.id;
