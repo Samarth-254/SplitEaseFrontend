@@ -47,7 +47,7 @@ function App() {
     initializeAuth();
   }, []);
 
-  // ✅ SIMPLE: Show notification prompt every 24 hours until enabled
+  // ✅ Show notification prompt every 24 hours until enabled
   useEffect(() => {
     if (!isAuthenticated) {
       setShowNotificationPrompt(false);
@@ -69,8 +69,6 @@ function App() {
       
       // If dismissed less than 24 hours ago, don't show
       if (timeSinceDismissed < twentyFourHours) {
-        const hoursRemaining = Math.round((twentyFourHours - timeSinceDismissed) / 1000 / 60 / 60);
-        
         return;
       }
     }
@@ -78,27 +76,53 @@ function App() {
     // ✅ Show prompt after 10 seconds
     const timer = setTimeout(() => {
       setShowNotificationPrompt(true);
-      
     }, 10000);
 
     return () => clearTimeout(timer);
   }, [isAuthenticated]);
 
+  // ✅ UPDATED: Returns permission status for NotificationPrompt component
   const handleEnableNotifications = async () => {
-    const granted = await pushNotificationService.requestPermission();
-    if (granted) {
+    try {
+      // Request notification permission
+      const permission = await Notification.requestPermission();
       
+      if (permission === 'granted') {
+        console.log('✅ Notifications enabled!');
+        
+        // Register push notifications
+        const granted = await pushNotificationService.requestPermission();
+        if (granted) {
+          console.log('✅ Push notifications registered');
+        }
+        
+        // Clear dismissed timestamp since they enabled it
+        localStorage.removeItem('notification-prompt-dismissed');
+        
+        return 'granted';
+      } else if (permission === 'denied') {
+        console.log('❌ Notifications blocked by user');
+        
+        // Save timestamp - will show again after 24 hours
+        localStorage.setItem('notification-prompt-dismissed', Date.now().toString());
+        
+        return 'denied';
+      } else {
+        // User dismissed without choosing (default)
+        console.log('⚠️ Notification prompt dismissed');
+        return 'default';
+      }
+    } catch (error) {
+      console.error('Notification error:', error);
+      return 'denied';
     }
-    setShowNotificationPrompt(false);
-    // ✅ Clear dismissed timestamp since they enabled it
-    localStorage.removeItem('notification-prompt-dismissed');
   };
 
   const handleDismissPrompt = () => {
     setShowNotificationPrompt(false);
     // ✅ Save timestamp - will show again after 24 hours
     localStorage.setItem('notification-prompt-dismissed', Date.now().toString());
-    
+    console.log('⏰ Notification prompt dismissed - will show again in 24 hours');
   };
 
   if (!isInitialLoadComplete) {

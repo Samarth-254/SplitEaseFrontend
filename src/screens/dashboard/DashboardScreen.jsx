@@ -1,19 +1,29 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Plus, TrendingUp, TrendingDown, ChevronRight, Users, Wallet, Calendar, UserPlus, DollarSign } from 'lucide-react';
 import { Screen } from '../../components/layout';
-import { Button, Card, Badge, EmptyState, Modal, Input } from '../../components/ui';
+import { Button, Card, Badge, EmptyState, Modal } from '../../components/ui';
 import { useStore } from '../../store/useStore';
 import { AddExpenseModal } from '../expense/AddExpenseModal';
 import { CreateGroupModal } from '../../components/groups/CreateGroupModal';
 import { getCurrencySymbol } from '../../utils/currency';
 
-
 export const DashboardScreen = () => {
   const navigate = useNavigate();
-  const { groups, expenses, settlements, getTotalBalance, getGroupSummary, getGroupMembers, currentUser, settleUp, getUserById, sendReminder, getGroupBalances, isInitialLoadComplete } = useStore();
-  const balance = getTotalBalance();
+  const { 
+    groups, 
+    expenses, 
+    settlements, 
+    getTotalBalance, 
+    getGroupSummary, 
+    getGroupMembers, 
+    currentUser, 
+    settleUp, 
+    getGroupBalances, 
+    isInitialLoadComplete 
+  } = useStore();
+  
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [showSettleModal, setShowSettleModal] = useState(false);
@@ -22,90 +32,96 @@ export const DashboardScreen = () => {
   // Show loading state until data is loaded
   const isDataLoading = !isInitialLoadComplete || (groups.length === 0 && expenses.length === 0 && settlements.length === 0);
   
-  const thisMonthExpenses = expenses.filter(e => {
-    const expDate = new Date(e.createdAt || e.date);
-    const now = new Date();
-    return expDate.getMonth() === now.getMonth() && expDate.getFullYear() === now.getFullYear();
-  });
-
-  const thisMonthTotal = thisMonthExpenses.reduce((sum, expense) => {
-    const currentUserId = currentUser?._id || currentUser?.id;
-    const paidById = expense.paidBy?._id || expense.paidBy;
-    const splits = expense.splits || [];
-    
-    if (splits.length > 0) {
-      const userSplit = splits.find(s => (s.user?._id || s.user) === currentUserId);
-      const paidAmount = paidById === currentUserId ? expense.amount : 0;
-      const oweAmount = userSplit ? userSplit.amount : 0;
-      return sum + paidAmount - oweAmount;
-    } else {
-      const splitBetween = expense.splitBetween || [];
-      const share = splitBetween.length > 0 ? expense.amount / splitBetween.length : 0;
-      const isPayer = paidById === currentUserId;
-      const isInvolved = splitBetween.includes(currentUserId);
-      
-      if (isPayer && isInvolved) {
-        return sum + (expense.amount - share);
-      } else if (isPayer) {
-        return sum + expense.amount;
-      } else if (isInvolved) {
-        return sum - share;
-      }
-      return sum;
-    }
-  }, 0);
-
-  // Calculate all debts from all groups using proper balance calculation
-  const allDebts = [];
-  groups.forEach(group => {
-    const groupId = group._id || group.id;
-    const balances = getGroupBalances(groupId);
-    
-    // Find all members you owe money to
-    balances.forEach(balance => {
-      if (balance.youOwe) {
-        const memberId = balance.user._id || balance.user.id;
-        const memberName = balance.user.name;
-        
-        // Find the oldest expense date for this debt
-        const memberExpenses = expenses.filter(e => {
-          const payerId = e.paidBy?._id || e.paidBy;
-          const currentUserId = currentUser?._id || currentUser?.id;
-          const splits = e.splits || [];
-          
-          return e.groupId === groupId && 
-                 payerId === memberId && 
-                 splits.some(s => (s.user?._id || s.user) === currentUserId);
-        });
-        
-        const oldestExpense = memberExpenses
-          .sort((a, b) => new Date(a.createdAt || a.date) - new Date(b.createdAt || b.date))[0];
-
-        const daysDue = oldestExpense 
-          ? Math.floor((new Date() - new Date(oldestExpense.createdAt || oldestExpense.date)) / (1000 * 60 * 60 * 24))
-          : 0;
-
-        allDebts.push({
-          groupId,
-          groupName: group.name,
-          groupEmoji: group.emoji,
-          memberId,
-          memberName,
-          amount: Math.abs(balance.amount),
-          daysDue,
-          oldestDate: oldestExpense?.createdAt || oldestExpense?.date
-        });
-      }
+  // ✅ REACTIVE: Recalculate when expenses/settlements change
+  const balance = useMemo(() => getTotalBalance(), [expenses, settlements, currentUser]);
+  
+  const thisMonthExpenses = useMemo(() => {
+    return expenses.filter(e => {
+      const expDate = new Date(e.createdAt || e.date);
+      const now = new Date();
+      return expDate.getMonth() === now.getMonth() && expDate.getFullYear() === now.getFullYear();
     });
-  });
+  }, [expenses]);
 
-  // Sort debts by days due (highest to lowest), then by amount
-  const sortedDebts = allDebts.sort((a, b) => {
-    if (b.daysDue !== a.daysDue) {
-      return b.daysDue - a.daysDue;
-    }
-    return b.amount - a.amount;
-  });
+  const thisMonthTotal = useMemo(() => {
+    return thisMonthExpenses.reduce((sum, expense) => {
+      const currentUserId = currentUser?._id || currentUser?.id;
+      const paidById = expense.paidBy?._id || expense.paidBy;
+      const splits = expense.splits || [];
+      
+      if (splits.length > 0) {
+        const userSplit = splits.find(s => (s.user?._id || s.user) === currentUserId);
+        const paidAmount = paidById === currentUserId ? expense.amount : 0;
+        const oweAmount = userSplit ? userSplit.amount : 0;
+        return sum + paidAmount - oweAmount;
+      } else {
+        const splitBetween = expense.splitBetween || [];
+        const share = splitBetween.length > 0 ? expense.amount / splitBetween.length : 0;
+        const isPayer = paidById === currentUserId;
+        const isInvolved = splitBetween.includes(currentUserId);
+        
+        if (isPayer && isInvolved) {
+          return sum + (expense.amount - share);
+        } else if (isPayer) {
+          return sum + expense.amount;
+        } else if (isInvolved) {
+          return sum - share;
+        }
+        return sum;
+      }
+    }, 0);
+  }, [thisMonthExpenses, currentUser]);
+
+  // ✅ REACTIVE: Recalculate debts when data changes
+  const allDebts = useMemo(() => {
+    const debts = [];
+    groups.forEach(group => {
+      const groupId = group._id || group.id;
+      const balances = getGroupBalances(groupId);
+      
+      balances.forEach(balance => {
+        if (balance.youOwe) {
+          const memberId = balance.user._id || balance.user.id;
+          const memberName = balance.user.name;
+          
+          const memberExpenses = expenses.filter(e => {
+            const payerId = e.paidBy?._id || e.paidBy;
+            const currentUserId = currentUser?._id || currentUser?.id;
+            const splits = e.splits || [];
+            
+            return e.groupId === groupId && 
+                   payerId === memberId && 
+                   splits.some(s => (s.user?._id || s.user) === currentUserId);
+          });
+          
+          const oldestExpense = memberExpenses
+            .sort((a, b) => new Date(a.createdAt || a.date) - new Date(b.createdAt || b.date))[0];
+
+          const daysDue = oldestExpense 
+            ? Math.floor((new Date() - new Date(oldestExpense.createdAt || oldestExpense.date)) / (1000 * 60 * 60 * 24))
+            : 0;
+
+          debts.push({
+            groupId,
+            groupName: group.name,
+            groupEmoji: group.emoji,
+            memberId,
+            memberName,
+            amount: Math.abs(balance.amount),
+            daysDue,
+            oldestDate: oldestExpense?.createdAt || oldestExpense?.date
+          });
+        }
+      });
+    });
+    
+    return debts.sort((a, b) => {
+      if (b.daysDue !== a.daysDue) {
+        return b.daysDue - a.daysDue;
+      }
+      return b.amount - a.amount;
+    });
+  }, [groups, expenses, settlements, currentUser]);
 
   const handleSettleDebt = (debt) => {
     setSelectedDebt(debt);
@@ -121,15 +137,6 @@ export const DashboardScreen = () => {
       setSelectedDebt(null);
     } catch (err) {
       alert(err.message || 'Failed to settle up');
-    }
-  };
-
-  const handleSendReminder = async (debt) => {
-    try {
-      await sendReminder(debt.groupId, debt.memberId, debt.amount);
-      alert(`Reminder sent to ${debt.memberName}`);
-    } catch (err) {
-      alert(err.message || 'Failed to send reminder');
     }
   };
   
@@ -176,8 +183,7 @@ export const DashboardScreen = () => {
           </div>
         </motion.div>
 
-
-        {/* Stats Grid - 2 columns on mobile, 4 columns on desktop */}
+        {/* Stats Grid */}
         <motion.div variants={itemVariants} className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {/* Net Balance */}
           <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-3 sm:p-6 hover:border-neutral-700 transition-all duration-300">
@@ -280,9 +286,8 @@ export const DashboardScreen = () => {
           </div>
         </motion.div>
 
-
-  {/* Groups and Debts - Stacked on mobile, side-by-side on desktop */}
-  <motion.div variants={itemVariants} className="grid gap-3 lg:grid-cols-2">
+        {/* Groups and Debts */}
+        <motion.div variants={itemVariants} className="grid gap-3 lg:grid-cols-2">
           {/* Your Groups */}
           <div>
             <div className="flex items-center justify-between mb-3">
@@ -307,7 +312,6 @@ export const DashboardScreen = () => {
                 {groups.map((group, index) => {
                   const groupId = group._id || group.id;
                   const summary = getGroupSummary(groupId);
-                  const members = getGroupMembers(groupId);
                   
                   return (
                     <motion.div
@@ -318,12 +322,10 @@ export const DashboardScreen = () => {
                     >
                       <Link to={`/group/${groupId}`}>
                         <Card variant="interactive" padding="md" className="flex items-center gap-3">
-                          {/* Group Emoji */}
                           <div className="w-10 h-10 rounded-xl bg-primary-700 flex items-center justify-center text-xl flex-shrink-0">
                             {group.emoji}
                           </div>
                           
-                          {/* Group Info */}
                           <div className="flex-1 min-w-0">
                             <h3 className="font-medium text-neutral-100 truncate text-sm">
                               {group.name}
@@ -333,7 +335,6 @@ export const DashboardScreen = () => {
                             </p>
                           </div>
                           
-                          {/* Balance */}
                           <div className="text-right flex-shrink-0">
                             {summary.net === 0 ? (
                               <Badge variant="info" size="sm">Settled</Badge>
@@ -358,14 +359,14 @@ export const DashboardScreen = () => {
             )}
           </div>
 
-          {/* You Owe (Debts) */}
+          {/* You Owe (Debts) - ✅ SIMPLIFIED */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-base sm:text-lg font-semibold text-neutral-100">You Owe</h2>
-              <span className="text-xs sm:text-sm text-neutral-500">{sortedDebts.length} {sortedDebts.length === 1 ? 'debt' : 'debts'}</span>
+              <span className="text-xs sm:text-sm text-neutral-500">{allDebts.length} {allDebts.length === 1 ? 'debt' : 'debts'}</span>
             </div>
 
-            {sortedDebts.length === 0 ? (
+            {allDebts.length === 0 ? (
               <EmptyState
                 icon={<TrendingDown size={40} />}
                 title="All settled up!"
@@ -373,69 +374,52 @@ export const DashboardScreen = () => {
               />
             ) : (
               <div className="max-h-[400px] overflow-y-auto pr-2 space-y-3 scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-neutral-900">
-                {sortedDebts.map((debt, index) => {
-                  const getDueBadge = (days) => {
-                    if (days === 0) return { text: 'Today', color: 'bg-orange-500/20 text-orange-400' };
-                    if (days === 1) return { text: '1 day', color: 'bg-orange-500/20 text-orange-400' };
-                    if (days <= 7) return { text: `${days} days`, color: 'bg-orange-500/20 text-orange-400' };
-                    if (days <= 30) return { text: `${days} days`, color: 'bg-red-500/20 text-red-400' };
-                    return { text: `${days} days`, color: 'bg-red-600/30 text-red-300' };
-                  };
-                  
-                  const dueBadge = getDueBadge(debt.daysDue);
-                  
-                  return (
-                    <motion.div
-                      key={`${debt.groupId}-${debt.memberId}`}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
+                {allDebts.map((debt, index) => (
+                  <motion.div
+                    key={`${debt.groupId}-${debt.memberId}`}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <Card 
+                      padding="md" 
+                      className="border-red-900/30 hover:border-red-800/50 transition-colors cursor-pointer"
+                      onClick={() => navigate(`/group/${debt.groupId}`)}
                     >
-                      <Card 
-                        padding="md" 
-                        className="border-red-900/30 hover:border-red-800/50 transition-colors cursor-pointer"
-                        onClick={() => navigate(`/group/${debt.groupId}`)}
-                      >
-                        <div className="space-y-3">
-                          {/* Member Info and Amount */}
-                          <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-red-900/30 flex items-center justify-center flex-shrink-0">
-                              <DollarSign size={20} className="text-red-400" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-neutral-100 truncate text-sm sm:text-base">
-                                {debt.memberName}
-                              </h3>
-                              <p className="text-xs text-neutral-500 mt-0.5">
-                                {debt.groupEmoji} {debt.groupName}
-                              </p>
-                            </div>
-                            <p className="text-base sm:text-lg font-bold text-red-400 flex-shrink-0">
-                              {getCurrencySymbol('INR')}{debt.amount.toFixed(2)}
+                      <div className="space-y-3">
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                            <DollarSign size={20} className="text-red-400" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-neutral-100 truncate text-sm sm:text-base">
+                              {debt.memberName}
+                            </h3>
+                            <p className="text-xs text-neutral-500 mt-0.5">
+                              {debt.groupEmoji} {debt.groupName}
                             </p>
                           </div>
-                          
-                          {/* Actions Row */}
-                          <div className="flex items-center justify-between pt-2 border-t border-neutral-800">
-                            <span className={`text-xs px-2 py-1 rounded-md font-medium ${dueBadge.color}`}>
-                              {dueBadge.text} overdue
-                            </span>
-                            
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSettleDebt(debt);
-                              }}
-                              className="text-sm font-medium text-orange-400 hover:text-orange-300 underline transition-colors"
-                            >
-                              Settle Up
-                            </button>
-                          </div>
+                          <p className="text-base sm:text-lg font-bold text-red-400 flex-shrink-0">
+                            {getCurrencySymbol('INR')}{debt.amount.toFixed(2)}
+                          </p>
                         </div>
-                      </Card>
-                    </motion.div>
-                  );
-                })}
+                        
+                        {/* ✅ SIMPLIFIED: No "overdue" badge */}
+                        <div className="flex items-center justify-end pt-2 border-t border-neutral-800">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSettleDebt(debt);
+                            }}
+                            className="text-sm font-medium text-orange-400 hover:text-orange-300 underline transition-colors"
+                          >
+                            Settle Up
+                          </button>
+                        </div>
+                      </div>
+                    </Card>
+                  </motion.div>
+                ))}
               </div>
             )}
           </div>
@@ -474,14 +458,11 @@ export const DashboardScreen = () => {
         )}
       </Modal>
 
-
-      {/* Add Expense Modal */}
       <AddExpenseModal 
         isOpen={showAddExpense} 
         onClose={() => setShowAddExpense(false)} 
       />
 
-      {/* Create Group Modal */}
       <CreateGroupModal
         isOpen={showCreateGroup}
         onClose={() => setShowCreateGroup(false)}
@@ -489,8 +470,3 @@ export const DashboardScreen = () => {
     </Screen>
   );
 };
-
-
-
-
-
