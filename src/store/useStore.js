@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import apiService from '../services/api';
 import socketService from '../services/socket';
 
-
 export const useStore = create((set, get) => ({
   // Auth State
   currentUser: null,
@@ -67,7 +66,6 @@ export const useStore = create((set, get) => ({
       set({ isInitialLoadComplete: true });
     }
   },
-
 
   setUser: async (user) => {
     // Set user and clear old data
@@ -189,7 +187,6 @@ export const useStore = create((set, get) => ({
       
       let splits = Array.isArray(providedSplits) ? providedSplits : [];
 
-
       // If no splits provided, fall back to equal split
       if (splits.length === 0) {
         const numberOfPeople = splitBetween.length;
@@ -201,7 +198,6 @@ export const useStore = create((set, get) => ({
         }));
       }
 
-
       const expense = await apiService.addExpense(
         groupId,
         description,
@@ -212,7 +208,6 @@ export const useStore = create((set, get) => ({
         paidBy,
         currency
       );
-
 
       // ONLY socket event will add it to state - prevents duplicates
       // This means creator will see it when socket broadcasts it
@@ -237,7 +232,6 @@ export const useStore = create((set, get) => ({
     }
   },
 
-
   updateExpense: async (expenseId, payload) => {
     try {
       const updated = await apiService.updateExpense(expenseId, payload);
@@ -250,7 +244,6 @@ export const useStore = create((set, get) => ({
       throw err;
     }
   },
-
 
   loadGroupExpenses: async (groupId) => {
     try {
@@ -265,7 +258,6 @@ export const useStore = create((set, get) => ({
       console.error('Failed to load expenses:', err);
     }
   },
-
 
   loadAllExpenses: async () => {
     try {
@@ -300,7 +292,6 @@ export const useStore = create((set, get) => ({
     }
   },
 
-
   loadGroupBalances: async (groupId) => {
     try {
       const balances = await apiService.getGroupBalances(groupId);
@@ -334,7 +325,6 @@ export const useStore = create((set, get) => ({
     }
   },
 
-
   loadGroupSettlements: async (groupId) => {
     try {
       const settlements = await apiService.getGroupSettlements(groupId);
@@ -348,7 +338,6 @@ export const useStore = create((set, get) => ({
       console.error('Failed to load settlements:', err);
     }
   },
-
 
   loadAllSettlements: async () => {
     try {
@@ -371,7 +360,6 @@ export const useStore = create((set, get) => ({
     }
   },
 
-
   sendReminder: async (groupId, memberId, amount) => {
     try {
       await apiService.sendPaymentReminder(groupId, memberId, amount);
@@ -391,8 +379,6 @@ export const useStore = create((set, get) => ({
       throw err;
     }
   },
-
-
 
   // Friends Actions - Computed from group memberships
   loadFriends: () => {
@@ -437,12 +423,10 @@ export const useStore = create((set, get) => ({
     return friends;
   },
 
-
   refreshFriends: () => {
     // Recompute from current groups
     return get().loadFriends();
   },
-
 
   updateProfile: async (data) => {
     try {
@@ -461,7 +445,6 @@ export const useStore = create((set, get) => ({
           : group.createdBy
       }));
 
-
       const updatedExpenses = expenses.map(expense => ({
         ...expense,
         paidBy: (expense.paidBy?._id || expense.paidBy) === updatedUser._id
@@ -475,7 +458,6 @@ export const useStore = create((set, get) => ({
         }))
       }));
 
-
       const updatedSettlements = settlements.map(settlement => ({
         ...settlement,
         from: (settlement.from?._id || settlement.from) === updatedUser._id
@@ -485,7 +467,6 @@ export const useStore = create((set, get) => ({
           ? { ...settlement.to, ...updatedUser }
           : settlement.to
       }));
-
 
       set({ 
         currentUser: updatedUser,
@@ -499,7 +480,6 @@ export const useStore = create((set, get) => ({
       throw err;
     }
   },
-
 
   deleteProfileImage: async () => {
     try {
@@ -518,7 +498,6 @@ export const useStore = create((set, get) => ({
           : group.createdBy
       }));
 
-
       const updatedExpenses = expenses.map(expense => ({
         ...expense,
         paidBy: (expense.paidBy?._id || expense.paidBy) === user._id
@@ -532,7 +511,6 @@ export const useStore = create((set, get) => ({
         }))
       }));
 
-
       const updatedSettlements = settlements.map(settlement => ({
         ...settlement,
         from: (settlement.from?._id || settlement.from) === user._id
@@ -542,7 +520,6 @@ export const useStore = create((set, get) => ({
           ? { ...settlement.to, ...user }
           : settlement.to
       }));
-
 
       set({ 
         currentUser: user,
@@ -858,7 +835,7 @@ export const useStore = create((set, get) => ({
       if (!balances[toId]) balances[toId] = {};
       
       if (!balances[fromId][toId]) balances[fromId][toId] = 0;
-      if (!balances[toId][fromId]) balances[toId][fromId] = 0;
+      if (!balances[toId][fromId]) balances[toId][fromIn] = 0;
       
       balances[fromId][toId] += settlementInPaise;
       balances[toId][fromId] -= settlementInPaise;
@@ -888,51 +865,55 @@ export const useStore = create((set, get) => ({
     };
   },
 
-
-  // ✅ ONLY SOCKET SECTION IS EDITED - EVERYTHING ELSE IS EXACT SAME
-  // Socket Actions
+  // ✅ SOCKET ACTIONS - CLEAN AND PROPER
   initializeSocket: () => {
     const token = localStorage.getItem('token');
-    if (!token) return;
+    if (!token) {
+      console.log('❌ No token found, skipping socket');
+      return;
+    }
 
-    // Connect to socket
+    console.log('🔌 Initializing socket connection...');
     socketService.connect(token);
 
-    // Join user room for personal notifications
-    const { currentUser } = get();
+    const { currentUser, groups } = get();
+    
+    // Join user room
     if (currentUser?._id) {
       socketService.joinUserRoom(currentUser._id);
     }
 
-    // Join all groups
-    const { groups } = get();
+    // Join all group rooms
     groups.forEach(group => {
       const groupId = group._id || group.id;
-      socketService.joinGroup(groupId);
+      if (groupId) {
+        socketService.joinGroup(groupId);
+      }
     });
 
-    // Set up event listeners
+    // Set up all event listeners
     socketService.onExpenseCreated((expense) => {
+      console.log('💰 Expense created event received:', expense);
       set(state => {
-        // Check if expense already exists
         const exists = state.expenses.some(e => (e._id || e.id) === (expense._id || expense.id));
         if (exists) {
+          console.log('⚠️ Expense already exists, skipping');
           return state;
         }
-        
-        return {
-          expenses: [...state.expenses, expense]
-        };
+        console.log('✅ Adding expense to state');
+        return { expenses: [...state.expenses, expense] };
       });
     });
 
     socketService.onExpenseDeleted(({ expenseId }) => {
+      console.log('🗑️ Expense deleted event received:', expenseId);
       set(state => ({
         expenses: state.expenses.filter(e => (e._id || e.id) !== expenseId)
       }));
     });
 
     socketService.onExpenseUpdated((updatedExpense) => {
+      console.log('✏️ Expense updated event received:', updatedExpense);
       set(state => ({
         expenses: state.expenses.map(e => 
           (e._id || e.id) === (updatedExpense._id || updatedExpense.id) ? updatedExpense : e
@@ -941,194 +922,109 @@ export const useStore = create((set, get) => ({
     });
 
     socketService.onSettlementCreated((settlement) => {
+      console.log('💸 Settlement created event received:', settlement);
       set(state => {
-        // Check if settlement already exists
         const exists = state.settlements.some(s => (s._id || s.id) === (settlement._id || settlement.id));
         if (exists) {
+          console.log('⚠️ Settlement already exists, skipping');
           return state;
         }
-        
-        return {
-          settlements: [...state.settlements, settlement]
-        };
+        console.log('✅ Adding settlement to state');
+        return { settlements: [...state.settlements, settlement] };
       });
     });
 
-    // ✅ FIXED: Listen for new members joining groups
     socketService.onMemberJoined(({ groupId, userId, user }) => {
-      
-      
-      // ✅ Validate data
+      console.log('👤 Member joined event received:', { groupId, userId, user });
       if (!user || !groupId || !userId) {
-        console.error('Invalid member joined data:', { groupId, userId, user });
+        console.error('❌ Invalid member joined data');
         return;
       }
 
       set(state => ({
         groups: state.groups.map(g => {
-          const gId = (g._id || g.id)?.toString();
-          const targetGroupId = groupId?.toString();
-          
-          if (gId === targetGroupId) {
-            // ✅ Safe member existence check
-            const memberExists = g.members?.some(m => {
-              const memberId = (m._id || m.id)?.toString();
-              const newUserId = (user._id || user.id || userId)?.toString();
-              return memberId === newUserId;
-            });
-            
+          if ((g._id || g.id) === groupId) {
+            const memberExists = g.members?.some(m => (m._id || m.id) === (user._id || user.id || userId));
             if (!memberExists) {
-              
+              console.log('✅ Adding member to group');
               return { ...g, members: [...(g.members || []), user] };
             }
-            
-            
           }
           return g;
         })
       }));
-
-      // Refresh friends list
       get().refreshFriends();
     });
 
-    // ✅ FIXED: Listen for multiple members being added to groups
-    socketService.onMembersAdded(({ groupId, addedBy, members }) => {
-      
-      
-      // ✅ Validate data
-      if (!groupId || !Array.isArray(members) || members.length === 0) {
-        console.error('Invalid members added data:', { groupId, members });
+    socketService.onMembersAdded(({ groupId, members }) => {
+      console.log('👥 Members added event received:', { groupId, members });
+      if (!groupId || !Array.isArray(members)) {
+        console.error('❌ Invalid members added data');
         return;
       }
 
       const { currentUser } = get();
-      
-      // ✅ Safe validation of all members
-      const validMembers = members.filter(m => {
-        if (!m || typeof m !== 'object') {
-          console.warn('Invalid member object:', m);
-          return false;
-        }
-        
-        const memberId = m._id || m.id;
-        if (!memberId) {
-          console.warn('Member missing ID:', m);
-          return false;
-        }
-        
-        return true;
-      });
-
-      if (validMembers.length === 0) {
-        console.error('No valid members in the array');
-        return;
-      }
-
-      // ✅ Safe current user check
       const currentUserId = (currentUser?._id || currentUser?.id)?.toString();
+      const isCurrentUserAdded = members.some(m => (m._id || m.id)?.toString() === currentUserId);
       
-      if (!currentUserId) {
-        console.error('Current user ID not found');
-        return;
-      }
-
-      // Check if current user is one of the newly added members
-      const isCurrentUserAdded = validMembers.some(m => {
-        const memberId = (m._id || m.id)?.toString();
-        return memberId === currentUserId;
-      });
-      
-      if (!isCurrentUserAdded) {
-        // Update the group with new members
+      if (isCurrentUserAdded) {
+        console.log('📥 You were added to group, refreshing groups...');
+        get().loadGroups();
+      } else {
         set(state => ({
           groups: state.groups.map(g => {
-            const gId = (g._id || g.id)?.toString();
-            const targetGroupId = groupId?.toString();
-            
-            if (gId === targetGroupId) {
-              // ✅ Safe existing members check
-              const existingIds = (g.members || [])
-                .map(m => (m._id || m.id)?.toString())
-                .filter(Boolean); // Remove undefined/null
-              
-              const newMembers = validMembers.filter(m => {
-                const memberId = (m._id || m.id)?.toString();
-                return memberId && !existingIds.includes(memberId);
-              });
-              
+            if ((g._id || g.id) === groupId) {
+              const existingIds = (g.members || []).map(m => (m._id || m.id)?.toString());
+              const newMembers = members.filter(m => !existingIds.includes((m._id || m.id)?.toString()));
               if (newMembers.length > 0) {
-                
+                console.log(`✅ Adding ${newMembers.length} new members to group`);
                 return { ...g, members: [...(g.members || []), ...newMembers] };
               }
             }
             return g;
           })
         }));
-      } else {
-        // If you were added, refresh the entire groups list
-        
-        get().loadGroups();
       }
-
-      // Refresh friends list
       get().refreshFriends();
     });
 
-    // Listen for being added to a group as a friend
-    socketService.onFriendAddedToGroup(({ userId, groupId, groupName, groupEmoji }) => {
+    socketService.onFriendAddedToGroup(({ userId, groupId }) => {
+      console.log('🎉 Friend added to group event received');
       const { currentUser } = get();
-      const currentUserId = (currentUser?._id || currentUser?.id)?.toString();
-      const targetUserId = userId?.toString();
-      
-      if (currentUserId && targetUserId && currentUserId === targetUserId) {
-        
-        // Refresh groups list
+      if ((currentUser?._id || currentUser?.id)?.toString() === userId?.toString()) {
+        console.log('📥 You were added, refreshing groups...');
         get().loadGroups();
       }
     });
 
-    // Listen for group membership changes that affect friends list
-    const handleGroupMembershipChange = () => {
-      get().refreshFriends();
-    };
-
-    // Recompute friends when group members change
-    socketService.onMembersAdded(handleGroupMembershipChange);
-    socketService.onMemberJoined(handleGroupMembershipChange);
     socketService.onNotification((notification) => {
-  
-  
-  // Show browser notification if permission granted
-  if ('Notification' in window && Notification.permission === 'granted') {
-    const notif = new Notification(notification.title, {
-      body: notification.message,
-      icon: '/icon-192.png',
-      badge: '/badge-72.png',
-      tag: notification.type || 'notification',
-      requireInteraction: false,
-      data: {
-        url: notification.groupId ? `/group/${notification.groupId}` : '/'
+      console.log('🔔 Notification received:', notification);
+      
+      if ('Notification' in window && Notification.permission === 'granted') {
+        const notif = new Notification(notification.title, {
+          body: notification.message,
+          icon: '/icon-192.png',
+          badge: '/badge-72.png',
+          tag: notification.type || 'notification',
+          requireInteraction: false
+        });
+
+        notif.onclick = () => {
+          window.focus();
+          if (notification.groupId) {
+            window.location.href = `/group/${notification.groupId}`;
+          }
+          notif.close();
+        };
       }
     });
 
-    notif.onclick = function(event) {
-      event.preventDefault();
-      window.focus();
-      if (notification.groupId) {
-        window.location.href = `/group/${notification.groupId}`;
-      }
-      notif.close();
-    };
-  }
-});
+    console.log('✅ Socket initialization complete');
   },
-
 
   joinSocketGroup: (groupId) => {
     socketService.joinGroup(groupId);
   },
-
 
   leaveSocketGroup: (groupId) => {
     socketService.leaveGroup(groupId);

@@ -4,6 +4,7 @@ class ApiService {
   constructor() {
     this.baseURL = API_URL;
     this.token = localStorage.getItem('token');
+    this.requestTimeout = 30000; // 30 seconds
   }
 
   setToken(token) {
@@ -18,6 +19,38 @@ class ApiService {
   clearToken() {
     this.token = null;
     localStorage.removeItem('token');
+  }
+
+  // ✅ Helper to check if error is from notifications
+  isNotificationError(endpoint) {
+    const notificationEndpoints = [
+      '/notifications',
+      '/subscribe',
+      '/unsubscribe',
+      '/push'
+    ];
+    return notificationEndpoints.some(path => endpoint.includes(path));
+  }
+
+  // ✅ Request with timeout
+  async fetchWithTimeout(url, options, timeout = this.requestTimeout) {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      });
+      clearTimeout(id);
+      return response;
+    } catch (error) {
+      clearTimeout(id);
+      if (error.name === 'AbortError') {
+        throw new Error('Request timeout - please check your internet connection');
+      }
+      throw error;
+    }
   }
 
   async request(endpoint, options = {}) {
@@ -36,19 +69,51 @@ class ApiService {
     };
 
     try {
-      const response = await fetch(`${this.baseURL}${endpoint}`, config);
-      const data = await response.json();
+      const response = await this.fetchWithTimeout(`${this.baseURL}${endpoint}`, config);
+      
+      // ✅ Handle empty responses (204 No Content, etc)
+      const contentType = response.headers.get('content-type');
+      let data;
+      
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else if (response.status === 204) {
+        data = { success: true };
+      } else {
+        data = { message: 'Success' };
+      }
 
       if (!response.ok) {
         if (response.status === 401) {
+          // ✅ Don't logout for notification errors
+          if (this.isNotificationError(endpoint)) {
+            console.warn('⚠️ Notification error (non-critical):', data.message);
+            throw new Error(data.message || 'Notification error');
+          }
+          
+          // Logout for real auth failures
+          console.error('❌ Authentication failed, logging out');
           this.clearToken();
           window.dispatchEvent(new CustomEvent('unauthorized'));
         }
-        throw new Error(data.message || 'Something went wrong');
+        
+        // ✅ Better error messages
+        const errorMessage = data.message || data.error || `HTTP ${response.status}: ${response.statusText}`;
+        throw new Error(errorMessage);
       }
 
       return data;
     } catch (error) {
+      // ✅ Network error handling
+      if (error.message === 'Failed to fetch') {
+        throw new Error('Network error - please check your internet connection');
+      }
+      
+      // ✅ Log non-critical notification errors
+      if (this.isNotificationError(endpoint)) {
+        console.warn('Notification request failed (non-critical):', error.message);
+      }
+      
       throw error;
     }
   }
@@ -79,182 +144,156 @@ class ApiService {
     });
   }
 
-  async googleLogin(token) {
-    return this.request('/api/auth/google-login', {
-      method: 'POST',
-      body: JSON.stringify({ token }),
-    });
-  }
-
-  async login(email, password) {
-    return this.request('/api/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    });
-  }
-
-  async register(name, email, password) {
-    return this.request('/api/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({ name, email, password }),
-    });
-  }
-
-  async getMe() {
-    return this.request('/api/auth/me', {
-      method: 'GET',
-    });
-  }
-
-  async createGroup(name, emoji) {
-    return this.request('/api/groups', {
-      method: 'POST',
-      body: JSON.stringify({ name, emoji }),
-    });
-  }
-
-  async getGroups() {
-    return this.request('/api/groups', {
-      method: 'GET',
-    });
-  }
-
-  async generateInviteLink(groupId) {
-    return this.request(`/api/groups/${groupId}/invite`, {
-      method: 'POST',
-    });
-  }
-
-  async sendInviteEmail(groupId, email) {
-    return this.request(`/api/invites/${groupId}/email`, {
-      method: 'POST',
-      body: JSON.stringify({ email }),
-    });
-  }
-
-  async joinGroup(token) {
-    return this.request('/api/groups/join', {
-      method: 'POST',
-      body: JSON.stringify({ token }),
-    });
-  }
-
-  async getInviteInfo(token) {
-    return this.request('/api/invites/info', {
-      method: 'POST',
-      body: JSON.stringify({ token }),
-    });
-  }
-
-  async addExpense(groupId, description, amount, splitType, splits, category, paidBy, currency) {
-    return this.request('/api/expenses', {
-      method: 'POST',
-      body: JSON.stringify({ groupId, description, amount, splitType, splits, category, paidBy, currency }),
-    });
-  }
-
-  async getGroupExpenses(groupId) {
-    return this.request(`/api/expenses/group/${groupId}`, {
-      method: 'GET',
-    });
-  }
-
-  async detectCategory(description) {
-    return this.request('/api/expenses/detect-category', {
-      method: 'POST',
-      body: JSON.stringify({ description }),
-    });
-  }
-
-  async deleteExpense(expenseId) {
-    return this.request(`/api/expenses/${expenseId}`, {
-      method: 'DELETE',
-    });
-  }
-
-  async updateExpense(expenseId, payload) {
-    return this.request(`/api/expenses/${expenseId}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-    });
-  }
-
-  async getGroupBalances(groupId) {
-    return this.request(`/api/expenses/group/${groupId}/balances`, {
-      method: 'GET',
-    });
-  }
-
-  // In services/api.js
-async recordSettlement(groupId, fromUserId, toUserId, amount, note) {
-  return this.request(`/api/groups/${groupId}/settlements`, {
-    method: 'POST',
-    body: JSON.stringify({ from: fromUserId, to: toUserId, amount, note }),
-  });
-}
-async sendCombinedReminder(memberId, totalAmount, groupBreakdown) {
-  return this.request('/api/groups/remind/combined', {
-    method: 'POST',
-    body: JSON.stringify({ memberId, totalAmount, groupBreakdown }),
-  });
-}
-
-
-
-  // ✅ FIXED - getGroupSettlements using groups endpoint
-  async getGroupSettlements(groupId) {
-    return this.request(`/api/groups/${groupId}/settlements`, {
-      method: 'GET',
-    });
-  }
-
-  async sendPaymentReminder(groupId, memberId, amount) {
-    return this.request(`/api/groups/${groupId}/remind`, {
-      method: 'POST',
-      body: JSON.stringify({ groupId, memberId, amount }),
-    });
-  }
-
-  async updateProfile(formData) {
+  // ✅ Better file upload handling
+  async uploadFile(endpoint, formData) {
     const headers = {};
     if (this.token) {
       headers['Authorization'] = `Bearer ${this.token}`;
     }
     
-    if (formData instanceof FormData) {
-      const response = await fetch(`${this.baseURL}/api/profile`, {
+    try {
+      const response = await this.fetchWithTimeout(`${this.baseURL}${endpoint}`, {
         method: 'PUT',
         headers,
         body: formData,
       });
+      
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Failed to update profile');
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Upload failed');
+      }
+      
       return data;
+    } catch (error) {
+      if (error.message === 'Failed to fetch') {
+        throw new Error('Network error - please check your internet connection');
+      }
+      throw error;
     }
-    
-    return this.request('/api/profile', {
-      method: 'PUT',
-      body: JSON.stringify(formData),
-    });
   }
 
-  async deleteProfileImage() {
-    return this.request('/api/profile/image', {
-      method: 'DELETE',
-    });
+  // Auth
+  async googleLogin(token) {
+    return this.post('/api/auth/google-login', { token });
   }
 
-  async getFriends() {
-    return this.request('/api/friends', {
-      method: 'GET',
-    });
+  async login(email, password) {
+    return this.post('/api/auth/login', { email, password });
+  }
+
+  async register(name, email, password) {
+    return this.post('/api/auth/register', { name, email, password });
+  }
+
+  async getMe() {
+    return this.get('/api/auth/me');
+  }
+
+  // Groups
+  async createGroup(name, emoji) {
+    return this.post('/api/groups', { name, emoji });
+  }
+
+  async getGroups() {
+    return this.get('/api/groups');
+  }
+
+  async generateInviteLink(groupId) {
+    return this.post(`/api/groups/${groupId}/invite`);
+  }
+
+  async sendInviteEmail(groupId, email) {
+    return this.post(`/api/invites/${groupId}/email`, { email });
+  }
+
+  async joinGroup(token) {
+    return this.post('/api/groups/join', { token });
+  }
+
+  async getInviteInfo(token) {
+    return this.post('/api/invites/info', { token });
   }
 
   async addFriendsToGroup(groupId, friendIds) {
-    return this.request(`/api/groups/${groupId}/add-friends`, {
-      method: 'POST',
-      body: JSON.stringify({ friendIds }),
+    return this.post(`/api/groups/${groupId}/add-friends`, { friendIds });
+  }
+
+  // Expenses
+  async addExpense(groupId, description, amount, splitType, splits, category, paidBy, currency) {
+    return this.post('/api/expenses', { 
+      groupId, 
+      description, 
+      amount, 
+      splitType, 
+      splits, 
+      category, 
+      paidBy, 
+      currency 
     });
+  }
+
+  async getGroupExpenses(groupId) {
+    return this.get(`/api/expenses/group/${groupId}`);
+  }
+
+  async detectCategory(description) {
+    return this.post('/api/expenses/detect-category', { description });
+  }
+
+  async deleteExpense(expenseId) {
+    return this.delete(`/api/expenses/${expenseId}`);
+  }
+
+  async updateExpense(expenseId, payload) {
+    return this.put(`/api/expenses/${expenseId}`, payload);
+  }
+
+  async getGroupBalances(groupId) {
+    return this.get(`/api/expenses/group/${groupId}/balances`);
+  }
+
+  // Settlements
+  async recordSettlement(groupId, fromUserId, toUserId, amount, note) {
+    return this.post(`/api/groups/${groupId}/settlements`, { 
+      from: fromUserId, 
+      to: toUserId, 
+      amount, 
+      note 
+    });
+  }
+
+  async getGroupSettlements(groupId) {
+    return this.get(`/api/groups/${groupId}/settlements`);
+  }
+
+  async sendPaymentReminder(groupId, memberId, amount) {
+    return this.post(`/api/groups/${groupId}/remind`, { groupId, memberId, amount });
+  }
+
+  async sendCombinedReminder(memberId, totalAmount, groupBreakdown) {
+    return this.post('/api/groups/remind/combined', { 
+      memberId, 
+      totalAmount, 
+      groupBreakdown 
+    });
+  }
+
+  // Profile
+  async updateProfile(formData) {
+    if (formData instanceof FormData) {
+      return this.uploadFile('/api/profile', formData);
+    }
+    return this.put('/api/profile', formData);
+  }
+
+  async deleteProfileImage() {
+    return this.delete('/api/profile/image');
+  }
+
+  // Friends
+  async getFriends() {
+    return this.get('/api/friends');
   }
 }
 
