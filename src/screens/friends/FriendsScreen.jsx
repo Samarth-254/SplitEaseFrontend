@@ -10,7 +10,7 @@ import { getCurrencySymbol } from '../../utils/currency';
 
 export const FriendsScreen = () => {
   const [friends, setFriends] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFriend, setSelectedFriend] = useState(null);
   const [showSettleModal, setShowSettleModal] = useState(false);
@@ -22,9 +22,11 @@ export const FriendsScreen = () => {
   const [isSettling, setIsSettling] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  const { currentUser, expenses, settlements, groups, sendReminder, loadGroups, loadGroupExpenses, loadGroupSettlements } = useStore();
+  const { currentUser, expenses, settlements, groups, sendReminder, loadGroups, loadGroupExpenses, loadGroupSettlements, isInitialLoadComplete } = useStore();
 
   useEffect(() => {
+    if (!isInitialLoadComplete) return;
+    setLoading(true);
     fetchFriends();
 
     const handleMembersAdded = () => fetchFriends();
@@ -43,13 +45,14 @@ export const FriendsScreen = () => {
       socketService.offSettlementCreated(handleSettlementCreated);
       socketService.offExpenseCreated(handleExpenseCreated);
     };
-  }, []);
+  }, [isInitialLoadComplete]);
 
   useEffect(() => {
+    if (!isInitialLoadComplete) return;
     if (expenses.length > 0 || settlements.length > 0) {
       fetchFriends();
     }
-  }, [expenses, settlements]);
+  }, [expenses, settlements, isInitialLoadComplete]);
 
   const fetchFriends = async () => {
     try {
@@ -354,7 +357,7 @@ export const FriendsScreen = () => {
   const overallBalance = calculateOverallBalance();
   const currencySymbol = getCurrencySymbol();
 
-  if (loading) {
+  if (!isInitialLoadComplete || loading) {
     return (
       <Screen title="Friends">
         <div className="flex items-center justify-center h-64">
@@ -369,14 +372,14 @@ export const FriendsScreen = () => {
       <div className="space-y-6">
         {/* Header with Title and Search */}
         <div className="flex items-center justify-between gap-3">
-          <h1 className="text-2xl sm:text-3xl font-bold text-neutral-100">Your Friends</h1>
-          <div className="w-[180px] sm:w-[240px]">
+          <h1 className="text-2xl sm:text-2xl md:text-3xl font-bold text-neutral-100">Your Friends</h1>
+          <div className="w-[160px] sm:w-[180px] md:w-[240px]">
             <Input
               placeholder="Search..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               icon={<Search size={18} />}
-              className="h-9"
+  className="h-12 py-1 text-sm leading-tight"
             />
           </div>
         </div>

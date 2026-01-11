@@ -46,18 +46,26 @@ export const ProfileScreen = () => {
 
 
   const predefinedAvatars = [
-    'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
-    'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka',
-    'https://api.dicebear.com/7.x/avataaars/svg?seed=Bailey',
-    'https://api.dicebear.com/7.x/avataaars/svg?seed=Charlie',
-    'https://api.dicebear.com/7.x/avataaars/svg?seed=Luna',
-    'https://api.dicebear.com/7.x/avataaars/svg?seed=Max',
-    'https://api.dicebear.com/7.x/avataaars/svg?seed=Bella',
-    'https://api.dicebear.com/7.x/avataaars/svg?seed=Oliver',
-    'https://api.dicebear.com/7.x/avataaars/svg?seed=Sophie',
-    'https://api.dicebear.com/7.x/avataaars/svg?seed=Leo',
-    'https://api.dicebear.com/7.x/avataaars/svg?seed=Mia',
-    'https://api.dicebear.com/7.x/avataaars/svg?seed=Jack',
+    '/avatars/female-brown-box.png',
+    '/avatars/female-brown-cap.png',
+    '/avatars/female-brown-controller.png',
+    '/avatars/female-brown-laptop.png',
+    '/avatars/female-brown-phone.png',
+    '/avatars/female-white-box.png',
+    '/avatars/female-white-cap.png',
+    '/avatars/female-white-controller.png',
+    '/avatars/female-white-laptop.png',
+    '/avatars/female-white-phone.png',
+    '/avatars/male-brown-box.png',
+    '/avatars/male-brown-cap.png',
+    '/avatars/male-brown-controller.png',
+    '/avatars/male-brown-laptop.png',
+    '/avatars/male-brown-phone.png',
+    '/avatars/male-white-box.png',
+    '/avatars/male-white-cap.png',
+    '/avatars/male-white-controller.png',
+    '/avatars/male-white-laptop.png',
+    '/avatars/male-white-phone.png',
   ];
 
 
@@ -409,8 +417,17 @@ export const ProfileScreen = () => {
 
         {/* App Info */}
         <div className="text-center py-6 space-y-1">
-          <p className="text-xs text-neutral-600">SplitEase v1.0.0</p>
-          <p className="text-xs text-neutral-600">Made with 💸 for splitting expenses</p>
+          <p className="text-xs text-neutral-600">
+            Made with ❤️ by{' '}
+            <a
+              href="https://portfolio-samarth-nagpal.infinityfreeapp.com/?i=1"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-orange-500 hover:text-orange-400 transition-colors font-medium"
+            >
+              Samarth Nagpal
+            </a>
+          </p>
         </div>
       </div>
 

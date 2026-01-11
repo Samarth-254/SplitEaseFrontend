@@ -389,17 +389,17 @@ export const GroupDetailScreen = () => {
                                 <div className="text-right">
                                   {isCurrentUserPayer ? (
                                     <>
+                                      <p className="text-xs text-green-400 mb-1">you lent</p>
                                       <p className="text-base font-semibold text-green-400">
                                         +{getCurrencySymbol(expense.currency || 'INR')}{(expense.amount - share).toFixed(2)}
                                       </p>
-                                      <p className="text-xs text-neutral-500">you lent</p>
                                     </>
                                   ) : (
                                     <>
+                                      <p className="text-xs text-red-400 mb-1">you borrowed</p>
                                       <p className="text-base font-semibold text-red-400">
                                         -{getCurrencySymbol(expense.currency || 'INR')}{share.toFixed(2)}
                                       </p>
-                                      <p className="text-xs text-neutral-500">you borrowed</p>
                                     </>
                                   )}
                                 </div>
