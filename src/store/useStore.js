@@ -13,6 +13,8 @@ export const useStore = create((set, get) => ({
   groups: [],
   expenses: [],
   settlements: [],
+  friends: [],
+  hasLoadedFriends: false,
   
   // Loading states
   isLoadingGroups: false,
@@ -46,6 +48,7 @@ export const useStore = create((set, get) => ({
         await get().loadGroups();
         await get().loadAllExpenses();
         await get().loadAllSettlements();
+        get().loadFriends();
         // Mark initial load as complete
         set({ isInitialLoadComplete: true });
         // Initialize socket connection
@@ -73,6 +76,8 @@ export const useStore = create((set, get) => ({
       groups: [],
       expenses: [],
       settlements: [],
+      friends: [],
+      hasLoadedFriends: false,
       isLoadingGroups: false,
       isLoadingExpenses: false
     });
@@ -83,6 +88,7 @@ export const useStore = create((set, get) => ({
       await get().loadGroups();
       await get().loadAllExpenses();
       await get().loadAllSettlements();
+      get().loadFriends();
     } catch (err) {
       console.error('Failed to load data after login:', err);
     }
@@ -98,7 +104,9 @@ export const useStore = create((set, get) => ({
       users: [],
       groups: [],
       expenses: [],
-      settlements: []
+      settlements: [],
+      friends: [],
+      hasLoadedFriends: false,
     });
   },
   
@@ -128,6 +136,8 @@ export const useStore = create((set, get) => ({
           socketService.joinGroup(groupId);
         });
       }
+      
+      get().loadFriends();
     } catch (err) {
       console.error('Failed to load groups:', err);
       set({ isLoadingGroups: false });
@@ -359,6 +369,54 @@ settleUp: async (toUserId, amount, groupId, note) => {
       console.error('Failed to send reminder:', err);
       throw err;
     }
+  },
+
+  // Friends Actions - Computed from group memberships
+  loadFriends: () => {
+    const { groups, currentUser } = get();
+    if (!currentUser) {
+      set({ friends: [], hasLoadedFriends: false });
+      return [];
+    }
+    
+    const friendsMap = new Map();
+    const currentUserId = String(currentUser._id || currentUser.id);
+    
+    // Collect all unique members from all groups
+    groups.forEach(group => {
+      if (!group.members || !Array.isArray(group.members)) return;
+      
+      group.members.forEach(member => {
+        if (!member) return;
+        
+        const memberId = member._id || member.id;
+        const memberIdStr = String(memberId);
+        
+        // Don't add yourself as a friend
+        if (memberIdStr !== currentUserId) {
+          if (!friendsMap.has(memberIdStr)) {
+            friendsMap.set(memberIdStr, {
+              _id: member._id || member.id,
+              id: member.id || member._id,
+              name: member.name,
+              email: member.email,
+              profileImage: member.profileImage,
+              mobile: member.mobile,
+              gender: member.gender
+            });
+          }
+        }
+      });
+    });
+    
+    const friends = Array.from(friendsMap.values());
+    set({ friends, hasLoadedFriends: true });
+    return friends;
+  },
+
+  refreshFriends: () => {
+    // Recompute from current groups
+    return get().loadFriends();
   },
 
   updateProfile: async (data) => {
@@ -925,6 +983,15 @@ settleUp: async (toUserId, amount, groupId, note) => {
         get().loadGroups();
       }
     });
+
+    // Listen for group membership changes that affect friends list
+    const handleGroupMembershipChange = () => {
+      get().refreshFriends();
+    };
+
+    // Recompute friends when group members change
+    socketService.onMembersAdded(handleGroupMembershipChange);
+    socketService.onMemberJoined(handleGroupMembershipChange);
   },
 
   joinSocketGroup: (groupId) => {

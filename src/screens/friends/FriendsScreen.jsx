@@ -9,9 +9,7 @@ import socketService from '../../services/socket';
 import { getCurrencySymbol } from '../../utils/currency';
 
 export const FriendsScreen = () => {
-  const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [hasLoadedFriends, setHasLoadedFriends] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFriend, setSelectedFriend] = useState(null);
   const [showSettleModal, setShowSettleModal] = useState(false);
@@ -23,20 +21,21 @@ export const FriendsScreen = () => {
   const [isSettling, setIsSettling] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  const { currentUser, expenses, settlements, groups, sendReminder, loadGroups, loadGroupExpenses, loadGroupSettlements, isInitialLoadComplete } = useStore();
+  const { currentUser, expenses, settlements, groups, friends, hasLoadedFriends, loadFriends, refreshFriends, sendReminder, loadGroups, loadGroupExpenses, loadGroupSettlements, isInitialLoadComplete } = useStore();
 
   useEffect(() => {
     if (!isInitialLoadComplete || hasLoadedFriends) return;
     setLoading(true);
-    fetchFriends();
-  }, [isInitialLoadComplete, hasLoadedFriends]);
+    loadFriends();
+    setLoading(false);
+  }, [isInitialLoadComplete, hasLoadedFriends, loadFriends]);
 
   // Set up socket listeners for real-time updates
   useEffect(() => {
-    const handleMembersAdded = () => fetchFriends(false);
-    const handleMemberJoined = () => fetchFriends(false);
-    const handleSettlementCreated = () => fetchFriends(false);
-    const handleExpenseCreated = () => fetchFriends(false);
+    const handleMembersAdded = () => refreshFriends();
+    const handleMemberJoined = () => refreshFriends();
+    const handleSettlementCreated = () => refreshFriends();
+    const handleExpenseCreated = () => refreshFriends();
 
     socketService.onMembersAdded(handleMembersAdded);
     socketService.onMemberJoined(handleMemberJoined);
@@ -54,22 +53,9 @@ export const FriendsScreen = () => {
   useEffect(() => {
     if (!isInitialLoadComplete) return;
     if (expenses.length > 0 || settlements.length > 0) {
-      fetchFriends(false);
+      refreshFriends();
     }
-  }, [expenses, settlements, isInitialLoadComplete]);
-
-  const fetchFriends = async (showLoading = true) => {
-    try {
-      if (showLoading) setLoading(true);
-      const response = await apiService.get('/api/friends');
-      setFriends(response);
-      setHasLoadedFriends(true);
-    } catch (error) {
-      console.error('Failed to fetch friends:', error);
-    } finally {
-      if (showLoading) setLoading(false);
-    }
-  };
+  }, [expenses, settlements, isInitialLoadComplete, refreshFriends]);
 
   const showToast = (message) => {
     setSuccessMessage(message);
@@ -328,7 +314,7 @@ export const FriendsScreen = () => {
         await loadGroupSettlements(group.groupId);
       }
       
-      await fetchFriends();
+      refreshFriends();
 
       setShowSettleUpModal(false);
       setShowSettleModal(false);
