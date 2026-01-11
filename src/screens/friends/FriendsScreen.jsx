@@ -11,6 +11,7 @@ import { getCurrencySymbol } from '../../utils/currency';
 export const FriendsScreen = () => {
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [hasLoadedFriends, setHasLoadedFriends] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFriend, setSelectedFriend] = useState(null);
   const [showSettleModal, setShowSettleModal] = useState(false);
@@ -25,10 +26,13 @@ export const FriendsScreen = () => {
   const { currentUser, expenses, settlements, groups, sendReminder, loadGroups, loadGroupExpenses, loadGroupSettlements, isInitialLoadComplete } = useStore();
 
   useEffect(() => {
-    if (!isInitialLoadComplete) return;
+    if (!isInitialLoadComplete || hasLoadedFriends) return;
     setLoading(true);
     fetchFriends();
+  }, [isInitialLoadComplete, hasLoadedFriends]);
 
+  // Set up socket listeners for real-time updates
+  useEffect(() => {
     const handleMembersAdded = () => fetchFriends();
     const handleMemberJoined = () => fetchFriends();
     const handleSettlementCreated = () => fetchFriends();
@@ -45,7 +49,7 @@ export const FriendsScreen = () => {
       socketService.offSettlementCreated(handleSettlementCreated);
       socketService.offExpenseCreated(handleExpenseCreated);
     };
-  }, [isInitialLoadComplete]);
+  }, []);
 
   useEffect(() => {
     if (!isInitialLoadComplete) return;
@@ -59,6 +63,7 @@ export const FriendsScreen = () => {
       setLoading(true);
       const response = await apiService.get('/api/friends');
       setFriends(response);
+      setHasLoadedFriends(true);
     } catch (error) {
       console.error('Failed to fetch friends:', error);
     } finally {
@@ -357,7 +362,7 @@ export const FriendsScreen = () => {
   const overallBalance = calculateOverallBalance();
   const currencySymbol = getCurrencySymbol();
 
-  if (!isInitialLoadComplete || loading) {
+  if (!isInitialLoadComplete || (loading && !hasLoadedFriends)) {
     return (
       <Screen title="Friends">
         <div className="flex items-center justify-center h-64">
