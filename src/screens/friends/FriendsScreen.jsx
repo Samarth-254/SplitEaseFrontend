@@ -33,10 +33,10 @@ export const FriendsScreen = () => {
 
   // Set up socket listeners for real-time updates
   useEffect(() => {
-    const handleMembersAdded = () => fetchFriends();
-    const handleMemberJoined = () => fetchFriends();
-    const handleSettlementCreated = () => fetchFriends();
-    const handleExpenseCreated = () => fetchFriends();
+    const handleMembersAdded = () => fetchFriends(false);
+    const handleMemberJoined = () => fetchFriends(false);
+    const handleSettlementCreated = () => fetchFriends(false);
+    const handleExpenseCreated = () => fetchFriends(false);
 
     socketService.onMembersAdded(handleMembersAdded);
     socketService.onMemberJoined(handleMemberJoined);
@@ -54,20 +54,20 @@ export const FriendsScreen = () => {
   useEffect(() => {
     if (!isInitialLoadComplete) return;
     if (expenses.length > 0 || settlements.length > 0) {
-      fetchFriends();
+      fetchFriends(false);
     }
   }, [expenses, settlements, isInitialLoadComplete]);
 
-  const fetchFriends = async () => {
+  const fetchFriends = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const response = await apiService.get('/api/friends');
       setFriends(response);
       setHasLoadedFriends(true);
     } catch (error) {
       console.error('Failed to fetch friends:', error);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
