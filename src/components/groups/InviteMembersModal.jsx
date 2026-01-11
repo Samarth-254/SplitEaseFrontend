@@ -3,6 +3,7 @@ import { Modal, Button, Input, Avatar } from '../ui';
 import { Link2, Mail, Copy, Check, UserPlus, Users, Loader2 } from 'lucide-react';
 import apiService from '../../services/api';
 
+
 export const InviteMembersModal = ({ isOpen, onClose, groupId, groupName, existingMembers = [] }) => {
   const [inviteLink, setInviteLink] = useState('');
   const [email, setEmail] = useState('');
@@ -11,27 +12,27 @@ export const InviteMembersModal = ({ isOpen, onClose, groupId, groupName, existi
   const [emailLoading, setEmailLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [activeTab, setActiveTab] = useState('friends'); // 'friends' or 'link'
+  const [activeTab, setActiveTab] = useState('friends');
   const [friends, setFriends] = useState([]);
   const [friendsLoading, setFriendsLoading] = useState(false);
   const [selectedFriends, setSelectedFriends] = useState([]);
   const [addingFriends, setAddingFriends] = useState(false);
 
+
   useEffect(() => {
     if (isOpen && activeTab === 'friends') {
       fetchFriends();
     }
-    // Reset selected friends when modal closes
     if (!isOpen) {
       setSelectedFriends([]);
     }
   }, [isOpen, activeTab, existingMembers]);
 
+
   const fetchFriends = async () => {
     setFriendsLoading(true);
     try {
       const response = await apiService.get('/api/friends');
-      // Filter out friends who are already members of the group
       const existingMemberIds = existingMembers.map(m => (m._id || m.id).toString());
       const availableFriends = response.filter(friend => 
         !existingMemberIds.includes((friend._id || friend.id).toString())
@@ -44,6 +45,7 @@ export const InviteMembersModal = ({ isOpen, onClose, groupId, groupName, existi
     }
   };
 
+
   const toggleFriendSelection = (friendId) => {
     setSelectedFriends(prev => 
       prev.includes(friendId) 
@@ -52,6 +54,7 @@ export const InviteMembersModal = ({ isOpen, onClose, groupId, groupName, existi
     );
   };
 
+
   const addFriendsToGroup = async () => {
     if (selectedFriends.length === 0) return;
     
@@ -59,12 +62,12 @@ export const InviteMembersModal = ({ isOpen, onClose, groupId, groupName, existi
     setError('');
     setSuccess('');
 
+
     try {
       await apiService.post(`/api/groups/${groupId}/add-friends`, {
         friendIds: selectedFriends
       });
       
-      // Remove added friends from the list immediately
       setFriends(prev => prev.filter(friend => 
         !selectedFriends.includes(friend._id || friend.id)
       ));
@@ -82,12 +85,13 @@ export const InviteMembersModal = ({ isOpen, onClose, groupId, groupName, existi
     }
   };
 
+
   const generateLink = async () => {
     setLoading(true);
     setError('');
     try {
-      const { inviteLink: link } = await apiService.generateInviteLink(groupId);
-      setInviteLink(link);
+      const response = await apiService.generateInviteLink(groupId);
+      setInviteLink(response.inviteLink); // ✅ Now gets shortened URL
     } catch (err) {
       setError(err.message || 'Failed to generate invite link');
     } finally {
@@ -95,11 +99,13 @@ export const InviteMembersModal = ({ isOpen, onClose, groupId, groupName, existi
     }
   };
 
+
   const copyLink = () => {
     navigator.clipboard.writeText(inviteLink);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
 
   const sendEmail = async (e) => {
     e.preventDefault();
@@ -109,9 +115,11 @@ export const InviteMembersModal = ({ isOpen, onClose, groupId, groupName, existi
       return;
     }
 
+
     setEmailLoading(true);
     setError('');
     setSuccess('');
+
 
     try {
       await apiService.sendInviteEmail(groupId, email.trim());
@@ -125,6 +133,7 @@ export const InviteMembersModal = ({ isOpen, onClose, groupId, groupName, existi
     }
   };
 
+
   return (
     <Modal
       isOpen={isOpen}
@@ -133,31 +142,32 @@ export const InviteMembersModal = ({ isOpen, onClose, groupId, groupName, existi
       size="md"
     >
       <div className="space-y-4">
-        {/* Tabs */}
+        {/* Tabs - ✅ Fixed for mobile */}
         <div className="flex gap-2 bg-primary-800 p-1 rounded-lg">
           <button
             onClick={() => setActiveTab('friends')}
-            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+            className={`flex-1 py-2 px-2 sm:px-4 rounded-md text-xs sm:text-sm font-medium transition-colors flex items-center justify-center whitespace-nowrap ${
               activeTab === 'friends'
                 ? 'bg-secondary-500 text-black'
                 : 'text-neutral-400 hover:text-neutral-200'
             }`}
           >
-            <UserPlus size={16} className="inline mr-2" />
-            Add Friends
+            <UserPlus size={16} className="mr-1 sm:mr-2 flex-shrink-0" />
+            <span className="truncate">Add Friends</span>
           </button>
           <button
             onClick={() => setActiveTab('link')}
-            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+            className={`flex-1 py-2 px-2 sm:px-4 rounded-md text-xs sm:text-sm font-medium transition-colors flex items-center justify-center whitespace-nowrap ${
               activeTab === 'link'
                 ? 'bg-secondary-500 text-black'
                 : 'text-neutral-400 hover:text-neutral-200'
             }`}
           >
-            <Link2 size={16} className="inline mr-2" />
-            Invite Link
+            <Link2 size={16} className="mr-1 sm:mr-2 flex-shrink-0" />
+            <span className="truncate">Invite Link</span>
           </button>
         </div>
+
 
         {/* Friends Tab */}
         {activeTab === 'friends' && (
@@ -221,6 +231,7 @@ export const InviteMembersModal = ({ isOpen, onClose, groupId, groupName, existi
           </div>
         )}
 
+
         {/* Link Tab */}
         {activeTab === 'link' && (
           <div className="space-y-6">
@@ -255,6 +266,7 @@ export const InviteMembersModal = ({ isOpen, onClose, groupId, groupName, existi
               )}
             </div>
 
+
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-neutral-700"></div>
@@ -263,6 +275,7 @@ export const InviteMembersModal = ({ isOpen, onClose, groupId, groupName, existi
                 <span className="px-2 bg-primary-900 text-neutral-500">OR</span>
               </div>
             </div>
+
 
             <div>
               <h3 className="text-sm font-medium text-neutral-300 mb-3 flex items-center gap-2">
@@ -290,6 +303,7 @@ export const InviteMembersModal = ({ isOpen, onClose, groupId, groupName, existi
             </div>
           </div>
         )}
+
 
         {error && (
           <p className="text-sm text-red-400">{error}</p>

@@ -7,7 +7,8 @@ const {
   sendPaymentReminder,
   addFriendsToGroup,
   recordSettlement,
-  getGroupSettlements
+  getGroupSettlements,
+  sendCombinedReminder
 } = require("../controllers/groupController");
 const { protect } = require("../middleware/authMiddleware");
 
@@ -21,5 +22,6 @@ router.post("/:groupId/remind", protect, sendPaymentReminder);
 router.post("/:groupId/add-friends", protect, addFriendsToGroup);
 router.post("/:groupId/settlements", protect, recordSettlement);
 router.get("/:groupId/settlements", protect, getGroupSettlements);
+router.post("/remind/combined", protect, sendCombinedReminder);
 
 module.exports = router;

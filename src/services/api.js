@@ -192,6 +192,13 @@ async recordSettlement(groupId, fromUserId, toUserId, amount, note) {
     body: JSON.stringify({ from: fromUserId, to: toUserId, amount, note }),
   });
 }
+async sendCombinedReminder(memberId, totalAmount, groupBreakdown) {
+  return this.request('/api/groups/remind/combined', {
+    method: 'POST',
+    body: JSON.stringify({ memberId, totalAmount, groupBreakdown }),
+  });
+}
+
 
 
   // ✅ FIXED - getGroupSettlements using groups endpoint

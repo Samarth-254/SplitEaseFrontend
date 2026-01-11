@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Loader2, Search, X, Check } from 'lucide-react';
+import { Users, Loader2, Search, X, Check, UserPlus } from 'lucide-react';
 import { Screen } from '../../components/layout';
 import { Card, Avatar, EmptyState, Input, Modal, Button } from '../../components/ui';
 import { useStore } from '../../store/useStore';
 import apiService from '../../services/api';
 import socketService from '../../services/socket';
 import { getCurrencySymbol } from '../../utils/currency';
+
 
 export const FriendsScreen = () => {
   const [loading, setLoading] = useState(false);
@@ -23,12 +24,14 @@ export const FriendsScreen = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const { currentUser, expenses, settlements, groups, friends, hasLoadedFriends, loadFriends, refreshFriends, sendReminder, loadGroups, loadGroupExpenses, loadGroupSettlements, isInitialLoadComplete } = useStore();
 
+
   useEffect(() => {
     if (!isInitialLoadComplete || hasLoadedFriends) return;
     setLoading(true);
     loadFriends();
     setLoading(false);
   }, [isInitialLoadComplete, hasLoadedFriends, loadFriends]);
+
 
   // Set up socket listeners for real-time updates
   useEffect(() => {
@@ -37,10 +40,12 @@ export const FriendsScreen = () => {
     const handleSettlementCreated = () => refreshFriends();
     const handleExpenseCreated = () => refreshFriends();
 
+
     socketService.onMembersAdded(handleMembersAdded);
     socketService.onMemberJoined(handleMemberJoined);
     socketService.onSettlementCreated(handleSettlementCreated);
     socketService.onExpenseCreated(handleExpenseCreated);
+
 
     return () => {
       socketService.offMembersAdded(handleMembersAdded);
@@ -50,6 +55,7 @@ export const FriendsScreen = () => {
     };
   }, []);
 
+
   useEffect(() => {
     if (!isInitialLoadComplete) return;
     if (expenses.length > 0 || settlements.length > 0) {
@@ -57,19 +63,23 @@ export const FriendsScreen = () => {
     }
   }, [expenses, settlements, isInitialLoadComplete, refreshFriends]);
 
+
   const showToast = (message) => {
     setSuccessMessage(message);
     setShowSuccessToast(true);
     setTimeout(() => setShowSuccessToast(false), 3000);
   };
 
+
   const calculateFriendBalance = (friendId) => {
     try {
       let youOwe = 0;
       let theyOwe = 0;
 
+
       const currentUserId = currentUser?._id || currentUser?.id;
       if (!currentUserId || !friendId) return 0;
+
 
       if (Array.isArray(expenses)) {
         expenses.forEach(expense => {
@@ -106,6 +116,7 @@ export const FriendsScreen = () => {
         });
       }
 
+
       if (Array.isArray(settlements)) {
         settlements.forEach(settlement => {
           try {
@@ -133,12 +144,14 @@ export const FriendsScreen = () => {
         });
       }
 
+
       const netBalance = theyOwe - youOwe;
       return netBalance;
     } catch (error) {
       return 0;
     }
   };
+
 
   const calculateOverallBalance = () => {
     let totalBalance = 0;
@@ -148,96 +161,108 @@ export const FriendsScreen = () => {
     return totalBalance;
   };
 
-  const getGroupWiseBreakdown = (friendId) => {
-    const currentUserId = currentUser?.id || currentUser?._id;
-    const groupMap = new Map();
-    
-    if (!currentUserId || !friendId) return [];
-    
-    const currentUserIdStr = String(currentUserId);
-    const friendIdStr = String(friendId);
-    
-    if (Array.isArray(expenses)) {
-      expenses.forEach(expense => {
-        if (!expense?.splits || !Array.isArray(expense.splits)) return;
-        if (!expense.groupId && !expense.group) return;
+
+ const getGroupWiseBreakdown = (friendId) => {
+  const currentUserId = currentUser?.id || currentUser?._id;
+  const groupMap = new Map();
+  
+  if (!currentUserId || !friendId) return [];
+  
+  const currentUserIdStr = String(currentUserId);
+  const friendIdStr = String(friendId);
+  
+  // Process expenses
+  if (Array.isArray(expenses)) {
+    expenses.forEach(expense => {
+      if (!expense?.splits || !Array.isArray(expense.splits)) return;
+      if (!expense.groupId && !expense.group) return;
+      
+      const groupId = String(expense.groupId || expense.group?._id || expense.group?.id || expense.group);
+      const paidById = expense.paidBy?._id || expense.paidBy?.id || expense.paidBy;
+      if (!paidById) return;
+      
+      const paidByStr = String(paidById);
+      
+      expense.splits.forEach(split => {
+        const splitUserId = split.user?._id || split.user?.id || split.user;
+        if (!splitUserId) return;
         
-        const groupId = String(expense.groupId || expense.group?._id || expense.group?.id || expense.group);
-        const paidById = expense.paidBy?._id || expense.paidBy?.id || expense.paidBy;
-        if (!paidById) return;
+        const splitUserIdStr = String(splitUserId);
+        const amount = Number(split.amount) || 0;
         
-        const paidByStr = String(paidById);
-        
-        expense.splits.forEach(split => {
-          const splitUserId = split.user?._id || split.user?.id || split.user;
-          if (!splitUserId) return;
-          
-          const splitUserIdStr = String(splitUserId);
-          const amount = Number(split.amount) || 0;
-          
-          if (paidByStr === friendIdStr && splitUserIdStr === currentUserIdStr) {
-            const current = groupMap.get(groupId) || { balance: 0 };
-            current.balance -= amount;
-            groupMap.set(groupId, current);
-          }
-          
-          if (paidByStr === currentUserIdStr && splitUserIdStr === friendIdStr) {
-            const current = groupMap.get(groupId) || { balance: 0 };
-            current.balance += amount;
-            groupMap.set(groupId, current);
-          }
-        });
-      });
-    }
-    
-    if (Array.isArray(settlements)) {
-      settlements.forEach(settlement => {
-        if (!settlement?.from || !settlement?.to) return;
-        if (!settlement.groupId && !settlement.group) return;
-        
-        const groupId = String(settlement.groupId || settlement.group?._id || settlement.group?.id || settlement.group);
-        const fromId = String(settlement.from?._id || settlement.from?.id || settlement.from);
-        const toId = String(settlement.to?._id || settlement.to?.id || settlement.to);
-        const amount = Number(settlement.amount) || 0;
-        
-        if (fromId === currentUserIdStr && toId === friendIdStr) {
+        // Friend paid and YOU have a split = you owe them (negative balance)
+        if (paidByStr === friendIdStr && splitUserIdStr === currentUserIdStr) {
           const current = groupMap.get(groupId) || { balance: 0 };
           current.balance -= amount;
           groupMap.set(groupId, current);
         }
         
-        if (fromId === friendIdStr && toId === currentUserIdStr) {
+        // YOU paid and FRIEND has a split = they owe you (positive balance)
+        if (paidByStr === currentUserIdStr && splitUserIdStr === friendIdStr) {
           const current = groupMap.get(groupId) || { balance: 0 };
           current.balance += amount;
           groupMap.set(groupId, current);
         }
       });
-    }
-    
-    const result = [];
-    groupMap.forEach((data, groupId) => {
-      if (Math.abs(data.balance) < 0.01) return;
-      
-      const group = groups.find(g => String(g._id || g.id) === groupId);
-      if (!group) return;
-      
-      result.push({
-        groupId,
-        groupName: group.name,
-        groupEmoji: group.emoji,
-        balance: data.balance
-      });
     });
+  }
+  
+  // Process settlements - THIS IS THE FIX
+  if (Array.isArray(settlements)) {
+    settlements.forEach(settlement => {
+      if (!settlement?.from || !settlement?.to) return;
+      if (!settlement.groupId && !settlement.group) return;
+      
+      const groupId = String(settlement.groupId || settlement.group?._id || settlement.group?.id || settlement.group);
+      const fromId = String(settlement.from?._id || settlement.from?.id || settlement.from);
+      const toId = String(settlement.to?._id || settlement.to?.id || settlement.to);
+      const amount = Number(settlement.amount) || 0;
+      
+      // ✅ You paid the friend (from=you, to=friend)
+      // This reduces what you owe them (moves balance more positive)
+      if (fromId === currentUserIdStr && toId === friendIdStr) {
+        const current = groupMap.get(groupId) || { balance: 0 };
+        current.balance += amount; // You paid them, so they owe you more now
+        groupMap.set(groupId, current);
+      }
+      
+      // ✅ Friend paid you (from=friend, to=you)
+      // This reduces what they owe you (moves balance more negative)
+      if (fromId === friendIdStr && toId === currentUserIdStr) {
+        const current = groupMap.get(groupId) || { balance: 0 };
+        current.balance -= amount; // They paid you, so you owe them more now
+        groupMap.set(groupId, current);
+      }
+    });
+  }
+  
+  const result = [];
+  groupMap.forEach((data, groupId) => {
+    if (Math.abs(data.balance) < 0.01) return; // Skip settled groups
     
-    result.sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance));
+    const group = groups.find(g => String(g._id || g.id) === groupId);
+    if (!group) return;
     
-    return result;
-  };
+    result.push({
+      groupId,
+      groupName: group.name,
+      groupEmoji: group.emoji,
+      balance: data.balance // Positive = they owe you, Negative = you owe them
+    });
+  });
+  
+  result.sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance));
+  
+  return result;
+};
+
+
 
   const handleFriendClick = (friend) => {
     setSelectedFriend(friend);
     setShowSettleModal(true);
   };
+
 
   const handleSendReminder = (friendId, amount, friendName) => {
     setRemindData({ friendId, amount, friendName });
@@ -245,24 +270,65 @@ export const FriendsScreen = () => {
     setShowRemindModal(true);
   };
 
+
   const confirmSendReminder = async () => {
-    if (!remindData) return;
+  if (!remindData) return;
+  
+  setIsSendingReminder(true);
+  try {
+    // Get group breakdown for the friend
+    const groupBreakdown = getGroupWiseBreakdown(remindData.friendId);
     
-    setIsSendingReminder(true);
-    try {
-      await sendReminder(null, remindData.friendId, remindData.amount);
-      setIsSendingReminder(false);
-      setReminderSent(true);
-    } catch (err) {
-      console.error('Failed to send reminder:', err);
+    if (groupBreakdown.length === 0) {
+      showToast('No balances found');
       setIsSendingReminder(false);
       setReminderSent(false);
-      showToast('Failed to send reminder');
+      return;
     }
-  };
+    
+    // Filter only groups where they owe you (positive balance)
+    const groupsTheyOwe = groupBreakdown.filter(g => g.balance > 0);
+    
+    if (groupsTheyOwe.length === 0) {
+      showToast('No balances to remind about');
+      setIsSendingReminder(false);
+      setReminderSent(false);
+      return;
+    }
+    
+    // Prepare breakdown for email
+    const emailBreakdown = groupsTheyOwe.map(g => ({
+      groupId: g.groupId,
+      groupName: g.groupName,
+      groupEmoji: g.groupEmoji,
+      amount: g.balance
+    }));
+    
+    const totalAmount = groupsTheyOwe.reduce((sum, g) => sum + g.balance, 0);
+    
+    // Use combined reminder endpoint (works for single or multiple groups)
+    const { sendCombinedReminder } = useStore.getState();
+    await sendCombinedReminder(
+      remindData.friendId,
+      totalAmount,
+      emailBreakdown
+    );
+    
+    setIsSendingReminder(false);
+    setReminderSent(true);
+  } catch (err) {
+    console.error('Failed to send reminder:', err);
+    setIsSendingReminder(false);
+    setReminderSent(false);
+    showToast('Failed to send reminder');
+  }
+};
+
+
 
   const handleSettleUp = async () => {
     if (!selectedFriend) return;
+
 
     setIsSettling(true);
     try {
@@ -274,8 +340,10 @@ export const FriendsScreen = () => {
         return;
       }
 
+
       const friendId = String(selectedFriend._id || selectedFriend.id);
       const myId = String(currentUser._id || currentUser.id);
+
 
       const promises = [];
       
@@ -304,8 +372,10 @@ export const FriendsScreen = () => {
         );
       }
 
+
       await Promise.all(promises);
       await new Promise(resolve => setTimeout(resolve, 1000));
+
 
       await loadGroups();
       
@@ -315,6 +385,7 @@ export const FriendsScreen = () => {
       }
       
       refreshFriends();
+
 
       setShowSettleUpModal(false);
       setShowSettleModal(false);
@@ -330,6 +401,7 @@ export const FriendsScreen = () => {
     }
   };
 
+
   const closeRemindModal = () => {
     setShowRemindModal(false);
     setRemindData(null);
@@ -337,16 +409,20 @@ export const FriendsScreen = () => {
     setReminderSent(false);
   };
 
+
   const filteredFriends = friends.filter(friend =>
     friend.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
 
   const friendsYouOwe = filteredFriends.filter(friend => calculateFriendBalance(friend._id) < 0);
   const friendsWhoOweYou = filteredFriends.filter(friend => calculateFriendBalance(friend._id) > 0);
   const settledFriends = filteredFriends.filter(friend => calculateFriendBalance(friend._id) === 0);
 
+
   const overallBalance = calculateOverallBalance();
   const currencySymbol = getCurrencySymbol();
+
 
   if (!isInitialLoadComplete || (loading && !hasLoadedFriends)) {
     return (
@@ -357,6 +433,7 @@ export const FriendsScreen = () => {
       </Screen>
     );
   }
+
 
   return (
     <Screen>
@@ -370,10 +447,11 @@ export const FriendsScreen = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               icon={<Search size={18} />}
-  className="h-12 py-1 text-sm leading-tight"
+              className="h-12 py-1 text-sm leading-tight"
             />
           </div>
         </div>
+
 
         {friends.length === 0 ? (
           <EmptyState
@@ -397,6 +475,7 @@ export const FriendsScreen = () => {
                 </div>
               </div>
             </Card>
+
 
             {/* Friends You Owe */}
             {friendsYouOwe.length > 0 && (
@@ -441,6 +520,7 @@ export const FriendsScreen = () => {
               </div>
             )}
 
+
             {/* Friends Who Owe You */}
             {friendsWhoOweYou.length > 0 && (
               <div className="space-y-2">
@@ -483,6 +563,7 @@ export const FriendsScreen = () => {
                 })}
               </div>
             )}
+
 
             {/* Settled Friends */}
             {settledFriends.length > 0 && (
@@ -527,6 +608,7 @@ export const FriendsScreen = () => {
         )}
       </div>
 
+
       {/* Friend Details Modal */}
       {selectedFriend && (
         <Modal
@@ -561,6 +643,7 @@ export const FriendsScreen = () => {
                 <X size={24} />
               </button>
             </div>
+
 
             {/* Content */}
             <div className="space-y-4">
@@ -623,6 +706,7 @@ export const FriendsScreen = () => {
                       ))}
                     </div>
 
+
                     {/* Action Button */}
                     <div className="space-y-2 pt-4 mt-4 border-t border-neutral-700">
                       {netBalance < 0 ? (
@@ -638,6 +722,7 @@ export const FriendsScreen = () => {
                           fullWidth
                           onClick={() => {
                             handleSendReminder(selectedFriend._id, Math.abs(netBalance), selectedFriend.name);
+                            setShowSettleModal(false);
                           }}
                           className="bg-secondary-600 hover:bg-secondary-700 text-white"
                         >
@@ -658,6 +743,7 @@ export const FriendsScreen = () => {
           </div>
         </Modal>
       )}
+
 
       {/* Settle Up Confirmation Modal */}
       {selectedFriend && (
@@ -752,7 +838,8 @@ export const FriendsScreen = () => {
         </Modal>
       )}
 
-      {/* Remind Modal */}
+
+      {/* Remind Confirmation Modal */}
       <Modal
         isOpen={showRemindModal}
         onClose={closeRemindModal}
@@ -767,7 +854,7 @@ export const FriendsScreen = () => {
                   <strong className="text-green-400">{currencySymbol}{remindData.amount.toFixed(2)}</strong>?
                 </p>
                 <p className="text-sm text-neutral-500">
-                  They will receive an email notification.
+                  They will receive an email notification about this pending payment.
                 </p>
                 <div className="flex gap-2 justify-end pt-2">
                   <Button 
@@ -800,24 +887,27 @@ export const FriendsScreen = () => {
                     <Check size={32} className="text-green-400" />
                   </div>
                   <p className="text-neutral-100 font-medium text-lg mb-2">
-                    Reminder Sent!
+                    Reminder Sent Successfully!
                   </p>
                   <p className="text-neutral-400 text-sm">
-                    {remindData.friendName} has been notified
+                    {remindData.friendName} has been notified about the payment of {currencySymbol}{remindData.amount.toFixed(2)}
                   </p>
                 </div>
-                <Button 
-                  variant="primary" 
-                  onClick={closeRemindModal}
-                  fullWidth
-                >
-                  Done
-                </Button>
+                <div className="flex justify-center pt-2">
+                  <Button 
+                    variant="primary" 
+                    onClick={closeRemindModal}
+                    className="px-8"
+                  >
+                    Done
+                  </Button>
+                </div>
               </>
             )}
           </div>
         )}
       </Modal>
+
 
       {/* Success Toast */}
       <AnimatePresence>

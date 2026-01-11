@@ -307,7 +307,11 @@ export const useStore = create((set, get) => ({
 // ✅ REPLACE settleUp in store/useStore.js
 settleUp: async (toUserId, amount, groupId, note) => {
   try {
-    const settlement = await apiService.recordSettlement(groupId, toUserId, amount, note);
+    const { currentUser } = get();
+    const fromUserId = currentUser._id || currentUser.id;
+    
+    // ✅ apiService.recordSettlement expects: (groupId, fromUserId, toUserId, amount, note)
+    const settlement = await apiService.recordSettlement(groupId, fromUserId, toUserId, amount, note || 'Payment');
     
     set(state => ({ 
       settlements: [...state.settlements, settlement],
@@ -323,6 +327,7 @@ settleUp: async (toUserId, amount, groupId, note) => {
     throw err;
   }
 },
+
 
 
 
@@ -370,6 +375,16 @@ settleUp: async (toUserId, amount, groupId, note) => {
       throw err;
     }
   },
+  sendCombinedReminder: async (memberId, totalAmount, groupBreakdown) => {
+  try {
+    await apiService.sendCombinedReminder(memberId, totalAmount, groupBreakdown);
+    return true;
+  } catch (err) {
+    console.error('Failed to send combined reminder:', err);
+    throw err;
+  }
+},
+
 
   // Friends Actions - Computed from group memberships
   loadFriends: () => {
