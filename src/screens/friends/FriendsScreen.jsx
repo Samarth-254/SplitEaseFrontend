@@ -9,6 +9,7 @@ import socketService from '../../services/socket';
 import { getCurrencySymbol } from '../../utils/currency';
 
 
+
 export const FriendsScreen = () => {
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -25,12 +26,14 @@ export const FriendsScreen = () => {
   const { currentUser, expenses, settlements, groups, friends, hasLoadedFriends, loadFriends, refreshFriends, sendReminder, loadGroups, loadGroupExpenses, loadGroupSettlements, isInitialLoadComplete } = useStore();
 
 
+
   useEffect(() => {
     if (!isInitialLoadComplete || hasLoadedFriends) return;
     setLoading(true);
     loadFriends();
     setLoading(false);
   }, [isInitialLoadComplete, hasLoadedFriends, loadFriends]);
+
 
 
   // Set up socket listeners for real-time updates
@@ -41,10 +44,12 @@ export const FriendsScreen = () => {
     const handleExpenseCreated = () => refreshFriends();
 
 
+
     socketService.onMembersAdded(handleMembersAdded);
     socketService.onMemberJoined(handleMemberJoined);
     socketService.onSettlementCreated(handleSettlementCreated);
     socketService.onExpenseCreated(handleExpenseCreated);
+
 
 
     return () => {
@@ -56,12 +61,14 @@ export const FriendsScreen = () => {
   }, []);
 
 
+
   useEffect(() => {
     if (!isInitialLoadComplete) return;
     if (expenses.length > 0 || settlements.length > 0) {
       refreshFriends();
     }
   }, [expenses, settlements, isInitialLoadComplete, refreshFriends]);
+
 
 
   const showToast = (message) => {
@@ -71,14 +78,17 @@ export const FriendsScreen = () => {
   };
 
 
+
   const calculateFriendBalance = (friendId) => {
     try {
       let youOwe = 0;
       let theyOwe = 0;
 
 
+
       const currentUserId = currentUser?._id || currentUser?.id;
       if (!currentUserId || !friendId) return 0;
+
 
 
       if (Array.isArray(expenses)) {
@@ -117,6 +127,7 @@ export const FriendsScreen = () => {
       }
 
 
+
       if (Array.isArray(settlements)) {
         settlements.forEach(settlement => {
           try {
@@ -145,12 +156,14 @@ export const FriendsScreen = () => {
       }
 
 
+
       const netBalance = theyOwe - youOwe;
       return netBalance;
     } catch (error) {
       return 0;
     }
   };
+
 
 
   const calculateOverallBalance = () => {
@@ -162,99 +175,98 @@ export const FriendsScreen = () => {
   };
 
 
- const getGroupWiseBreakdown = (friendId) => {
-  const currentUserId = currentUser?.id || currentUser?._id;
-  const groupMap = new Map();
-  
-  if (!currentUserId || !friendId) return [];
-  
-  const currentUserIdStr = String(currentUserId);
-  const friendIdStr = String(friendId);
-  
-  // Process expenses
-  if (Array.isArray(expenses)) {
-    expenses.forEach(expense => {
-      if (!expense?.splits || !Array.isArray(expense.splits)) return;
-      if (!expense.groupId && !expense.group) return;
-      
-      const groupId = String(expense.groupId || expense.group?._id || expense.group?.id || expense.group);
-      const paidById = expense.paidBy?._id || expense.paidBy?.id || expense.paidBy;
-      if (!paidById) return;
-      
-      const paidByStr = String(paidById);
-      
-      expense.splits.forEach(split => {
-        const splitUserId = split.user?._id || split.user?.id || split.user;
-        if (!splitUserId) return;
+
+  const getGroupWiseBreakdown = (friendId) => {
+    const currentUserId = currentUser?.id || currentUser?._id;
+    const groupMap = new Map();
+    
+    if (!currentUserId || !friendId) return [];
+    
+    const currentUserIdStr = String(currentUserId);
+    const friendIdStr = String(friendId);
+    
+    // Process expenses
+    if (Array.isArray(expenses)) {
+      expenses.forEach(expense => {
+        if (!expense?.splits || !Array.isArray(expense.splits)) return;
+        if (!expense.groupId && !expense.group) return;
         
-        const splitUserIdStr = String(splitUserId);
-        const amount = Number(split.amount) || 0;
+        const groupId = String(expense.groupId || expense.group?._id || expense.group?.id || expense.group);
+        const paidById = expense.paidBy?._id || expense.paidBy?.id || expense.paidBy;
+        if (!paidById) return;
         
-        // Friend paid and YOU have a split = you owe them (negative balance)
-        if (paidByStr === friendIdStr && splitUserIdStr === currentUserIdStr) {
-          const current = groupMap.get(groupId) || { balance: 0 };
-          current.balance -= amount;
-          groupMap.set(groupId, current);
-        }
+        const paidByStr = String(paidById);
         
-        // YOU paid and FRIEND has a split = they owe you (positive balance)
-        if (paidByStr === currentUserIdStr && splitUserIdStr === friendIdStr) {
+        expense.splits.forEach(split => {
+          const splitUserId = split.user?._id || split.user?.id || split.user;
+          if (!splitUserId) return;
+          
+          const splitUserIdStr = String(splitUserId);
+          const amount = Number(split.amount) || 0;
+          
+          // Friend paid and YOU have a split = you owe them (negative balance)
+          if (paidByStr === friendIdStr && splitUserIdStr === currentUserIdStr) {
+            const current = groupMap.get(groupId) || { balance: 0 };
+            current.balance -= amount;
+            groupMap.set(groupId, current);
+          }
+          
+          // YOU paid and FRIEND has a split = they owe you (positive balance)
+          if (paidByStr === currentUserIdStr && splitUserIdStr === friendIdStr) {
+            const current = groupMap.get(groupId) || { balance: 0 };
+            current.balance += amount;
+            groupMap.set(groupId, current);
+          }
+        });
+      });
+    }
+    
+    // Process settlements
+    if (Array.isArray(settlements)) {
+      settlements.forEach(settlement => {
+        if (!settlement?.from || !settlement?.to) return;
+        if (!settlement.groupId && !settlement.group) return;
+        
+        const groupId = String(settlement.groupId || settlement.group?._id || settlement.group?.id || settlement.group);
+        const fromId = String(settlement.from?._id || settlement.from?.id || settlement.from);
+        const toId = String(settlement.to?._id || settlement.to?.id || settlement.to);
+        const amount = Number(settlement.amount) || 0;
+        
+        // You paid the friend (from=you, to=friend)
+        if (fromId === currentUserIdStr && toId === friendIdStr) {
           const current = groupMap.get(groupId) || { balance: 0 };
           current.balance += amount;
           groupMap.set(groupId, current);
         }
+        
+        // Friend paid you (from=friend, to=you)
+        if (fromId === friendIdStr && toId === currentUserIdStr) {
+          const current = groupMap.get(groupId) || { balance: 0 };
+          current.balance -= amount;
+          groupMap.set(groupId, current);
+        }
+      });
+    }
+    
+    const result = [];
+    groupMap.forEach((data, groupId) => {
+      if (Math.abs(data.balance) < 0.01) return; // Skip settled groups
+      
+      const group = groups.find(g => String(g._id || g.id) === groupId);
+      if (!group) return;
+      
+      result.push({
+        groupId,
+        groupName: group.name,
+        groupEmoji: group.emoji,
+        balance: data.balance
       });
     });
-  }
-  
-  // Process settlements - THIS IS THE FIX
-  if (Array.isArray(settlements)) {
-    settlements.forEach(settlement => {
-      if (!settlement?.from || !settlement?.to) return;
-      if (!settlement.groupId && !settlement.group) return;
-      
-      const groupId = String(settlement.groupId || settlement.group?._id || settlement.group?.id || settlement.group);
-      const fromId = String(settlement.from?._id || settlement.from?.id || settlement.from);
-      const toId = String(settlement.to?._id || settlement.to?.id || settlement.to);
-      const amount = Number(settlement.amount) || 0;
-      
-      // ✅ You paid the friend (from=you, to=friend)
-      // This reduces what you owe them (moves balance more positive)
-      if (fromId === currentUserIdStr && toId === friendIdStr) {
-        const current = groupMap.get(groupId) || { balance: 0 };
-        current.balance += amount; // You paid them, so they owe you more now
-        groupMap.set(groupId, current);
-      }
-      
-      // ✅ Friend paid you (from=friend, to=you)
-      // This reduces what they owe you (moves balance more negative)
-      if (fromId === friendIdStr && toId === currentUserIdStr) {
-        const current = groupMap.get(groupId) || { balance: 0 };
-        current.balance -= amount; // They paid you, so you owe them more now
-        groupMap.set(groupId, current);
-      }
-    });
-  }
-  
-  const result = [];
-  groupMap.forEach((data, groupId) => {
-    if (Math.abs(data.balance) < 0.01) return; // Skip settled groups
     
-    const group = groups.find(g => String(g._id || g.id) === groupId);
-    if (!group) return;
+    result.sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance));
     
-    result.push({
-      groupId,
-      groupName: group.name,
-      groupEmoji: group.emoji,
-      balance: data.balance // Positive = they owe you, Negative = you owe them
-    });
-  });
-  
-  result.sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance));
-  
-  return result;
-};
+    return result;
+  };
 
 
 
@@ -264,6 +276,7 @@ export const FriendsScreen = () => {
   };
 
 
+
   const handleSendReminder = (friendId, amount, friendName) => {
     setRemindData({ friendId, amount, friendName });
     setReminderSent(false);
@@ -271,63 +284,61 @@ export const FriendsScreen = () => {
   };
 
 
+
   const confirmSendReminder = async () => {
-  if (!remindData) return;
-  
-  setIsSendingReminder(true);
-  try {
-    // Get group breakdown for the friend
-    const groupBreakdown = getGroupWiseBreakdown(remindData.friendId);
+    if (!remindData) return;
     
-    if (groupBreakdown.length === 0) {
-      showToast('No balances found');
+    setIsSendingReminder(true);
+    try {
+      const groupBreakdown = getGroupWiseBreakdown(remindData.friendId);
+      
+      if (groupBreakdown.length === 0) {
+        showToast('No balances found');
+        setIsSendingReminder(false);
+        setReminderSent(false);
+        return;
+      }
+      
+      const groupsTheyOwe = groupBreakdown.filter(g => g.balance > 0);
+      
+      if (groupsTheyOwe.length === 0) {
+        showToast('No balances to remind about');
+        setIsSendingReminder(false);
+        setReminderSent(false);
+        return;
+      }
+      
+      const emailBreakdown = groupsTheyOwe.map(g => ({
+        groupId: g.groupId,
+        groupName: g.groupName,
+        groupEmoji: g.groupEmoji,
+        amount: g.balance
+      }));
+      
+      const totalAmount = groupsTheyOwe.reduce((sum, g) => sum + g.balance, 0);
+      
+      const { sendCombinedReminder } = useStore.getState();
+      await sendCombinedReminder(
+        remindData.friendId,
+        totalAmount,
+        emailBreakdown
+      );
+      
+      setIsSendingReminder(false);
+      setReminderSent(true);
+    } catch (err) {
+      console.error('Failed to send reminder:', err);
       setIsSendingReminder(false);
       setReminderSent(false);
-      return;
+      showToast('Failed to send reminder');
     }
-    
-    // Filter only groups where they owe you (positive balance)
-    const groupsTheyOwe = groupBreakdown.filter(g => g.balance > 0);
-    
-    if (groupsTheyOwe.length === 0) {
-      showToast('No balances to remind about');
-      setIsSendingReminder(false);
-      setReminderSent(false);
-      return;
-    }
-    
-    // Prepare breakdown for email
-    const emailBreakdown = groupsTheyOwe.map(g => ({
-      groupId: g.groupId,
-      groupName: g.groupName,
-      groupEmoji: g.groupEmoji,
-      amount: g.balance
-    }));
-    
-    const totalAmount = groupsTheyOwe.reduce((sum, g) => sum + g.balance, 0);
-    
-    // Use combined reminder endpoint (works for single or multiple groups)
-    const { sendCombinedReminder } = useStore.getState();
-    await sendCombinedReminder(
-      remindData.friendId,
-      totalAmount,
-      emailBreakdown
-    );
-    
-    setIsSendingReminder(false);
-    setReminderSent(true);
-  } catch (err) {
-    console.error('Failed to send reminder:', err);
-    setIsSendingReminder(false);
-    setReminderSent(false);
-    showToast('Failed to send reminder');
-  }
-};
+  };
 
 
 
   const handleSettleUp = async () => {
     if (!selectedFriend) return;
+
 
 
     setIsSettling(true);
@@ -341,8 +352,10 @@ export const FriendsScreen = () => {
       }
 
 
+
       const friendId = String(selectedFriend._id || selectedFriend.id);
       const myId = String(currentUser._id || currentUser.id);
+
 
 
       const promises = [];
@@ -373,8 +386,10 @@ export const FriendsScreen = () => {
       }
 
 
+
       await Promise.all(promises);
       await new Promise(resolve => setTimeout(resolve, 1000));
+
 
 
       await loadGroups();
@@ -385,6 +400,7 @@ export const FriendsScreen = () => {
       }
       
       refreshFriends();
+
 
 
       setShowSettleUpModal(false);
@@ -402,6 +418,7 @@ export const FriendsScreen = () => {
   };
 
 
+
   const closeRemindModal = () => {
     setShowRemindModal(false);
     setRemindData(null);
@@ -410,18 +427,33 @@ export const FriendsScreen = () => {
   };
 
 
+
   const filteredFriends = friends.filter(friend =>
     friend.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
 
-  const friendsYouOwe = filteredFriends.filter(friend => calculateFriendBalance(friend._id) < 0);
-  const friendsWhoOweYou = filteredFriends.filter(friend => calculateFriendBalance(friend._id) > 0);
-  const settledFriends = filteredFriends.filter(friend => calculateFriendBalance(friend._id) === 0);
+
+  const friendsYouOwe = filteredFriends.filter(friend => {
+    const balance = calculateFriendBalance(friend._id);
+    return balance < -0.01; // More than 1 cent
+  });
+
+  const friendsWhoOweYou = filteredFriends.filter(friend => {
+    const balance = calculateFriendBalance(friend._id);
+    return balance > 0.01; // More than 1 cent
+  });
+
+  const settledFriends = filteredFriends.filter(friend => {
+    const balance = calculateFriendBalance(friend._id);
+    return Math.abs(balance) < 0.01; // Less than 1 cent (essentially 0)
+  });
+
 
 
   const overallBalance = calculateOverallBalance();
   const currencySymbol = getCurrencySymbol();
+
 
 
   if (!isInitialLoadComplete || (loading && !hasLoadedFriends)) {
@@ -433,6 +465,7 @@ export const FriendsScreen = () => {
       </Screen>
     );
   }
+
 
 
   return (
@@ -451,6 +484,7 @@ export const FriendsScreen = () => {
             />
           </div>
         </div>
+
 
 
         {friends.length === 0 ? (
@@ -475,6 +509,7 @@ export const FriendsScreen = () => {
                 </div>
               </div>
             </Card>
+
 
 
             {/* Friends You Owe */}
@@ -521,6 +556,7 @@ export const FriendsScreen = () => {
             )}
 
 
+
             {/* Friends Who Owe You */}
             {friendsWhoOweYou.length > 0 && (
               <div className="space-y-2">
@@ -565,6 +601,7 @@ export const FriendsScreen = () => {
             )}
 
 
+
             {/* Settled Friends */}
             {settledFriends.length > 0 && (
               <div>
@@ -594,7 +631,7 @@ export const FriendsScreen = () => {
                           </div>
                           <div className="text-right">
                             <p className="text-sm text-neutral-400">
-                              no expenses
+                              ₹0.00
                             </p>
                           </div>
                         </div>
@@ -607,6 +644,7 @@ export const FriendsScreen = () => {
           </>
         )}
       </div>
+
 
 
       {/* Friend Details Modal */}
@@ -645,19 +683,21 @@ export const FriendsScreen = () => {
             </div>
 
 
+
             {/* Content */}
             <div className="space-y-4">
               {(() => {
                 const netBalance = calculateFriendBalance(selectedFriend._id);
+                const groupBreakdown = getGroupWiseBreakdown(selectedFriend._id);
                 
-                if (Math.abs(netBalance) < 0.01) {
+                if (Math.abs(netBalance) < 0.01 || groupBreakdown.length === 0) {
                   return (
                     <div className="text-center py-6">
                       <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-3">
                         <Check size={32} className="text-green-400" />
                       </div>
                       <h3 className="text-lg font-semibold text-neutral-100 mb-1">
-                        All Settled! 🎉
+                        No expenses
                       </h3>
                       <p className="text-neutral-400 text-sm">
                         No outstanding balances with {selectedFriend.name}
@@ -665,8 +705,6 @@ export const FriendsScreen = () => {
                     </div>
                   );
                 }
-                
-                const groupBreakdown = getGroupWiseBreakdown(selectedFriend._id);
                 
                 return (
                   <>
@@ -707,6 +745,7 @@ export const FriendsScreen = () => {
                     </div>
 
 
+
                     {/* Action Button */}
                     <div className="space-y-2 pt-4 mt-4 border-t border-neutral-700">
                       {netBalance < 0 ? (
@@ -743,6 +782,7 @@ export const FriendsScreen = () => {
           </div>
         </Modal>
       )}
+
 
 
       {/* Settle Up Confirmation Modal */}
@@ -839,6 +879,7 @@ export const FriendsScreen = () => {
       )}
 
 
+
       {/* Remind Confirmation Modal */}
       <Modal
         isOpen={showRemindModal}
@@ -907,6 +948,7 @@ export const FriendsScreen = () => {
           </div>
         )}
       </Modal>
+
 
 
       {/* Success Toast */}

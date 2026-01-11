@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import apiService from '../services/api';
 import socketService from '../services/socket';
 
+
 export const useStore = create((set, get) => ({
   // Auth State
   currentUser: null,
@@ -66,6 +67,7 @@ export const useStore = create((set, get) => ({
       set({ isInitialLoadComplete: true });
     }
   },
+
 
   setUser: async (user) => {
     // Set user and clear old data
@@ -187,6 +189,7 @@ export const useStore = create((set, get) => ({
       
       let splits = Array.isArray(providedSplits) ? providedSplits : [];
 
+
       // If no splits provided, fall back to equal split
       if (splits.length === 0) {
         const numberOfPeople = splitBetween.length;
@@ -198,6 +201,7 @@ export const useStore = create((set, get) => ({
         }));
       }
 
+
       const expense = await apiService.addExpense(
         groupId,
         description,
@@ -208,6 +212,7 @@ export const useStore = create((set, get) => ({
         paidBy,
         currency
       );
+
 
       // ONLY socket event will add it to state - prevents duplicates
       // This means creator will see it when socket broadcasts it
@@ -232,6 +237,7 @@ export const useStore = create((set, get) => ({
     }
   },
 
+
   updateExpense: async (expenseId, payload) => {
     try {
       const updated = await apiService.updateExpense(expenseId, payload);
@@ -244,6 +250,7 @@ export const useStore = create((set, get) => ({
       throw err;
     }
   },
+
 
   loadGroupExpenses: async (groupId) => {
     try {
@@ -258,6 +265,7 @@ export const useStore = create((set, get) => ({
       console.error('Failed to load expenses:', err);
     }
   },
+
 
   loadAllExpenses: async () => {
     try {
@@ -292,6 +300,7 @@ export const useStore = create((set, get) => ({
     }
   },
 
+
   loadGroupBalances: async (groupId) => {
     try {
       const balances = await apiService.getGroupBalances(groupId);
@@ -325,6 +334,7 @@ export const useStore = create((set, get) => ({
     }
   },
 
+
   loadGroupSettlements: async (groupId) => {
     try {
       const settlements = await apiService.getGroupSettlements(groupId);
@@ -338,6 +348,7 @@ export const useStore = create((set, get) => ({
       console.error('Failed to load settlements:', err);
     }
   },
+
 
   loadAllSettlements: async () => {
     try {
@@ -360,6 +371,7 @@ export const useStore = create((set, get) => ({
     }
   },
 
+
   sendReminder: async (groupId, memberId, amount) => {
     try {
       await apiService.sendPaymentReminder(groupId, memberId, amount);
@@ -370,6 +382,7 @@ export const useStore = create((set, get) => ({
     }
   },
 
+
   sendCombinedReminder: async (memberId, totalAmount, groupBreakdown) => {
     try {
       await apiService.sendCombinedReminder(memberId, totalAmount, groupBreakdown);
@@ -379,6 +392,7 @@ export const useStore = create((set, get) => ({
       throw err;
     }
   },
+
 
   // Friends Actions - Computed from group memberships
   loadFriends: () => {
@@ -423,10 +437,12 @@ export const useStore = create((set, get) => ({
     return friends;
   },
 
+
   refreshFriends: () => {
     // Recompute from current groups
     return get().loadFriends();
   },
+
 
   updateProfile: async (data) => {
     try {
@@ -445,6 +461,7 @@ export const useStore = create((set, get) => ({
           : group.createdBy
       }));
 
+
       const updatedExpenses = expenses.map(expense => ({
         ...expense,
         paidBy: (expense.paidBy?._id || expense.paidBy) === updatedUser._id
@@ -458,6 +475,7 @@ export const useStore = create((set, get) => ({
         }))
       }));
 
+
       const updatedSettlements = settlements.map(settlement => ({
         ...settlement,
         from: (settlement.from?._id || settlement.from) === updatedUser._id
@@ -467,6 +485,7 @@ export const useStore = create((set, get) => ({
           ? { ...settlement.to, ...updatedUser }
           : settlement.to
       }));
+
 
       set({ 
         currentUser: updatedUser,
@@ -480,6 +499,7 @@ export const useStore = create((set, get) => ({
       throw err;
     }
   },
+
 
   deleteProfileImage: async () => {
     try {
@@ -498,6 +518,7 @@ export const useStore = create((set, get) => ({
           : group.createdBy
       }));
 
+
       const updatedExpenses = expenses.map(expense => ({
         ...expense,
         paidBy: (expense.paidBy?._id || expense.paidBy) === user._id
@@ -511,6 +532,7 @@ export const useStore = create((set, get) => ({
         }))
       }));
 
+
       const updatedSettlements = settlements.map(settlement => ({
         ...settlement,
         from: (settlement.from?._id || settlement.from) === user._id
@@ -520,6 +542,7 @@ export const useStore = create((set, get) => ({
           ? { ...settlement.to, ...user }
           : settlement.to
       }));
+
 
       set({ 
         currentUser: user,
@@ -751,7 +774,7 @@ export const useStore = create((set, get) => ({
         
         const settlementInPaise = Math.round(settlement.amount * 100);
         balances[fromId][toId] += settlementInPaise;
-        balances[toId][fromId] -= settlementInPaise;
+        balances[toId][fromIn] -= settlementInPaise;
       });
       
       const currentUserId = currentUser._id || currentUser.id;
@@ -835,7 +858,7 @@ export const useStore = create((set, get) => ({
       if (!balances[toId]) balances[toId] = {};
       
       if (!balances[fromId][toId]) balances[fromId][toId] = 0;
-      if (!balances[toId][fromId]) balances[toId][fromIn] = 0;
+      if (!balances[toId][fromId]) balances[toId][fromId] = 0;
       
       balances[fromId][toId] += settlementInPaise;
       balances[toId][fromId] -= settlementInPaise;
@@ -865,7 +888,8 @@ export const useStore = create((set, get) => ({
     };
   },
 
-  // ✅ SOCKET ACTIONS - CLEAN AND PROPER
+
+  // ✅ SOCKET ACTIONS - WITH RECONNECT DATA SYNC
   initializeSocket: () => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -873,8 +897,10 @@ export const useStore = create((set, get) => ({
       return;
     }
 
+
     console.log('🔌 Initializing socket connection...');
     socketService.connect(token);
+
 
     const { currentUser, groups } = get();
     
@@ -883,6 +909,7 @@ export const useStore = create((set, get) => ({
       socketService.joinUserRoom(currentUser._id);
     }
 
+
     // Join all group rooms
     groups.forEach(group => {
       const groupId = group._id || group.id;
@@ -890,6 +917,7 @@ export const useStore = create((set, get) => ({
         socketService.joinGroup(groupId);
       }
     });
+
 
     // Set up all event listeners
     socketService.onExpenseCreated((expense) => {
@@ -905,12 +933,14 @@ export const useStore = create((set, get) => ({
       });
     });
 
+
     socketService.onExpenseDeleted(({ expenseId }) => {
       console.log('🗑️ Expense deleted event received:', expenseId);
       set(state => ({
         expenses: state.expenses.filter(e => (e._id || e.id) !== expenseId)
       }));
     });
+
 
     socketService.onExpenseUpdated((updatedExpense) => {
       console.log('✏️ Expense updated event received:', updatedExpense);
@@ -920,6 +950,7 @@ export const useStore = create((set, get) => ({
         )
       }));
     });
+
 
     socketService.onSettlementCreated((settlement) => {
       console.log('💸 Settlement created event received:', settlement);
@@ -934,12 +965,14 @@ export const useStore = create((set, get) => ({
       });
     });
 
+
     socketService.onMemberJoined(({ groupId, userId, user }) => {
       console.log('👤 Member joined event received:', { groupId, userId, user });
       if (!user || !groupId || !userId) {
         console.error('❌ Invalid member joined data');
         return;
       }
+
 
       set(state => ({
         groups: state.groups.map(g => {
@@ -956,12 +989,14 @@ export const useStore = create((set, get) => ({
       get().refreshFriends();
     });
 
+
     socketService.onMembersAdded(({ groupId, members }) => {
       console.log('👥 Members added event received:', { groupId, members });
       if (!groupId || !Array.isArray(members)) {
         console.error('❌ Invalid members added data');
         return;
       }
+
 
       const { currentUser } = get();
       const currentUserId = (currentUser?._id || currentUser?.id)?.toString();
@@ -988,6 +1023,7 @@ export const useStore = create((set, get) => ({
       get().refreshFriends();
     });
 
+
     socketService.onFriendAddedToGroup(({ userId, groupId }) => {
       console.log('🎉 Friend added to group event received');
       const { currentUser } = get();
@@ -996,6 +1032,7 @@ export const useStore = create((set, get) => ({
         get().loadGroups();
       }
     });
+
 
     socketService.onNotification((notification) => {
       console.log('🔔 Notification received:', notification);
@@ -1009,6 +1046,7 @@ export const useStore = create((set, get) => ({
           requireInteraction: false
         });
 
+
         notif.onclick = () => {
           window.focus();
           if (notification.groupId) {
@@ -1019,12 +1057,34 @@ export const useStore = create((set, get) => ({
       }
     });
 
+
+    // ✅ NEW: Handle reconnection - sync missed data
+    if (socketService.getSocket()) {
+      socketService.getSocket().on('reconnect', async (attemptNumber) => {
+        console.log('🔄 Socket reconnected after', attemptNumber, 'attempts');
+        console.log('📥 Syncing missed data...');
+        
+        try {
+          // Reload all data to catch any updates missed during disconnection
+          await get().loadAllExpenses();
+          await get().loadAllSettlements();
+          
+          console.log('✅ Data synced successfully after reconnection');
+        } catch (err) {
+          console.error('❌ Failed to sync data after reconnection:', err);
+        }
+      });
+    }
+
+
     console.log('✅ Socket initialization complete');
   },
+
 
   joinSocketGroup: (groupId) => {
     socketService.joinGroup(groupId);
   },
+
 
   leaveSocketGroup: (groupId) => {
     socketService.leaveGroup(groupId);

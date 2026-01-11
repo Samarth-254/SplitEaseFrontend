@@ -4,6 +4,8 @@ class SocketService {
   constructor() {
     this.socket = null;
     this.connected = false;
+    this.userId = null;
+    this.joinedGroups = new Set(); // ✅ Track joined groups
   }
 
   connect(token) {
@@ -19,17 +21,42 @@ class SocketService {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
-      reconnectionAttempts: 5
+      reconnectionDelayMax: 5000,
+      reconnectionAttempts: Infinity, // ✅ Keep trying
+      timeout: 20000
     });
 
     this.socket.on('connect', () => {
       console.log('🟢 Socket connected:', this.socket.id);
       this.connected = true;
+      
+      // ✅ Auto-rejoin rooms on reconnect
+      this.rejoinRooms();
     });
 
-    this.socket.on('disconnect', () => {
-      console.log('🔴 Socket disconnected');
+    this.socket.on('disconnect', (reason) => {
+      console.log('🔴 Socket disconnected:', reason);
       this.connected = false;
+    });
+
+    this.socket.on('reconnect', (attemptNumber) => {
+      console.log('🔄 Socket reconnected after', attemptNumber, 'attempts');
+      this.connected = true;
+      
+      // ✅ Rejoin rooms after reconnection
+      this.rejoinRooms();
+    });
+
+    this.socket.on('reconnect_attempt', (attemptNumber) => {
+      console.log('🔄 Reconnection attempt:', attemptNumber);
+    });
+
+    this.socket.on('reconnect_error', (error) => {
+      console.error('❌ Reconnection error:', error);
+    });
+
+    this.socket.on('reconnect_failed', () => {
+      console.error('❌ Reconnection failed');
     });
 
     this.socket.on('connect_error', (error) => {
@@ -39,17 +66,39 @@ class SocketService {
     return this.socket;
   }
 
+  // ✅ NEW: Rejoin all rooms
+  rejoinRooms() {
+    console.log('🔄 Rejoining rooms...');
+    
+    // Rejoin user room
+    if (this.userId) {
+      this.socket.emit('join-user-room', this.userId);
+      console.log('👤 Rejoined user room:', this.userId);
+    }
+    
+    // Rejoin all group rooms
+    this.joinedGroups.forEach(groupId => {
+      this.socket.emit('join-group', groupId);
+      console.log('🏠 Rejoined group:', groupId);
+    });
+    
+    console.log('✅ Rejoined', this.joinedGroups.size, 'groups');
+  }
+
   disconnect() {
     if (this.socket) {
       console.log('🔌 Disconnecting socket');
       this.socket.disconnect();
       this.socket = null;
       this.connected = false;
+      this.userId = null;
+      this.joinedGroups.clear();
     }
   }
 
   joinUserRoom(userId) {
     if (this.socket?.connected) {
+      this.userId = userId; // ✅ Store user ID
       this.socket.emit('join-user-room', userId);
       console.log('👤 Joined user room:', userId);
     }
@@ -57,6 +106,7 @@ class SocketService {
 
   joinGroup(groupId) {
     if (this.socket?.connected) {
+      this.joinedGroups.add(groupId); // ✅ Track group
       this.socket.emit('join-group', groupId);
       console.log('🏠 Joined group:', groupId);
     }
@@ -64,6 +114,7 @@ class SocketService {
 
   leaveGroup(groupId) {
     if (this.socket?.connected) {
+      this.joinedGroups.delete(groupId); // ✅ Remove from tracking
       this.socket.emit('leave-group', groupId);
       console.log('🚪 Left group:', groupId);
     }
@@ -72,7 +123,7 @@ class SocketService {
   // ✅ EXPENSE EVENTS
   onExpenseCreated(callback) {
     if (this.socket) {
-      this.socket.off('expense:created'); // Remove old listener first
+      this.socket.off('expense:created');
       this.socket.on('expense:created', (data) => {
         console.log('💰 Expense created:', data);
         callback(data);
@@ -111,10 +162,10 @@ class SocketService {
     }
   }
 
-  // ✅ MEMBER EVENTS - FIXED EVENT NAMES
+  // ✅ MEMBER EVENTS
   onMemberJoined(callback) {
     if (this.socket) {
-      this.socket.off('member:joined'); // ✅ Changed from 'member-joined'
+      this.socket.off('member:joined');
       this.socket.on('member:joined', (data) => {
         console.log('👤 Member joined:', data);
         callback(data);
@@ -124,7 +175,7 @@ class SocketService {
 
   onMembersAdded(callback) {
     if (this.socket) {
-      this.socket.off('members:added'); // ✅ Changed from 'members-added'
+      this.socket.off('members:added');
       this.socket.on('members:added', (data) => {
         console.log('👥 Members added:', data);
         callback(data);
@@ -153,7 +204,7 @@ class SocketService {
     }
   }
 
-  // Remove listeners (keeping for cleanup)
+  // Remove listeners
   offExpenseCreated(callback) {
     if (this.socket) {
       this.socket.off('expense:created', callback);
@@ -180,13 +231,13 @@ class SocketService {
 
   offMemberJoined(callback) {
     if (this.socket) {
-      this.socket.off('member:joined', callback); // ✅ Fixed
+      this.socket.off('member:joined', callback);
     }
   }
 
   offMembersAdded(callback) {
     if (this.socket) {
-      this.socket.off('members:added', callback); // ✅ Fixed
+      this.socket.off('members:added', callback);
     }
   }
 
