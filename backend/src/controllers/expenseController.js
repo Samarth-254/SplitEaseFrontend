@@ -3,7 +3,6 @@ const Group = require("../models/Group");
 const aiCategoryService = require("../services/aiCategoryService");
 const { sendBulkNotifications } = require('./notificationController');
 
-
 exports.addExpense = async (req, res) => {
   try {
     const { groupId, description, amount, splitType, splits, category, paidBy, currency } = req.body;
@@ -57,19 +56,17 @@ exports.addExpense = async (req, res) => {
       }));
     }
 
-    // ✅ Emit to group room + all members' personal rooms
     const io = req.app.get('io');
     if (io) {
       console.log(`Emitting expense:created to group:${groupId}`);
       io.to(`group:${groupId}`).emit('expense:created', expenseObj);
       
-      // ✅ Also emit to each member's personal room
       group.members.forEach(memberId => {
         io.to(`user:${memberId}`).emit('expense:created', expenseObj);
       });
     }
 
-    // Send push notifications
+    // ✅ UPDATED: Pass io to sendBulkNotifications
     const memberIds = group.members
       .filter(m => m.toString() !== req.user._id.toString())
       .map(m => m.toString());
@@ -79,7 +76,8 @@ exports.addExpense = async (req, res) => {
         memberIds,
         `💸 New expense in ${group.name}`,
         `${req.user.name} added "${expense.description}" - ₹${expense.amount}`,
-        `/group/${groupId}`
+        `/group/${groupId}`,
+        io  // ✅ ADD THIS
       );
     }
 
@@ -134,19 +132,17 @@ exports.updateExpense = async (req, res) => {
     await expense.populate('splits.user', 'name email profileImage mobile gender');
     await expense.populate('createdBy', 'name email profileImage mobile gender');
 
-    // ✅ Emit to group room + all members' personal rooms
     const io = req.app.get('io');
     if (io) {
       console.log(`Emitting expense:updated to group:${expense.groupId}`);
       io.to(`group:${expense.groupId}`).emit('expense:updated', expense);
       
-      // ✅ Also emit to each member's personal room
       group.members.forEach(memberId => {
         io.to(`user:${memberId}`).emit('expense:updated', expense);
       });
     }
 
-    // Send push notifications
+    // ✅ UPDATED: Pass io to sendBulkNotifications
     const memberIds = group.members
       .filter(m => m.toString() !== req.user._id.toString())
       .map(m => m.toString());
@@ -156,7 +152,8 @@ exports.updateExpense = async (req, res) => {
         memberIds,
         `✏️ Expense updated in ${group.name}`,
         `${req.user.name} updated "${expense.description}" - ₹${expense.amount}`,
-        `/group/${expense.groupId}`
+        `/group/${expense.groupId}`,
+        io  // ✅ ADD THIS
       );
     }
 
@@ -191,13 +188,11 @@ exports.deleteExpense = async (req, res) => {
 
     await Expense.findByIdAndDelete(expenseId);
 
-    // ✅ Emit to group room + all members' personal rooms
     const io = req.app.get('io');
     if (io) {
       console.log(`Emitting expense:deleted to group:${expense.groupId}`);
       io.to(`group:${expense.groupId}`).emit('expense:deleted', { expenseId });
       
-      // ✅ Also emit to each member's personal room
       group.members.forEach(memberId => {
         io.to(`user:${memberId}`).emit('expense:deleted', { expenseId });
       });
@@ -209,8 +204,6 @@ exports.deleteExpense = async (req, res) => {
     res.status(500).json({ message: err.message || "Server error" });
   }
 };
-
-
 
 exports.getGroupExpenses = async (req, res) => {
   try {
@@ -239,8 +232,6 @@ exports.getGroupExpenses = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
-
 
 exports.calculateBalances = async (req, res) => {
   try {
@@ -324,7 +315,6 @@ exports.calculateBalances = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
 
 exports.detectCategory = async (req, res) => {
   try {

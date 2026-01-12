@@ -1,4 +1,5 @@
 import { io } from 'socket.io-client';
+import pushNotificationService from './pushNotification';  
 
 class SocketService {
   constructor() {
@@ -10,7 +11,6 @@ class SocketService {
 
   connect(token) {
     if (this.socket?.connected) {
-      
       return this.socket;
     }
 
@@ -59,12 +59,27 @@ class SocketService {
       console.error('❌ Socket connection error:', error);
     });
 
+    // ✅ NEW: Listen for subscription expiry and auto-resubscribe
+    this.socket.on('subscription-expired', async (data) => {
+      
+      
+      if (Notification.permission === 'granted' && !pushNotificationService.isUserDisabled()) {
+        
+        try {
+          await pushNotificationService.subscribeUser();
+          
+        } catch (error) {
+          console.error('❌ Failed to resubscribe:', error);
+        }
+      } else {
+        
+      }
+    });
+
     return this.socket;
   }
 
   rejoinRooms() {
-    
-    
     if (this.userId) {
       this.socket.emit('join-user-room', this.userId);
       
@@ -74,8 +89,6 @@ class SocketService {
       this.socket.emit('join-group', groupId);
       
     });
-    
-    
   }
 
   disconnect() {
@@ -101,7 +114,7 @@ class SocketService {
       
     } else {
       console.warn('⚠️ Cannot join user room - socket not connected yet');
-      this.userId = userId; // Store for later rejoin
+      this.userId = userId;
     }
   }
 
@@ -132,7 +145,6 @@ class SocketService {
 
   emit(event, data) {
     if (this.socket && this.isConnected()) {
-      
       this.socket.emit(event, data);
       return true;
     } else {
@@ -149,7 +161,6 @@ class SocketService {
         
         callback(data);
       });
-      
     }
   }
 
@@ -160,7 +171,6 @@ class SocketService {
         
         callback(data);
       });
-      
     }
   }
 
@@ -171,7 +181,6 @@ class SocketService {
         
         callback(data);
       });
-      
     }
   }
 
@@ -183,7 +192,6 @@ class SocketService {
         
         callback(data);
       });
-      
     }
   }
 
@@ -195,7 +203,6 @@ class SocketService {
         
         callback(data);
       });
-      
     }
   }
 
@@ -206,7 +213,6 @@ class SocketService {
         
         callback(data);
       });
-      
     }
   }
 
@@ -217,7 +223,6 @@ class SocketService {
         
         callback(data);
       });
-      
     }
   }
 
@@ -229,7 +234,6 @@ class SocketService {
         
         callback(data);
       });
-      
     }
   }
 

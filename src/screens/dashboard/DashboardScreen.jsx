@@ -360,69 +360,89 @@ const isDataLoading = !isInitialLoadComplete;
           </div>
 
           {/* You Owe (Debts) - ✅ SIMPLIFIED */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-base sm:text-lg font-semibold text-neutral-100">You Owe</h2>
-              <span className="text-xs sm:text-sm text-neutral-500">{allDebts.length} {allDebts.length === 1 ? 'debt' : 'debts'}</span>
-            </div>
+{/* You Owe (Debts) */}
+<div>
+  <div className="flex items-center justify-between mb-3">
+    <h2 className="text-base sm:text-lg font-semibold text-neutral-100">You Owe</h2>
+    <span className="text-xs sm:text-sm text-neutral-500">{allDebts.length} {allDebts.length === 1 ? 'debt' : 'debts'}</span>
+  </div>
 
-            {allDebts.length === 0 ? (
-              <EmptyState
-                icon={<TrendingDown size={40} />}
-                title="All settled up!"
-                description="You don't owe anyone at the moment"
-              />
-            ) : (
-              <div className="max-h-[400px] overflow-y-auto pr-2 space-y-3 scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-neutral-900">
-                {allDebts.map((debt, index) => (
-                  <motion.div
-                    key={`${debt.groupId}-${debt.memberId}`}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
+  {allDebts.length === 0 ? (
+    <EmptyState
+      icon={<TrendingDown size={40} />}
+      title="All settled up!"
+      description="You don't owe anyone at the moment"
+    />
+  ) : (
+    <div className="max-h-[400px] overflow-y-auto pr-2 space-y-3 scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-neutral-900">
+      {allDebts.map((debt, index) => {
+        // ✅ Find the user object to get profile image
+        const group = groups.find(g => (g._id || g.id) === debt.groupId);
+        const member = group?.members?.find(m => (m._id || m.id) === debt.memberId);
+        
+        return (
+          <motion.div
+            key={`${debt.groupId}-${debt.memberId}`}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.1 }}
+          >
+            <Card 
+              padding="md" 
+              className="border-red-900/30 hover:border-red-800/50 transition-colors cursor-pointer"
+              onClick={() => navigate(`/group/${debt.groupId}`)}
+            >
+              <div className="space-y-3">
+                {/* Top Row: Avatar + Member Name + Amount */}
+                <div className="flex items-start gap-3">
+                  {/* ✅ User Avatar instead of icon */}
+                  {member?.profileImage ? (
+                    <img
+                      src={member.profileImage}
+                      alt={debt.memberName}
+                      className="w-10 h-10 rounded-xl object-cover flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center flex-shrink-0">
+                      <span className="text-white font-semibold text-lg">
+                        {debt.memberName?.charAt(0)?.toUpperCase() || 'U'}
+                      </span>
+                    </div>
+                  )}
+                  
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-neutral-100 truncate text-sm sm:text-base">
+                      {debt.memberName}
+                    </h3>
+                  </div>
+                  <p className="text-base sm:text-lg font-bold text-red-400 flex-shrink-0">
+                    {getCurrencySymbol('INR')}{debt.amount.toFixed(2)}
+                  </p>
+                </div>
+                
+                {/* Bottom Row: Group Name (left) + Settle Up (right) */}
+                <div className="flex items-center justify-between pt-2 border-t border-neutral-800">
+                  <p className="text-xs text-neutral-500">
+                    {debt.groupEmoji} {debt.groupName}
+                  </p>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSettleDebt(debt);
+                    }}
+                    className="text-sm font-medium text-orange-400 hover:text-orange-300 underline transition-colors"
                   >
-                    <Card 
-                      padding="md" 
-                      className="border-red-900/30 hover:border-red-800/50 transition-colors cursor-pointer"
-                      onClick={() => navigate(`/group/${debt.groupId}`)}
-                    >
-                      <div className="space-y-3">
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-red-900/30 flex items-center justify-center flex-shrink-0">
-                            <DollarSign size={20} className="text-red-400" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-neutral-100 truncate text-sm sm:text-base">
-                              {debt.memberName}
-                            </h3>
-                            <p className="text-xs text-neutral-500 mt-0.5">
-                              {debt.groupEmoji} {debt.groupName}
-                            </p>
-                          </div>
-                          <p className="text-base sm:text-lg font-bold text-red-400 flex-shrink-0">
-                            {getCurrencySymbol('INR')}{debt.amount.toFixed(2)}
-                          </p>
-                        </div>
-                        
-                        {/* ✅ SIMPLIFIED: No "overdue" badge */}
-                        <div className="flex items-center justify-end pt-2 border-t border-neutral-800">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSettleDebt(debt);
-                            }}
-                            className="text-sm font-medium text-orange-400 hover:text-orange-300 underline transition-colors"
-                          >
-                            Settle Up
-                          </button>
-                        </div>
-                      </div>
-                    </Card>
-                  </motion.div>
-                ))}
+                    Settle Up
+                  </button>
+                </div>
               </div>
-            )}
-          </div>
+            </Card>
+          </motion.div>
+        );
+      })}
+    </div>
+  )}
+</div>
         </motion.div>
       </motion.div>
 

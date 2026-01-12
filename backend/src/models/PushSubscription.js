@@ -5,7 +5,7 @@ const pushSubscriptionSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
-    unique: true
+    index: true  
   },
   subscription: {
     type: Object,
@@ -16,5 +16,7 @@ const pushSubscriptionSchema = new mongoose.Schema({
     default: Date.now
   }
 });
+
+pushSubscriptionSchema.index({ 'subscription.endpoint': 1 }, { unique: true });
 
 module.exports = mongoose.model('PushSubscription', pushSubscriptionSchema);

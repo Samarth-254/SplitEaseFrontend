@@ -1,14 +1,12 @@
 const PushSubscription = require('../models/PushSubscription');
 const webpush = require('web-push');
 
-// Configure web-push
 webpush.setVapidDetails(
-  'mailto:samarthnagpal070@gmail.com', // ✅ Keep mailto: prefix for webpush library
+  'mailto:samarthnagpal070@gmail.com',
   process.env.VAPID_PUBLIC_KEY,
   process.env.VAPID_PRIVATE_KEY
 );
 
-// ✅ FIXED: Subscribe endpoint - handles full subscription object
 exports.subscribe = async (req, res) => {
   try {
     const subscriptionData = req.body;
@@ -17,13 +15,11 @@ exports.subscribe = async (req, res) => {
     console.log('   User:', req.user._id);
     console.log('   Endpoint:', subscriptionData.endpoint?.substring(0, 60) + '...');
     
-    // ✅ Validate subscription data
     if (!subscriptionData.endpoint || !subscriptionData.keys) {
       console.error('❌ Invalid subscription data');
       return res.status(400).json({ message: 'Invalid subscription data' });
     }
 
-    // ✅ Check if this exact endpoint already exists
     const existing = await PushSubscription.findOne({
       user: req.user._id,
       'subscription.endpoint': subscriptionData.endpoint
@@ -37,7 +33,6 @@ exports.subscribe = async (req, res) => {
       return res.json({ message: 'Subscription updated', existing: true });
     }
 
-    // ✅ Create new subscription
     const newSub = await PushSubscription.create({
       user: req.user._id,
       subscription: subscriptionData,
@@ -47,7 +42,6 @@ exports.subscribe = async (req, res) => {
     
     console.log('✅ New subscription created:', newSub._id);
     
-    // Count total subscriptions
     const totalSubs = await PushSubscription.countDocuments({ user: req.user._id });
     console.log(`📊 User now has ${totalSubs} active subscription(s)`);
     
@@ -62,17 +56,14 @@ exports.subscribe = async (req, res) => {
   }
 };
 
-// ✅ FIXED: Unsubscribe specific endpoint
 exports.unsubscribe = async (req, res) => {
   try {
     const { endpoint } = req.body;
     
     if (!endpoint) {
-      // Delete all subscriptions
       await PushSubscription.deleteMany({ user: req.user._id });
       console.log(`🗑️ Deleted all subscriptions for user: ${req.user._id}`);
     } else {
-      // Delete specific endpoint
       await PushSubscription.findOneAndDelete({
         user: req.user._id,
         'subscription.endpoint': endpoint
@@ -87,10 +78,24 @@ exports.unsubscribe = async (req, res) => {
   }
 };
 
-// ✅ FIXED: Send to ALL user's devices
-exports.sendNotification = async (userId, title, body, url) => {
+exports.verifySubscription = async (req, res) => {
   try {
-    // ✅ Find ALL subscriptions for this user
+    const { endpoint } = req.body;
+    
+    const subscription = await PushSubscription.findOne({
+      user: req.user._id,
+      'subscription.endpoint': endpoint
+    });
+    
+    res.json({ valid: !!subscription });
+  } catch (err) {
+    console.error('Error verifying subscription:', err);
+    res.status(500).json({ valid: false });
+  }
+};
+
+exports.sendNotification = async (userId, title, body, url, io) => {  // ✅ Added io param
+  try {
     const subscriptions = await PushSubscription.find({ user: userId });
     
     if (subscriptions.length === 0) {
@@ -118,7 +123,6 @@ exports.sendNotification = async (userId, title, body, url) => {
         sent++;
         console.log(`✅ Push notification sent to user: ${userId} (device ${sent})`);
         
-        // Update last used timestamp
         await PushSubscription.findByIdAndUpdate(sub._id, {
           lastUsed: new Date()
         });
@@ -128,10 +132,18 @@ exports.sendNotification = async (userId, title, body, url) => {
         console.error(`   Status: ${err.statusCode}`);
         console.error(`   Message: ${err.message}`);
         
-        // Delete invalid subscriptions
         if (err.statusCode === 410 || err.statusCode === 404 || err.statusCode === 400) {
           console.log(`🗑️ Deleted expired subscription for user: ${userId}`);
           await PushSubscription.findByIdAndDelete(sub._id);
+          
+          if (io) {
+            io.to(userId.toString()).emit('subscription-expired', {
+              message: 'Your push subscription expired',
+              endpoint: sub.subscription.endpoint,
+              timestamp: new Date().toISOString()
+            });
+            console.log(`📡 Emitted subscription-expired event to user: ${userId}`);
+          }
         } else if (err.statusCode === 401 || err.statusCode === 403) {
           console.error(`🔥 VAPID AUTH ERROR! Check your VAPID keys!`);
         }
@@ -147,11 +159,10 @@ exports.sendNotification = async (userId, title, body, url) => {
   }
 };
 
-// ✅ FIXED: Bulk notifications
-exports.sendBulkNotifications = async (userIds, title, body, url) => {
+exports.sendBulkNotifications = async (userIds, title, body, url, io) => { 
   try {
     const results = await Promise.allSettled(
-      userIds.map(userId => exports.sendNotification(userId, title, body, url))
+      userIds.map(userId => exports.sendNotification(userId, title, body, url, io))
     );
     
     let totalSent = 0;
@@ -173,7 +184,6 @@ exports.sendBulkNotifications = async (userIds, title, body, url) => {
   }
 };
 
-// Check subscription endpoint
 exports.checkSubscription = async (req, res) => {
   try {
     const { endpoint } = req.body;
@@ -188,6 +198,10 @@ exports.checkSubscription = async (req, res) => {
     console.error('Check subscription error:', err);
     res.status(500).json({ exists: false });
   }
+};
+
+exports.getVapidPublicKey = (req, res) => {
+  res.json({ publicKey: process.env.VAPID_PUBLIC_KEY });
 };
 
 module.exports = exports;

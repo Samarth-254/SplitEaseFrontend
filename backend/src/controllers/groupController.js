@@ -637,12 +637,14 @@ exports.recordSettlement = async (req, res) => {
       console.log(`✅ Settlement emitted to group:${groupId}, user:${fromUserId}, user:${toUserId}`);
     }
 
-    await sendNotification(
-      toUserId,
-      `✅ Payment received in ${group.name}`,
-      `${settlement.from.name} paid you ₹${amount}`,
-      `/group/${groupId}`
-    );
+   await sendNotification(
+  toUserId,
+  `✅ Payment received in ${group.name}`,
+  `${settlement.from.name} paid you ₹${amount}`,
+  `/group/${groupId}`, 
+  io                     
+);
+
 
     res.status(201).json(settlement);
   } catch (err) {

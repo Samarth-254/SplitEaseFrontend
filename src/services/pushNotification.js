@@ -1,6 +1,5 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
-const PUBLIC_VAPID_KEY = 'BEZvyoXuIUFqsFx2r8H63keI8HVtW41jhuV3ZenKJf9sDu6BFnbbXJIVjdKsCljSDicofWSfRc69KszxQY14JDI';
+const PUBLIC_VAPID_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || 'BEZvyoXuIUFqsFx2r8H63keI8HVtW41jhuV3ZenKJf9sDu6BFnbbXJIVjdKsCljSDicofWSfRc69KszxQY14JDI';
 
 class PushNotificationService {
   constructor() {
@@ -8,28 +7,32 @@ class PushNotificationService {
     this.checkInterval = null;
   }
 
-  async requestPermission() {
-    if (!this.isSupported) {
-      return false;
+  async initialize() {
+    if (!this.isSupported) return;
+
+    // ✅ Only start monitoring, don't subscribe automatically
+    if (this.isPermissionGranted() && !this.isUserDisabled()) {
+      this.startSubscriptionMonitoring();
     }
+  }
+
+  async requestPermission() {
+    if (!this.isSupported) return false;
 
     try {
       const permission = await Notification.requestPermission();
       
       if (permission === 'granted') {
-        
         const success = await this.subscribeUser();
         if (success) {
           localStorage.setItem('notifications-user-disabled', 'false');
           this.startSubscriptionMonitoring();
         }
         return success;
-      } else {
-        
-        return false;
       }
+      return false;
     } catch (err) {
-      console.error('❌ Permission request error:', err.message);
+      console.error('Permission request error:', err);
       return false;
     }
   }
@@ -37,31 +40,46 @@ class PushNotificationService {
   async subscribeUser() {
     try {
       const registration = await navigator.serviceWorker.ready;
-      
-      let subscription = await registration.pushManager.getSubscription();
-      
-      if (!subscription) {
-        
-        subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: this.urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
-        });
-        
-      } else {
-        
-      }
-
       const token = localStorage.getItem('token');
-      if (!token) {
-        console.warn('⚠️ No auth token found - user not logged in');
-        return false;
+      if (!token) return false;
+      
+      // ✅ Check if we already have a valid subscription in browser
+      let existingSubscription = await registration.pushManager.getSubscription();
+      
+      if (existingSubscription) {
+        // ✅ Verify it exists on backend
+        try {
+          const checkResponse = await fetch(`${API_URL}/api/notifications/check`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ endpoint: existingSubscription.endpoint })
+          });
+          
+          if (checkResponse.ok) {
+            const { exists } = await checkResponse.json();
+            if (exists) {
+              // ✅ Subscription is valid, don't create new one
+              return true;
+            }
+          }
+        } catch (checkErr) {
+          console.error('Check subscription error:', checkErr);
+        }
+        
+        // Backend doesn't have it, unsubscribe from browser
+        await existingSubscription.unsubscribe();
       }
+      
+      // ✅ Create new subscription only if needed
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: this.urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
+      });
 
-      // ✅ FIXED: Send subscription.toJSON() instead of subscription
       const subscriptionData = subscription.toJSON();
-      
-      
-      
       
       const response = await fetch(`${API_URL}/api/notifications/subscribe`, {
         method: 'POST',
@@ -69,20 +87,17 @@ class PushNotificationService {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(subscriptionData) // ✅ FIXED: Now sends correct format
+        body: JSON.stringify(subscriptionData)
       });
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: 'Failed to subscribe' }));
-        console.error('❌ Backend subscription failed:', error);
         throw new Error(error.message || 'Failed to subscribe');
       }
 
-      const result = await response.json();
-      
       return true;
     } catch (err) {
-      console.error('❌ Failed to subscribe user:', err.message);
+      console.error('Subscribe error:', err);
       return false;
     }
   }
@@ -93,25 +108,18 @@ class PushNotificationService {
     }
 
     this.checkInterval = setInterval(async () => {
-      if (this.isUserDisabled()) {
-        return;
-      }
+      if (this.isUserDisabled() || !this.isPermissionGranted()) return;
 
       try {
         const registration = await navigator.serviceWorker.ready;
         const subscription = await registration.pushManager.getSubscription();
         
-        if (!subscription && this.isPermissionGranted()) {
-          
-          const success = await this.subscribeUser();
-          if (success) {
-            
-          } else {
-            
-          }
+        // ✅ Only resubscribe if NO subscription exists in browser
+        if (!subscription) {
+          await this.subscribeUser();
         }
       } catch (err) {
-        console.error('Subscription health check error:', err);
+        console.error('Subscription check error:', err);
       }
     }, 5 * 60 * 1000);
   }
@@ -147,31 +155,23 @@ class PushNotificationService {
           });
         }
         
-        
         return true;
       }
       return false;
     } catch (err) {
-      console.error('❌ Failed to unsubscribe:', err);
+      console.error('Unsubscribe error:', err);
       return false;
     }
   }
 
   async checkAndResubscribe() {
-    if (this.isUserDisabled()) {
-      return false;
-    }
-
-    if (!this.isPermissionGranted()) {
-      return false;
-    }
+    if (this.isUserDisabled() || !this.isPermissionGranted()) return false;
 
     try {
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
       
       if (!subscription) {
-        
         return await this.subscribeUser();
       }
       
