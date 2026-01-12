@@ -531,14 +531,25 @@ exports.addFriendsToGroup = async (req, res) => {
           profileImage: user.profileImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name.replace(/\s+/g, '')}`
         }));
         
-        io.to(`group:${group._id}`).emit('members-added', {
+        // ✅ Emit to group room
+        io.to(`group:${group._id}`).emit('members:added', {
           groupId: group._id,
           addedBy: req.user._id,
           members: addedUsersWithAvatars
         });
         
+        // ✅ Emit to all members including new ones
+        group.members.forEach(memberId => {
+          io.to(`user:${memberId}`).emit('members:added', {
+            groupId: group._id,
+            addedBy: req.user._id,
+            members: addedUsersWithAvatars
+          });
+        });
+        
+        // Notify new members specifically
         for (const userId of newMembers) {
-          io.emit('friend-added-to-group', {
+          io.emit('friend:added-to-group', {
             userId,
             groupId: group._id,
             groupName: group.name,
@@ -566,6 +577,7 @@ exports.addFriendsToGroup = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 
 exports.recordSettlement = async (req, res) => {
@@ -599,10 +611,11 @@ exports.recordSettlement = async (req, res) => {
 
     const io = req.app.get('io');
     if (io) {
-      // ✅ ONLY THIS LINE - Use colon format
+      // ✅ Emit to group room + both user rooms
       io.to(`group:${groupId}`).emit('settlement:created', settlement);
+      io.to(`user:${fromUserId}`).emit('settlement:created', settlement);
+      io.to(`user:${toUserId}`).emit('settlement:created', settlement);
       
-      // Notification
       const fromUser = settlement.from;
       io.to(`user:${toUserId}`).emit('notification', {
         type: 'settlement_received',
@@ -621,10 +634,9 @@ exports.recordSettlement = async (req, res) => {
         read: false
       });
 
-      console.log(`✅ Settlement emitted to group:${groupId}`);
+      console.log(`✅ Settlement emitted to group:${groupId}, user:${fromUserId}, user:${toUserId}`);
     }
 
-    // Push notification
     await sendNotification(
       toUserId,
       `✅ Payment received in ${group.name}`,
@@ -638,6 +650,7 @@ exports.recordSettlement = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 
 

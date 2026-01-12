@@ -26,7 +26,6 @@ exports.addExpense = async (req, res) => {
       return res.status(400).json({ message: "Paid by user must be a group member" });
     }
 
-    // Auto-detect category if not provided
     const finalCategory = category || await aiCategoryService.detectCategory(description);
 
     const expense = await Expense.create({
@@ -44,7 +43,6 @@ exports.addExpense = async (req, res) => {
     await expense.populate('paidBy', 'name email profileImage mobile gender');
     await expense.populate('splits.user', 'name email profileImage mobile gender');
 
-    // Add default avatars for users without profile images
     const expenseObj = expense.toObject();
     if (expenseObj.paidBy) {
       expenseObj.paidBy.profileImage = expenseObj.paidBy.profileImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${expenseObj.paidBy.name.replace(/\s+/g, '')}`;
@@ -59,16 +57,19 @@ exports.addExpense = async (req, res) => {
       }));
     }
 
-    // Emit socket event to all group members
+    // ✅ Emit to group room + all members' personal rooms
     const io = req.app.get('io');
     if (io) {
       console.log(`Emitting expense:created to group:${groupId}`);
       io.to(`group:${groupId}`).emit('expense:created', expenseObj);
-    } else {
-      console.log('Socket.io not available');
+      
+      // ✅ Also emit to each member's personal room
+      group.members.forEach(memberId => {
+        io.to(`user:${memberId}`).emit('expense:created', expenseObj);
+      });
     }
 
-    // ✅ Send push notifications to all group members except creator
+    // Send push notifications
     const memberIds = group.members
       .filter(m => m.toString() !== req.user._id.toString())
       .map(m => m.toString());
@@ -88,7 +89,6 @@ exports.addExpense = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
 
 exports.updateExpense = async (req, res) => {
   try {
@@ -118,7 +118,6 @@ exports.updateExpense = async (req, res) => {
       return res.status(400).json({ message: "Paid by user must be a group member" });
     }
 
-    // Auto-detect category if not provided
     const finalCategory = category || await aiCategoryService.detectCategory(description);
 
     expense.description = description;
@@ -135,14 +134,19 @@ exports.updateExpense = async (req, res) => {
     await expense.populate('splits.user', 'name email profileImage mobile gender');
     await expense.populate('createdBy', 'name email profileImage mobile gender');
 
-    // Emit socket event to all group members
+    // ✅ Emit to group room + all members' personal rooms
     const io = req.app.get('io');
     if (io) {
       console.log(`Emitting expense:updated to group:${expense.groupId}`);
       io.to(`group:${expense.groupId}`).emit('expense:updated', expense);
+      
+      // ✅ Also emit to each member's personal room
+      group.members.forEach(memberId => {
+        io.to(`user:${memberId}`).emit('expense:updated', expense);
+      });
     }
 
-    // ✅ Send push notifications for expense update
+    // Send push notifications
     const memberIds = group.members
       .filter(m => m.toString() !== req.user._id.toString())
       .map(m => m.toString());
@@ -162,6 +166,50 @@ exports.updateExpense = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+exports.deleteExpense = async (req, res) => {
+  try {
+    const { expenseId } = req.params;
+
+    const expense = await Expense.findById(expenseId);
+    if (!expense || expense.isDeleted) {
+      return res.status(404).json({ message: "Expense not found" });
+    }
+
+    const group = await Group.findById(expense.groupId);
+    if (!group || group.isArchived) {
+      return res.status(404).json({ message: "Group not found" });
+    }
+
+    if (!group.members?.some((m) => String(m) === String(req.user._id))) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    if (String(expense.paidBy) !== String(req.user._id)) {
+      return res.status(403).json({ message: "Only the person who paid can delete this expense" });
+    }
+
+    await Expense.findByIdAndDelete(expenseId);
+
+    // ✅ Emit to group room + all members' personal rooms
+    const io = req.app.get('io');
+    if (io) {
+      console.log(`Emitting expense:deleted to group:${expense.groupId}`);
+      io.to(`group:${expense.groupId}`).emit('expense:deleted', { expenseId });
+      
+      // ✅ Also emit to each member's personal room
+      group.members.forEach(memberId => {
+        io.to(`user:${memberId}`).emit('expense:deleted', { expenseId });
+      });
+    }
+
+    res.json({ message: "Expense deleted" });
+  } catch (err) {
+    console.error('Delete expense error:', err);
+    res.status(500).json({ message: err.message || "Server error" });
+  }
+};
+
 
 
 exports.getGroupExpenses = async (req, res) => {
@@ -192,46 +240,6 @@ exports.getGroupExpenses = async (req, res) => {
   }
 };
 
-
-exports.deleteExpense = async (req, res) => {
-  try {
-    const { expenseId } = req.params;
-
-    const expense = await Expense.findById(expenseId);
-    if (!expense || expense.isDeleted) {
-      return res.status(404).json({ message: "Expense not found" });
-    }
-
-    const group = await Group.findById(expense.groupId);
-    if (!group || group.isArchived) {
-      return res.status(404).json({ message: "Group not found" });
-    }
-
-    if (!group.members?.some((m) => String(m) === String(req.user._id))) {
-      return res.status(403).json({ message: "Not authorized" });
-    }
-
-    // Only the person who paid can delete the expense
-    if (String(expense.paidBy) !== String(req.user._id)) {
-      return res.status(403).json({ message: "Only the person who paid can delete this expense" });
-    }
-
-    // Permanent delete from database
-    await Expense.findByIdAndDelete(expenseId);
-
-    // Emit socket event to all group members
-    const io = req.app.get('io');
-    if (io) {
-      console.log(`Emitting expense:deleted to group:${expense.groupId}`);
-      io.to(`group:${expense.groupId}`).emit('expense:deleted', { expenseId });
-    }
-
-    res.json({ message: "Expense deleted" });
-  } catch (err) {
-    console.error('Delete expense error:', err);
-    res.status(500).json({ message: err.message || "Server error" });
-  }
-};
 
 
 exports.calculateBalances = async (req, res) => {

@@ -75,7 +75,7 @@ class SocketService {
       console.log('🏠 Rejoined group:', groupId);
     });
     
-    console.log('✅ Rejoined', this.joinedGroups.size, 'groups');
+    console.log('✅ Rejoined', this.joinedGroups.size, 'groups + user room');
   }
 
   disconnect() {
@@ -90,30 +90,46 @@ class SocketService {
   }
 
   joinUserRoom(userId) {
+    if (!userId) {
+      console.error('❌ Cannot join user room: No user ID provided');
+      return;
+    }
+    
     if (this.socket?.connected) {
       this.userId = userId;
       this.socket.emit('join-user-room', userId);
       console.log('👤 Joined user room:', userId);
+    } else {
+      console.warn('⚠️ Cannot join user room - socket not connected yet');
+      this.userId = userId; // Store for later rejoin
     }
   }
 
   joinGroup(groupId) {
+    if (!groupId) {
+      console.error('❌ Cannot join group: No group ID provided');
+      return;
+    }
+    
+    this.joinedGroups.add(groupId);
+    
     if (this.socket?.connected) {
-      this.joinedGroups.add(groupId);
       this.socket.emit('join-group', groupId);
       console.log('🏠 Joined group:', groupId);
+    } else {
+      console.warn('⚠️ Group added to queue, will join when connected:', groupId);
     }
   }
 
   leaveGroup(groupId) {
+    this.joinedGroups.delete(groupId);
+    
     if (this.socket?.connected) {
-      this.joinedGroups.delete(groupId);
       this.socket.emit('leave-group', groupId);
       console.log('🚪 Left group:', groupId);
     }
   }
 
-  // ✅ GENERIC EMIT METHOD - ADD THIS!
   emit(event, data) {
     if (this.socket && this.isConnected()) {
       console.log(`📤 Emitting ${event}:`, data);
@@ -130,9 +146,10 @@ class SocketService {
     if (this.socket) {
       this.socket.off('expense:created');
       this.socket.on('expense:created', (data) => {
-        console.log('💰 Expense created:', data);
+        console.log('💰 [SOCKET] Expense created event received:', data);
         callback(data);
       });
+      console.log('🎧 Listening for expense:created events');
     }
   }
 
@@ -140,9 +157,10 @@ class SocketService {
     if (this.socket) {
       this.socket.off('expense:deleted');
       this.socket.on('expense:deleted', (data) => {
-        console.log('🗑️ Expense deleted:', data);
+        console.log('🗑️ [SOCKET] Expense deleted event received:', data);
         callback(data);
       });
+      console.log('🎧 Listening for expense:deleted events');
     }
   }
 
@@ -150,9 +168,10 @@ class SocketService {
     if (this.socket) {
       this.socket.off('expense:updated');
       this.socket.on('expense:updated', (data) => {
-        console.log('✏️ Expense updated:', data);
+        console.log('✏️ [SOCKET] Expense updated event received:', data);
         callback(data);
       });
+      console.log('🎧 Listening for expense:updated events');
     }
   }
 
@@ -161,9 +180,10 @@ class SocketService {
     if (this.socket) {
       this.socket.off('settlement:created');
       this.socket.on('settlement:created', (data) => {
-        console.log('💸 Settlement created:', data);
+        console.log('💸 [SOCKET] Settlement created event received:', data);
         callback(data);
       });
+      console.log('🎧 Listening for settlement:created events');
     }
   }
 
@@ -172,9 +192,10 @@ class SocketService {
     if (this.socket) {
       this.socket.off('member:joined');
       this.socket.on('member:joined', (data) => {
-        console.log('👤 Member joined:', data);
+        console.log('👤 [SOCKET] Member joined event received:', data);
         callback(data);
       });
+      console.log('🎧 Listening for member:joined events');
     }
   }
 
@@ -182,9 +203,10 @@ class SocketService {
     if (this.socket) {
       this.socket.off('members:added');
       this.socket.on('members:added', (data) => {
-        console.log('👥 Members added:', data);
+        console.log('👥 [SOCKET] Members added event received:', data);
         callback(data);
       });
+      console.log('🎧 Listening for members:added events');
     }
   }
 
@@ -192,9 +214,10 @@ class SocketService {
     if (this.socket) {
       this.socket.off('friend:added-to-group');
       this.socket.on('friend:added-to-group', (data) => {
-        console.log('🎉 Friend added to group:', data);
+        console.log('🎉 [SOCKET] Friend added to group event received:', data);
         callback(data);
       });
+      console.log('🎧 Listening for friend:added-to-group events');
     }
   }
 
@@ -203,9 +226,10 @@ class SocketService {
     if (this.socket) {
       this.socket.off('notification');
       this.socket.on('notification', (data) => {
-        console.log('🔔 Notification:', data);
+        console.log('🔔 [SOCKET] Notification event received:', data);
         callback(data);
       });
+      console.log('🎧 Listening for notification events');
     }
   }
 
