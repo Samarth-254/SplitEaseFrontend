@@ -10,7 +10,7 @@ class SocketService {
 
   connect(token) {
     if (this.socket?.connected) {
-      console.log('✅ Socket already connected');
+      
       return this.socket;
     }
 
@@ -27,24 +27,24 @@ class SocketService {
     });
 
     this.socket.on('connect', () => {
-      console.log('🟢 Socket connected:', this.socket.id);
+      
       this.connected = true;
       this.rejoinRooms();
     });
 
     this.socket.on('disconnect', (reason) => {
-      console.log('🔴 Socket disconnected:', reason);
+      
       this.connected = false;
     });
 
     this.socket.on('reconnect', (attemptNumber) => {
-      console.log('🔄 Socket reconnected after', attemptNumber, 'attempts');
+      
       this.connected = true;
       this.rejoinRooms();
     });
 
     this.socket.on('reconnect_attempt', (attemptNumber) => {
-      console.log('🔄 Reconnection attempt:', attemptNumber);
+      
     });
 
     this.socket.on('reconnect_error', (error) => {
@@ -63,24 +63,24 @@ class SocketService {
   }
 
   rejoinRooms() {
-    console.log('🔄 Rejoining rooms...');
+    
     
     if (this.userId) {
       this.socket.emit('join-user-room', this.userId);
-      console.log('👤 Rejoined user room:', this.userId);
+      
     }
     
     this.joinedGroups.forEach(groupId => {
       this.socket.emit('join-group', groupId);
-      console.log('🏠 Rejoined group:', groupId);
+      
     });
     
-    console.log('✅ Rejoined', this.joinedGroups.size, 'groups + user room');
+    
   }
 
   disconnect() {
     if (this.socket) {
-      console.log('🔌 Disconnecting socket');
+      
       this.socket.disconnect();
       this.socket = null;
       this.connected = false;
@@ -98,7 +98,7 @@ class SocketService {
     if (this.socket?.connected) {
       this.userId = userId;
       this.socket.emit('join-user-room', userId);
-      console.log('👤 Joined user room:', userId);
+      
     } else {
       console.warn('⚠️ Cannot join user room - socket not connected yet');
       this.userId = userId; // Store for later rejoin
@@ -115,7 +115,7 @@ class SocketService {
     
     if (this.socket?.connected) {
       this.socket.emit('join-group', groupId);
-      console.log('🏠 Joined group:', groupId);
+      
     } else {
       console.warn('⚠️ Group added to queue, will join when connected:', groupId);
     }
@@ -126,13 +126,13 @@ class SocketService {
     
     if (this.socket?.connected) {
       this.socket.emit('leave-group', groupId);
-      console.log('🚪 Left group:', groupId);
+      
     }
   }
 
   emit(event, data) {
     if (this.socket && this.isConnected()) {
-      console.log(`📤 Emitting ${event}:`, data);
+      
       this.socket.emit(event, data);
       return true;
     } else {
@@ -146,10 +146,10 @@ class SocketService {
     if (this.socket) {
       this.socket.off('expense:created');
       this.socket.on('expense:created', (data) => {
-        console.log('💰 [SOCKET] Expense created event received:', data);
+        
         callback(data);
       });
-      console.log('🎧 Listening for expense:created events');
+      
     }
   }
 
@@ -157,10 +157,10 @@ class SocketService {
     if (this.socket) {
       this.socket.off('expense:deleted');
       this.socket.on('expense:deleted', (data) => {
-        console.log('🗑️ [SOCKET] Expense deleted event received:', data);
+        
         callback(data);
       });
-      console.log('🎧 Listening for expense:deleted events');
+      
     }
   }
 
@@ -168,10 +168,10 @@ class SocketService {
     if (this.socket) {
       this.socket.off('expense:updated');
       this.socket.on('expense:updated', (data) => {
-        console.log('✏️ [SOCKET] Expense updated event received:', data);
+        
         callback(data);
       });
-      console.log('🎧 Listening for expense:updated events');
+      
     }
   }
 
@@ -180,10 +180,10 @@ class SocketService {
     if (this.socket) {
       this.socket.off('settlement:created');
       this.socket.on('settlement:created', (data) => {
-        console.log('💸 [SOCKET] Settlement created event received:', data);
+        
         callback(data);
       });
-      console.log('🎧 Listening for settlement:created events');
+      
     }
   }
 
@@ -192,10 +192,10 @@ class SocketService {
     if (this.socket) {
       this.socket.off('member:joined');
       this.socket.on('member:joined', (data) => {
-        console.log('👤 [SOCKET] Member joined event received:', data);
+        
         callback(data);
       });
-      console.log('🎧 Listening for member:joined events');
+      
     }
   }
 
@@ -203,10 +203,10 @@ class SocketService {
     if (this.socket) {
       this.socket.off('members:added');
       this.socket.on('members:added', (data) => {
-        console.log('👥 [SOCKET] Members added event received:', data);
+        
         callback(data);
       });
-      console.log('🎧 Listening for members:added events');
+      
     }
   }
 
@@ -214,10 +214,10 @@ class SocketService {
     if (this.socket) {
       this.socket.off('friend:added-to-group');
       this.socket.on('friend:added-to-group', (data) => {
-        console.log('🎉 [SOCKET] Friend added to group event received:', data);
+        
         callback(data);
       });
-      console.log('🎧 Listening for friend:added-to-group events');
+      
     }
   }
 
@@ -226,10 +226,10 @@ class SocketService {
     if (this.socket) {
       this.socket.off('notification');
       this.socket.on('notification', (data) => {
-        console.log('🔔 [SOCKET] Notification event received:', data);
+        
         callback(data);
       });
-      console.log('🎧 Listening for notification events');
+      
     }
   }
 

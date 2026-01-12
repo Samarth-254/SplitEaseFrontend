@@ -17,7 +17,7 @@ class PushNotificationService {
       const permission = await Notification.requestPermission();
       
       if (permission === 'granted') {
-        console.log('✅ Notification permission granted');
+        
         const success = await this.subscribeUser();
         if (success) {
           localStorage.setItem('notifications-user-disabled', 'false');
@@ -25,7 +25,7 @@ class PushNotificationService {
         }
         return success;
       } else {
-        console.log('❌ Notification permission denied');
+        
         return false;
       }
     } catch (err) {
@@ -41,14 +41,14 @@ class PushNotificationService {
       let subscription = await registration.pushManager.getSubscription();
       
       if (!subscription) {
-        console.log('📱 Creating new push subscription...');
+        
         subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: this.urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
         });
-        console.log('✅ Push subscription created');
+        
       } else {
-        console.log('✅ Push subscription already exists');
+        
       }
 
       const token = localStorage.getItem('token');
@@ -60,8 +60,8 @@ class PushNotificationService {
       // ✅ FIXED: Send subscription.toJSON() instead of subscription
       const subscriptionData = subscription.toJSON();
       
-      console.log('📤 Sending subscription to backend...');
-      console.log('   Endpoint:', subscriptionData.endpoint?.substring(0, 60) + '...');
+      
+      
       
       const response = await fetch(`${API_URL}/api/notifications/subscribe`, {
         method: 'POST',
@@ -79,7 +79,7 @@ class PushNotificationService {
       }
 
       const result = await response.json();
-      console.log('✅ Successfully subscribed to push notifications:', result);
+      
       return true;
     } catch (err) {
       console.error('❌ Failed to subscribe user:', err.message);
@@ -102,12 +102,12 @@ class PushNotificationService {
         const subscription = await registration.pushManager.getSubscription();
         
         if (!subscription && this.isPermissionGranted()) {
-          console.log('🔄 Subscription lost, resubscribing...');
+          
           const success = await this.subscribeUser();
           if (success) {
-            console.log('✅ Resubscribed successfully');
+            
           } else {
-            console.log('❌ Resubscribe failed');
+            
           }
         }
       } catch (err) {
@@ -147,7 +147,7 @@ class PushNotificationService {
           });
         }
         
-        console.log('✅ Unsubscribed from push notifications');
+        
         return true;
       }
       return false;
@@ -171,7 +171,7 @@ class PushNotificationService {
       const subscription = await registration.pushManager.getSubscription();
       
       if (!subscription) {
-        console.log('🔄 No subscription found, resubscribing...');
+        
         return await this.subscribeUser();
       }
       

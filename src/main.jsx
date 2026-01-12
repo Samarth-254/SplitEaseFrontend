@@ -17,7 +17,7 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     try {
       registration = await navigator.serviceWorker.register('/sw.js');
-      console.log('✅ Service Worker registered:', registration.scope);
+      
       
       // ✅ Check for updates periodically (every 30 minutes, not 1 hour)
       setInterval(() => {
@@ -36,7 +36,7 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (refreshing) return;
     refreshing = true;
-    console.log('🔄 Service Worker updated, reloading...');
+    
     
     // ✅ Save that we're about to reload (so we can resubscribe after)
     sessionStorage.setItem('sw-updated', 'true');
@@ -47,7 +47,7 @@ if ('serviceWorker' in navigator) {
   // ✅ Listen for subscription change messages from SW
   navigator.serviceWorker.addEventListener('message', async (event) => {
     if (event.data.type === 'SUBSCRIPTION_CHANGED') {
-      console.log('📱 Push subscription changed, updating backend...');
+      
       
       try {
         const { default: pushService } = await import('./services/pushNotification.js');
@@ -69,7 +69,7 @@ if ('serviceWorker' in navigator) {
               },
               body: JSON.stringify(subscription.toJSON())
             });
-            console.log('✅ Subscription updated after SW change');
+            
           }
         }
       } catch (err) {
@@ -89,7 +89,7 @@ if ('serviceWorker' in navigator) {
           const userDisabled = localStorage.getItem('notifications-user-disabled') === 'true';
           
           if (!userDisabled) {
-            console.log('🔄 Resubscribing after SW update...');
+            
             const { default: pushService } = await import('./services/pushNotification.js');
             await pushService.subscribeUser();
           }
@@ -123,9 +123,9 @@ if ('serviceWorker' in navigator) {
           const isSubscribed = await pushService.checkAndResubscribe();
           
           if (isSubscribed) {
-            console.log('✅ Subscription healthy');
+            
           } else {
-            console.log('⚠️ Subscription lost, attempting resubscribe...');
+            
           }
         }
       } catch (err) {

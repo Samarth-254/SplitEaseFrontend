@@ -7,7 +7,6 @@ import { AuthScreen } from '../../components/layout';
 import { Button, Input } from '../../components/ui';
 import { useStore } from '../../store/useStore';
 import apiService from '../../services/api';
-import { GoogleLoginButton } from '../../components/ui/GoogleLoginButton';
 
 /**
  * Signup Screen
@@ -26,36 +25,49 @@ export const SignupScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleGoogleSuccess = async (credentialResponse) => {
+    
+    
     try {
-      setLoading(true);
+      setGoogleLoading(true);
       setError('');
+      
+      
       const response = await apiService.googleLogin(credentialResponse.credential);
+      
+      
+      
       apiService.setToken(response.token);
       await setUser(response.user);
+      
+      
       
       const inviteToken = localStorage.getItem('inviteToken');
       if (inviteToken) {
         try {
           const joinedGroup = await apiService.joinGroup(inviteToken);
           localStorage.removeItem('inviteToken');
-          // Add the group to store immediately
           const { addGroup } = useStore.getState();
           addGroup(joinedGroup);
+          
           navigate(`/group/${joinedGroup._id || joinedGroup.id}`);
         } catch (err) {
+          
           localStorage.removeItem('inviteToken');
           navigate('/dashboard');
         }
       } else {
+        
         navigate('/dashboard');
       }
     } catch (err) {
+      console.error('❌ Google Signup Error:', err);
       setError(err.message || 'Google sign-up failed');
     } finally {
-      setLoading(false);
+      setGoogleLoading(false);
     }
   };
 
@@ -82,7 +94,6 @@ export const SignupScreen = () => {
         try {
           const joinedGroup = await apiService.joinGroup(inviteToken);
           localStorage.removeItem('inviteToken');
-          // Add the group to store immediately
           const { addGroup } = useStore.getState();
           addGroup(joinedGroup);
           navigate(`/group/${joinedGroup._id || joinedGroup.id}`);
@@ -131,18 +142,29 @@ export const SignupScreen = () => {
             </p>
           </div>
 
-<div className="mb-6">
-  <GoogleLogin
-    onSuccess={handleGoogleSuccess}
-    onError={() => setError('Google sign-up failed')}
-    theme="outline"
-    size="large"
-    width="100%"
-    text="signup_with"
-    shape="rectangular"
-  />
-</div>
-
+          {/* Google Signup with dark theme fix */}
+          <div className="mb-6">
+            <div style={{ colorScheme: 'light' }}>
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={() => {
+                  console.error('❌ Google OAuth failed');
+                  setError('Google sign-up failed');
+                }}
+                theme="filled_black"
+                size="large"
+                width="100%"
+                text="signup_with"
+                shape="rectangular"
+              />
+            </div>
+            {googleLoading && (
+              <div className="mt-2 text-center">
+                <div className="inline-block w-4 h-4 border-2 border-secondary-500 border-t-transparent rounded-full animate-spin"></div>
+                <span className="ml-2 text-sm text-neutral-400">Creating account...</span>
+              </div>
+            )}
+          </div>
 
           {/* Divider */}
           <div className="relative my-6">
@@ -214,7 +236,7 @@ export const SignupScreen = () => {
 
           {/* Footer */}
           <p className="mt-8 text-center text-sm text-neutral-500">
-            Already have an account${' '}
+            Already have an account?{' '}
             <Link 
               to="/login" 
               className="text-secondary-500 hover:text-secondary-400 font-medium transition-colors"
@@ -232,7 +254,3 @@ export const SignupScreen = () => {
     </AuthScreen>
   );
 };
-
-
-
-

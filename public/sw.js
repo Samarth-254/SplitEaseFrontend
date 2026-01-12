@@ -1,4 +1,4 @@
-const CACHE_NAME = 'splitease-v4';
+const CACHE_NAME = 'splitease-v5';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -11,11 +11,11 @@ const urlsToCache = [
 
 // Install event
 self.addEventListener('install', (event) => {
-  console.log('[Service Worker] Installing...');
+  
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('[Service Worker] Caching app shell');
+        
         return cache.addAll(urlsToCache).catch(err => {
           console.warn('[Service Worker] Cache failed:', err);
         });
@@ -66,7 +66,7 @@ self.addEventListener('fetch', (event) => {
 
 // Activate event
 self.addEventListener('activate', (event) => {
-  console.log('[Service Worker] Activating...');
+  
   
   const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
@@ -74,7 +74,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheWhitelist.indexOf(cacheName) === -1) {
-            console.log('[Service Worker] Deleting old cache:', cacheName);
+            
             return caches.delete(cacheName);
           }
         })
@@ -82,14 +82,14 @@ self.addEventListener('activate', (event) => {
     }).then(() => {
       // ✅ IMPORTANT: Don't claim() immediately - let user refresh naturally
       // self.clients.claim(); // ❌ REMOVE THIS!
-      console.log('[Service Worker] Activated (waiting for refresh)');
+      
     })
   );
 });
 
 // ✅ PUSH NOTIFICATION HANDLER
 self.addEventListener('push', function(event) {
-  console.log('[Service Worker] Push received');
+  
   
   let data = {
     title: 'SplitEase',
@@ -102,7 +102,7 @@ self.addEventListener('push', function(event) {
   try {
     if (event.data) {
       data = event.data.json();
-      console.log('[Service Worker] Push data:', data);
+      
     }
   } catch (e) {
     console.error('[Service Worker] Error parsing push data:', e);
@@ -128,7 +128,7 @@ self.addEventListener('push', function(event) {
 
 // ✅ NOTIFICATION CLICK HANDLER
 self.addEventListener('notificationclick', function(event) {
-  console.log('[Service Worker] Notification clicked');
+  
   event.notification.close();
   
   if (event.action === 'close') {
@@ -157,7 +157,7 @@ self.addEventListener('notificationclick', function(event) {
 
 // ✅ PUSH SUBSCRIPTION CHANGE HANDLER
 self.addEventListener('pushsubscriptionchange', function(event) {
-  console.log('[Service Worker] Push subscription changed');
+  
   
   event.waitUntil(
     self.registration.pushManager.subscribe({
@@ -165,7 +165,7 @@ self.addEventListener('pushsubscriptionchange', function(event) {
       applicationServerKey: event.oldSubscription?.options.applicationServerKey
     })
       .then(function(newSubscription) {
-        console.log('[Service Worker] New subscription created:', newSubscription.endpoint.substring(0, 60) + '...');
+        
         
         // Signal to clients that subscription changed
         return self.clients.matchAll().then(clients => {

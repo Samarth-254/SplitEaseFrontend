@@ -2,22 +2,11 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, ArrowRight } from 'lucide-react';
-import { useGoogleLogin } from '@react-oauth/google';
+import { GoogleLogin } from '@react-oauth/google'; // ✅ Changed from useGoogleLogin
 import { AuthScreen } from '../../components/layout';
 import { Button, Input } from '../../components/ui';
 import { useStore } from '../../store/useStore';
 import apiService from '../../services/api';
-import { GoogleLoginButton } from '../../components/ui/GoogleLoginButton';
-
-/**
- * Login Screen
- * 
- * UX Decisions:
- * - Google Sign-In as primary option
- * - Single column form for easy scanning
- * - Large touch targets (48px+ inputs)
- * - Clear visual hierarchy
- */
 
 export const LoginScreen = () => {
   const navigate = useNavigate();
@@ -25,44 +14,51 @@ export const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleGoogleLogin = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      try {
-        setLoading(true);
-        setError('');
-        // Send access_token to your backend
-        const response = await apiService.googleLogin(tokenResponse.access_token);
-        apiService.setToken(response.token);
-        await setUser(response.user);
-        
-        const inviteToken = localStorage.getItem('inviteToken');
-        if (inviteToken) {
-          try {
-            const joinedGroup = await apiService.joinGroup(inviteToken);
-            localStorage.removeItem('inviteToken');
-            const { addGroup } = useStore.getState();
-            addGroup(joinedGroup);
-            navigate(`/group/${joinedGroup._id || joinedGroup.id}`);
-          } catch (err) {
-            localStorage.removeItem('inviteToken');
-            navigate('/dashboard');
-          }
-        } else {
+  const handleGoogleSuccess = async (credentialResponse) => {
+    
+    
+    try {
+      setGoogleLoading(true);
+      setError('');
+      
+      
+      const response = await apiService.googleLogin(credentialResponse.credential);
+      
+      
+      
+      apiService.setToken(response.token);
+      await setUser(response.user);
+      
+      
+      
+      const inviteToken = localStorage.getItem('inviteToken');
+      if (inviteToken) {
+        try {
+          const joinedGroup = await apiService.joinGroup(inviteToken);
+          localStorage.removeItem('inviteToken');
+          const { addGroup } = useStore.getState();
+          addGroup(joinedGroup);
+          
+          navigate(`/group/${joinedGroup._id || joinedGroup.id}`);
+        } catch (err) {
+          
+          localStorage.removeItem('inviteToken');
           navigate('/dashboard');
         }
-      } catch (err) {
-        setError(err.message || 'Google sign-in failed');
-      } finally {
-        setLoading(false);
+      } else {
+        
+        navigate('/dashboard');
       }
-    },
-    onError: () => {
-      setError('Google sign-in failed');
-      setLoading(false);
-    },
-  });
+    } catch (err) {
+      console.error('❌ Google Login Error:', err);
+      setError(err.message || 'Google sign-in failed');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -131,12 +127,28 @@ export const LoginScreen = () => {
             </p>
           </div>
 
-          {/* Custom Google Login Button */}
+          {/* Google Login with dark theme fix */}
           <div className="mb-6">
-            <GoogleLoginButton 
-              onClick={() => handleGoogleLogin()} 
-              loading={loading}
-            />
+            <div style={{ colorScheme: 'light' }}>
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={() => {
+                  console.error('❌ Google OAuth failed');
+                  setError('Google sign-in failed');
+                }}
+                theme="filled_black"
+                size="large"
+                width="100%"
+                shape="rectangular"
+                text="signin_with"
+              />
+            </div>
+            {googleLoading && (
+              <div className="mt-2 text-center">
+                <div className="inline-block w-4 h-4 border-2 border-secondary-500 border-t-transparent rounded-full animate-spin"></div>
+                <span className="ml-2 text-sm text-neutral-400">Signing in...</span>
+              </div>
+            )}
           </div>
 
           {/* Divider */}

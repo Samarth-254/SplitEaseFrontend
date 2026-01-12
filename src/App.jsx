@@ -88,12 +88,12 @@ function App() {
       const permission = await Notification.requestPermission();
       
       if (permission === 'granted') {
-        console.log('✅ Notifications enabled!');
+        
         
         // Register push notifications
         const granted = await pushNotificationService.requestPermission();
         if (granted) {
-          console.log('✅ Push notifications registered');
+          
         }
         
         // Clear dismissed timestamp since they enabled it
@@ -101,7 +101,7 @@ function App() {
         
         return 'granted';
       } else if (permission === 'denied') {
-        console.log('❌ Notifications blocked by user');
+        
         
         // Save timestamp - will show again after 24 hours
         localStorage.setItem('notification-prompt-dismissed', Date.now().toString());
@@ -109,7 +109,7 @@ function App() {
         return 'denied';
       } else {
         // User dismissed without choosing (default)
-        console.log('⚠️ Notification prompt dismissed');
+        
         return 'default';
       }
     } catch (error) {
@@ -122,7 +122,7 @@ function App() {
     setShowNotificationPrompt(false);
     // ✅ Save timestamp - will show again after 24 hours
     localStorage.setItem('notification-prompt-dismissed', Date.now().toString());
-    console.log('⏰ Notification prompt dismissed - will show again in 24 hours');
+    
   };
 
   if (!isInitialLoadComplete) {
