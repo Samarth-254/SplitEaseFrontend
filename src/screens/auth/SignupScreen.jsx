@@ -7,6 +7,7 @@ import { AuthScreen } from '../../components/layout';
 import { Button, Input } from '../../components/ui';
 import { useStore } from '../../store/useStore';
 import apiService from '../../services/api';
+import { GoogleLoginButton } from '../../components/ui/GoogleLoginButton';
 
 /**
  * Signup Screen
@@ -130,17 +131,18 @@ export const SignupScreen = () => {
             </p>
           </div>
 
-          {/* Google Sign Up */}
-          <div className="mb-6">
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={() => setError('Google sign-up failed')}
-              theme="filled_black"
-              size="large"
-              width="100%"
-              text="signup_with"
-            />
-          </div>
+<div className="mb-6">
+  <GoogleLogin
+    onSuccess={handleGoogleSuccess}
+    onError={() => setError('Google sign-up failed')}
+    theme="outline"
+    size="large"
+    width="100%"
+    text="signup_with"
+    shape="rectangular"
+  />
+</div>
+
 
           {/* Divider */}
           <div className="relative my-6">

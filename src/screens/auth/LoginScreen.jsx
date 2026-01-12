@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, ArrowRight } from 'lucide-react';
-import { GoogleLogin } from '@react-oauth/google';
+import { useGoogleLogin } from '@react-oauth/google';
 import { AuthScreen } from '../../components/layout';
 import { Button, Input } from '../../components/ui';
 import { useStore } from '../../store/useStore';
 import apiService from '../../services/api';
-
+import { GoogleLoginButton } from '../../components/ui/GoogleLoginButton';
 
 /**
  * Login Screen
@@ -19,7 +19,6 @@ import apiService from '../../services/api';
  * - Clear visual hierarchy
  */
 
-
 export const LoginScreen = () => {
   const navigate = useNavigate();
   const { setUser } = useStore();
@@ -28,38 +27,42 @@ export const LoginScreen = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-
-  const handleGoogleSuccess = async (credentialResponse) => {
-    try {
-      setLoading(true);
-      setError('');
-      const response = await apiService.googleLogin(credentialResponse.credential);
-      apiService.setToken(response.token);
-      await setUser(response.user);
-      
-      const inviteToken = localStorage.getItem('inviteToken');
-      if (inviteToken) {
-        try {
-          const joinedGroup = await apiService.joinGroup(inviteToken);
-          localStorage.removeItem('inviteToken');
-          // Add the group to store immediately
-          const { addGroup } = useStore.getState();
-          addGroup(joinedGroup);
-          navigate(`/group/${joinedGroup._id || joinedGroup.id}`);
-        } catch (err) {
-          localStorage.removeItem('inviteToken');
+  const handleGoogleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      try {
+        setLoading(true);
+        setError('');
+        // Send access_token to your backend
+        const response = await apiService.googleLogin(tokenResponse.access_token);
+        apiService.setToken(response.token);
+        await setUser(response.user);
+        
+        const inviteToken = localStorage.getItem('inviteToken');
+        if (inviteToken) {
+          try {
+            const joinedGroup = await apiService.joinGroup(inviteToken);
+            localStorage.removeItem('inviteToken');
+            const { addGroup } = useStore.getState();
+            addGroup(joinedGroup);
+            navigate(`/group/${joinedGroup._id || joinedGroup.id}`);
+          } catch (err) {
+            localStorage.removeItem('inviteToken');
+            navigate('/dashboard');
+          }
+        } else {
           navigate('/dashboard');
         }
-      } else {
-        navigate('/dashboard');
+      } catch (err) {
+        setError(err.message || 'Google sign-in failed');
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      setError(err.message || 'Google sign-in failed');
-    } finally {
+    },
+    onError: () => {
+      setError('Google sign-in failed');
       setLoading(false);
-    }
-  };
-
+    },
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -80,7 +83,6 @@ export const LoginScreen = () => {
         try {
           const joinedGroup = await apiService.joinGroup(inviteToken);
           localStorage.removeItem('inviteToken');
-          // Add the group to store immediately
           const { addGroup } = useStore.getState();
           addGroup(joinedGroup);
           navigate(`/group/${joinedGroup._id || joinedGroup.id}`);
@@ -97,7 +99,6 @@ export const LoginScreen = () => {
       setLoading(false);
     }
   };
-
 
   return (
     <AuthScreen>
@@ -130,19 +131,13 @@ export const LoginScreen = () => {
             </p>
           </div>
 
-
-          {/* Google Sign In */}
+          {/* Custom Google Login Button */}
           <div className="mb-6">
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={() => setError('Google sign-in failed')}
-              useOneTap
-              theme="filled_black"
-              size="large"
-              width="100%"
+            <GoogleLoginButton 
+              onClick={() => handleGoogleLogin()} 
+              loading={loading}
             />
           </div>
-
 
           {/* Divider */}
           <div className="relative my-6">
@@ -153,7 +148,6 @@ export const LoginScreen = () => {
               <span className="px-4 bg-primary-950 text-neutral-500">Or continue with email</span>
             </div>
           </div>
-
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -168,7 +162,6 @@ export const LoginScreen = () => {
               size="lg"
             />
 
-
             <Input
               label="Password"
               type="password"
@@ -180,7 +173,6 @@ export const LoginScreen = () => {
               size="lg"
             />
 
-
             {error && (
               <motion.p
                 initial={{ opacity: 0, y: -10 }}
@@ -190,7 +182,6 @@ export const LoginScreen = () => {
                 {error}
               </motion.p>
             )}
-
 
             <Button
               type="submit"
@@ -203,7 +194,6 @@ export const LoginScreen = () => {
               Sign In
             </Button>
           </form>
-
 
           {/* Footer */}
           <p className="mt-8 text-center text-sm text-neutral-500">
