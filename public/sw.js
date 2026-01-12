@@ -1,67 +1,72 @@
-const CACHE_NAME = 'splitease-v2';
+const CACHE_NAME = 'splitease-v3';
 const urlsToCache = [
   '/',
   '/index.html',
-  '/src/main.jsx',
-  '/src/App.jsx',
-  '/src/App.css',
-  '/src/index.css'
+  '/icon-192.png',  
+  '/icon-512.png',
+  '/badge-72.png',
+  '/apple-touch-icon.png'
 ];
 
-// Install event - cache resources
+
+// Install event
 self.addEventListener('install', (event) => {
-  
+  console.log('[Service Worker] Installing...');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        
-        return cache.addAll(urlsToCache);
-      })
-      .catch((err) => {
-        console.error('[Service Worker] Cache failed:', err);
+        console.log('[Service Worker] Caching app shell');
+        return cache.addAll(urlsToCache).catch(err => {
+          console.warn('[Service Worker] Cache failed:', err);
+        });
       })
   );
-  self.skipWaiting();
+  // ✅ IMPORTANT: Don't skipWaiting() - let it wait for user refresh
+  // self.skipWaiting(); // ❌ REMOVE THIS!
 });
 
-// Fetch event - serve from cache, fallback to network
+// Fetch event
 self.addEventListener('fetch', (event) => {
-  // Skip non-http(s) requests (chrome-extension, etc.)
   if (!event.request.url.startsWith('http')) {
     return;
   }
 
+  // ✅ Network-first for API calls, cache-first for assets
+  if (event.request.url.includes('/api/')) {
+    // Always fetch API calls from network
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  // Cache-first for other resources
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
-        // Cache hit - return response
         if (response) {
           return response;
         }
-        return fetch(event.request).then(
-          (response) => {
-            // Check if valid response
-            if (!response || response.status !== 200 || response.type !== 'basic') {
-              return response;
-            }
-
-            // Clone the response
-            const responseToCache = response.clone();
-
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseToCache);
-              });
-
+        return fetch(event.request).then((response) => {
+          if (!response || response.status !== 200 || response.type !== 'basic') {
             return response;
           }
-        );
+
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+
+          return response;
+        }).catch(() => {
+          // Return offline page if available
+          return caches.match('/index.html');
+        });
       })
   );
 });
 
-// Activate event - clean up old caches
+// Activate event
 self.addEventListener('activate', (event) => {
+  console.log('[Service Worker] Activating...');
   
   const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
@@ -69,19 +74,22 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheWhitelist.indexOf(cacheName) === -1) {
-            
+            console.log('[Service Worker] Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
+    }).then(() => {
+      // ✅ IMPORTANT: Don't claim() immediately - let user refresh naturally
+      // self.clients.claim(); // ❌ REMOVE THIS!
+      console.log('[Service Worker] Activated (waiting for refresh)');
     })
   );
-  self.clients.claim();
 });
 
 // ✅ PUSH NOTIFICATION HANDLER
 self.addEventListener('push', function(event) {
-  
+  console.log('[Service Worker] Push received');
   
   let data = {
     title: 'SplitEase',
@@ -94,6 +102,7 @@ self.addEventListener('push', function(event) {
   try {
     if (event.data) {
       data = event.data.json();
+      console.log('[Service Worker] Push data:', data);
     }
   } catch (e) {
     console.error('[Service Worker] Error parsing push data:', e);
@@ -107,18 +116,9 @@ self.addEventListener('push', function(event) {
     tag: 'splitease-notification',
     requireInteraction: false,
     data: {
-      url: data.url || '/'
-    },
-    actions: [
-      {
-        action: 'open',
-        title: 'Open'
-      },
-      {
-        action: 'close',
-        title: 'Close'
-      }
-    ]
+      url: data.url || '/',
+      timestamp: data.timestamp || new Date().toISOString()
+    }
   };
 
   event.waitUntil(
@@ -128,7 +128,7 @@ self.addEventListener('push', function(event) {
 
 // ✅ NOTIFICATION CLICK HANDLER
 self.addEventListener('notificationclick', function(event) {
-  
+  console.log('[Service Worker] Notification clicked');
   event.notification.close();
   
   if (event.action === 'close') {
@@ -142,14 +142,12 @@ self.addEventListener('notificationclick', function(event) {
       type: 'window',
       includeUncontrolled: true
     }).then(function(clientList) {
-      // Check if there's already a window open with the app
       for (let i = 0; i < clientList.length; i++) {
         const client = clientList[i];
         if (client.url.includes(self.location.origin) && 'focus' in client) {
           return client.focus().then(() => client.navigate(urlToOpen));
         }
       }
-      // If no window is open, open a new one
       if (clients.openWindow) {
         return clients.openWindow(urlToOpen);
       }
@@ -157,28 +155,26 @@ self.addEventListener('notificationclick', function(event) {
   );
 });
 
-// ✅ PUSH SUBSCRIPTION CHANGE HANDLER (only one - removed duplicate)
+// ✅ PUSH SUBSCRIPTION CHANGE HANDLER
 self.addEventListener('pushsubscriptionchange', function(event) {
-  
+  console.log('[Service Worker] Push subscription changed');
   
   event.waitUntil(
     self.registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: event.oldSubscription.options.applicationServerKey
+      applicationServerKey: event.oldSubscription?.options.applicationServerKey
     })
-      .then(function(subscription) {
+      .then(function(newSubscription) {
+        console.log('[Service Worker] New subscription created:', newSubscription.endpoint.substring(0, 60) + '...');
         
-        
-        // Try to send new subscription to backend
-        // Note: This might fail without auth token, but client will retry on visibility change
-        return fetch('/api/notifications/subscribe', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(subscription)
-        }).catch(err => {
-          
+        // Signal to clients that subscription changed
+        return self.clients.matchAll().then(clients => {
+          clients.forEach(client => {
+            client.postMessage({
+              type: 'SUBSCRIPTION_CHANGED',
+              subscription: newSubscription.toJSON()
+            });
+          });
         });
       })
       .catch(function(error) {
@@ -186,5 +182,3 @@ self.addEventListener('pushsubscriptionchange', function(event) {
       })
   );
 });
-
-

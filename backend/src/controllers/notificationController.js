@@ -109,5 +109,22 @@ exports.sendBulkNotifications = async (userIds, title, body, url) => {
   
   return successful;
 };
+// Add this endpoint
+exports.checkSubscription = async (req, res) => {
+  try {
+    const { endpoint } = req.body;
+    
+    const exists = await PushSubscription.findOne({
+      user: req.user._id,
+      'subscription.endpoint': endpoint
+    });
+    
+    res.json({ exists: !!exists });
+  } catch (err) {
+    console.error('Check subscription error:', err);
+    res.status(500).json({ exists: false });
+  }
+};
+
 
 module.exports = exports;
