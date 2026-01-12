@@ -10,7 +10,6 @@ class PushNotificationService {
 
   async requestPermission() {
     if (!this.isSupported) {
-      
       return false;
     }
 
@@ -18,16 +17,15 @@ class PushNotificationService {
       const permission = await Notification.requestPermission();
       
       if (permission === 'granted') {
-        
+        console.log('✅ Notification permission granted');
         const success = await this.subscribeUser();
         if (success) {
-          // ✅ User enabled - mark as opted in
           localStorage.setItem('notifications-user-disabled', 'false');
           this.startSubscriptionMonitoring();
         }
         return success;
       } else {
-        
+        console.log('❌ Notification permission denied');
         return false;
       }
     } catch (err) {
@@ -43,37 +41,45 @@ class PushNotificationService {
       let subscription = await registration.pushManager.getSubscription();
       
       if (!subscription) {
-        
+        console.log('📱 Creating new push subscription...');
         subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: this.urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
         });
-        
+        console.log('✅ Push subscription created');
       } else {
-        
+        console.log('✅ Push subscription already exists');
       }
 
       const token = localStorage.getItem('token');
       if (!token) {
-        console.warn('⚠️  No auth token found - user not logged in');
+        console.warn('⚠️ No auth token found - user not logged in');
         return false;
       }
 
+      // ✅ FIXED: Send subscription.toJSON() instead of subscription
+      const subscriptionData = subscription.toJSON();
+      
+      console.log('📤 Sending subscription to backend...');
+      console.log('   Endpoint:', subscriptionData.endpoint?.substring(0, 60) + '...');
+      
       const response = await fetch(`${API_URL}/api/notifications/subscribe`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(subscription)
+        body: JSON.stringify(subscriptionData) // ✅ FIXED: Now sends correct format
       });
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: 'Failed to subscribe' }));
+        console.error('❌ Backend subscription failed:', error);
         throw new Error(error.message || 'Failed to subscribe');
       }
 
-      
+      const result = await response.json();
+      console.log('✅ Successfully subscribed to push notifications:', result);
       return true;
     } catch (err) {
       console.error('❌ Failed to subscribe user:', err.message);
@@ -86,10 +92,7 @@ class PushNotificationService {
       clearInterval(this.checkInterval);
     }
 
-    
-
     this.checkInterval = setInterval(async () => {
-      // ✅ Don't auto-resubscribe if user manually disabled
       if (this.isUserDisabled()) {
         return;
       }
@@ -99,12 +102,12 @@ class PushNotificationService {
         const subscription = await registration.pushManager.getSubscription();
         
         if (!subscription && this.isPermissionGranted()) {
-          
+          console.log('🔄 Subscription lost, resubscribing...');
           const success = await this.subscribeUser();
           if (success) {
-            
+            console.log('✅ Resubscribed successfully');
           } else {
-            
+            console.log('❌ Resubscribe failed');
           }
         }
       } catch (err) {
@@ -117,21 +120,19 @@ class PushNotificationService {
     if (this.checkInterval) {
       clearInterval(this.checkInterval);
       this.checkInterval = null;
-      
     }
   }
 
   async unsubscribe() {
     try {
       this.stopSubscriptionMonitoring();
-      
-      // ✅ Mark that user manually disabled
       localStorage.setItem('notifications-user-disabled', 'true');
       
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
       
       if (subscription) {
+        const endpoint = subscription.endpoint;
         await subscription.unsubscribe();
         
         const token = localStorage.getItem('token');
@@ -141,11 +142,12 @@ class PushNotificationService {
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`
-            }
+            },
+            body: JSON.stringify({ endpoint })
           });
         }
         
-        
+        console.log('✅ Unsubscribed from push notifications');
         return true;
       }
       return false;
@@ -156,9 +158,7 @@ class PushNotificationService {
   }
 
   async checkAndResubscribe() {
-    // ✅ Don't resubscribe if user manually disabled
     if (this.isUserDisabled()) {
-      
       return false;
     }
 
@@ -171,7 +171,7 @@ class PushNotificationService {
       const subscription = await registration.pushManager.getSubscription();
       
       if (!subscription) {
-        
+        console.log('🔄 No subscription found, resubscribing...');
         return await this.subscribeUser();
       }
       
@@ -182,12 +182,10 @@ class PushNotificationService {
     }
   }
 
-  // ✅ Check if user manually disabled notifications
   isUserDisabled() {
     return localStorage.getItem('notifications-user-disabled') === 'true';
   }
 
-  // ✅ Check if subscribed (permission granted AND not manually disabled)
   isSubscribed() {
     return this.isPermissionGranted() && !this.isUserDisabled();
   }
