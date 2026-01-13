@@ -6,7 +6,7 @@ const Settlement = require("../models/Settlement");
 const Invite = require("../models/Invite");
 const crypto = require("crypto");
 const { sendNotification } = require('./notificationController');
-
+const notificationService = require('../services/notificationService');
 
 exports.createGroup = async (req, res) => {
   try {
@@ -42,7 +42,6 @@ exports.createGroup = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
 
 exports.generateInviteLink = async (req, res) => {
   try {
@@ -80,7 +79,6 @@ exports.generateInviteLink = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
 
 exports.joinGroup = async (req, res) => {
   try {
@@ -152,7 +150,6 @@ exports.joinGroup = async (req, res) => {
   }
 };
 
-
 exports.getUserGroups = async (req, res) => {
   try {
     const groups = await Group.find({
@@ -181,7 +178,6 @@ exports.getUserGroups = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
 
 exports.sendPaymentReminder = async (req, res) => {
   try {
@@ -322,7 +318,6 @@ exports.sendPaymentReminder = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
 
 exports.sendCombinedReminder = async (req, res) => {
   try {
@@ -493,7 +488,6 @@ exports.sendCombinedReminder = async (req, res) => {
   }
 };
 
-
 exports.addFriendsToGroup = async (req, res) => {
   try {
     const { groupId } = req.params;
@@ -578,8 +572,6 @@ exports.addFriendsToGroup = async (req, res) => {
   }
 };
 
-
-
 exports.recordSettlement = async (req, res) => {
   try {
     const { groupId } = req.params;
@@ -606,12 +598,12 @@ exports.recordSettlement = async (req, res) => {
       settledAt: new Date()
     });
 
-    await settlement.populate('from', 'name profileImage email');
-    await settlement.populate('to', 'name profileImage email');
+    await settlement.populate('from', 'name profileImage email mobile');
+    await settlement.populate('to', 'name profileImage email mobile');
 
     const io = req.app.get('io');
+    
     if (io) {
-      // ✅ Emit to group room + both user rooms
       io.to(`group:${groupId}`).emit('settlement:created', settlement);
       io.to(`user:${fromUserId}`).emit('settlement:created', settlement);
       io.to(`user:${toUserId}`).emit('settlement:created', settlement);
@@ -633,18 +625,24 @@ exports.recordSettlement = async (req, res) => {
         timestamp: new Date(),
         read: false
       });
-
-      console.log(`✅ Settlement emitted to group:${groupId}, user:${fromUserId}, user:${toUserId}`);
     }
 
-   await sendNotification(
-  toUserId,
-  `✅ Payment received in ${group.name}`,
-  `${settlement.from.name} paid you ₹${amount}`,
-  `/group/${groupId}`, 
-  io                     
-);
+    await sendNotification(
+      toUserId,
+      `✅ Payment received in ${group.name}`,
+      `${settlement.from.name} paid you ₹${amount}`,
+      `/group/${groupId}`, 
+      io                 
+    );
 
+    // ✅ FIXED LINE - Pass settlement object
+    await notificationService.notifySettlement(
+      toUserId,
+      fromUserId,
+      amount,
+      User,
+      settlement  // ← THIS WAS MISSING!
+    );
 
     res.status(201).json(settlement);
   } catch (err) {
@@ -652,9 +650,6 @@ exports.recordSettlement = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
-
-
 
 
 exports.getGroupSettlements = async (req, res) => {
@@ -670,3 +665,5 @@ exports.getGroupSettlements = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+module.exports = exports;

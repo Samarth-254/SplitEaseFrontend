@@ -1,7 +1,9 @@
 const Expense = require("../models/Expense");
 const Group = require("../models/Group");
+const User = require("../models/User");
 const aiCategoryService = require("../services/aiCategoryService");
 const { sendBulkNotifications } = require('./notificationController');
+const notificationService = require('../services/notificationService');
 
 exports.addExpense = async (req, res) => {
   try {
@@ -56,6 +58,7 @@ exports.addExpense = async (req, res) => {
       }));
     }
 
+    // ✅ Socket events (immediate)
     const io = req.app.get('io');
     if (io) {
       console.log(`Emitting expense:created to group:${groupId}`);
@@ -66,27 +69,62 @@ exports.addExpense = async (req, res) => {
       });
     }
 
-    // ✅ UPDATED: Pass io to sendBulkNotifications
+    // ✅ Web push notifications (keep as-is, usually fast)
     const memberIds = group.members
       .filter(m => m.toString() !== req.user._id.toString())
       .map(m => m.toString());
     
     if (memberIds.length > 0) {
-      await sendBulkNotifications(
+      sendBulkNotifications(
         memberIds,
         `💸 New expense in ${group.name}`,
         `${req.user.name} added "${expense.description}" - ₹${expense.amount}`,
         `/group/${groupId}`,
-        io  // ✅ ADD THIS
-      );
+        io
+      ).catch(console.error); // Fire & forget
     }
 
+    // 🔥 BACKGROUND EMAILS - NON-BLOCKING!
+    (async () => {
+      try {
+        console.log(`📧 [BG] Queuing ${expense.splits.length} email notifications`);
+        
+        // Only notify people who OWE money
+        const emailPromises = expense.splits.map(split => {
+          const userId = split.user._id.toString();
+          
+          // Don't notify the person who paid
+          if (userId !== paidById.toString()) {
+            const expenseData = {
+              description: expense.description,
+              amount: expense.amount,
+              paidBy: expense.paidBy, // Full user object
+              yourShare: split.amount,
+              groupId: groupId
+            };
+            
+            return notificationService.notifyWithCooldown(userId, expenseData, User);
+          }
+          return Promise.resolve();
+        });
+
+        const results = await Promise.allSettled(emailPromises);
+        const sent = results.filter(r => r.status === 'fulfilled' && r.value === true).length;
+        console.log(`📧 [BG] Emails complete: ${sent} sent`);
+      } catch (bgError) {
+        console.error('❌ [BG] Email batch failed:', bgError.message);
+      }
+    })();
+
+    // ✅ RETURN RESPONSE IMMEDIATELY (fast!)
     res.status(201).json(expenseObj);
+
   } catch (err) {
     console.error('Add expense error:', err);
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 exports.updateExpense = async (req, res) => {
   try {
@@ -142,7 +180,7 @@ exports.updateExpense = async (req, res) => {
       });
     }
 
-    // ✅ UPDATED: Pass io to sendBulkNotifications
+    // ✅ Web push for updates (await to ensure delivery before response)
     const memberIds = group.members
       .filter(m => m.toString() !== req.user._id.toString())
       .map(m => m.toString());
@@ -153,11 +191,43 @@ exports.updateExpense = async (req, res) => {
         `✏️ Expense updated in ${group.name}`,
         `${req.user.name} updated "${expense.description}" - ₹${expense.amount}`,
         `/group/${expense.groupId}`,
-        io  // ✅ ADD THIS
+        io
       );
     }
 
+    // 🔥 BACKGROUND EMAILS - NON-BLOCKING!
+    (async () => {
+      try {
+        console.log(`📧 [BG] Queuing ${expense.splits.length} update emails`);
+        
+        const emailPromises = expense.splits.map(split => {
+          const userId = split.user._id.toString();
+          
+          if (userId !== paidById.toString()) {
+            const expenseData = {
+              description: expense.description,
+              amount: expense.amount,
+              paidBy: expense.paidBy,
+              yourShare: split.amount,
+              groupId: expense.groupId
+            };
+            
+            return notificationService.notifyWithCooldown(userId, expenseData, User);
+          }
+          return Promise.resolve();
+        });
+
+        const results = await Promise.allSettled(emailPromises);
+        const sent = results.filter(r => r.status === 'fulfilled' && r.value === true).length;
+        console.log(`📧 [BG] Update emails complete: ${sent} sent`);
+      } catch (bgError) {
+        console.error('❌ [BG] Update email batch failed:', bgError.message);
+      }
+    })();
+
+    // ✅ RETURN RESPONSE IMMEDIATELY
     res.json(expense);
+
   } catch (err) {
     console.error('Update expense error:', err);
     res.status(500).json({ message: "Server error" });

@@ -46,9 +46,9 @@ class AICategoryService {
     try {
       this.sdk = new Bytez(apiKey);
       this.model = this.sdk.model("openai/gpt-3.5-turbo-1106");
-      console.log('AI Category Service initialized successfully');
+      console.log('✅ AI Category Service initialized successfully');
     } catch (error) {
-      console.error('Failed to initialize AI Category Service:', error);
+      console.error('❌ Failed to initialize AI Category Service:', error);
     }
   }
 
@@ -58,9 +58,15 @@ class AICategoryService {
    * @returns {Promise<string>} - The detected category
    */
   async detectCategory(description) {
+    console.log(`\n🔍 AI Category Detection Started`);
+    console.log(`📝 Input Description: "${description}"`);
+    
     // Fallback to keyword-based detection if AI is not available
     if (!this.model) {
-      return this.fallbackCategoryDetection(description);
+      console.log(`⚠️  AI model not available, using fallback detection`);
+      const fallbackCategory = this.fallbackCategoryDetection(description);
+      console.log(`🏷️  Final Category (Fallback): "${fallbackCategory}"`);
+      return fallbackCategory;
     }
 
     try {
@@ -96,34 +102,41 @@ Expense description: "${description}"
 
 Category:`;
 
+      console.log(`🤖 Sending prompt to AI model...`);
+      
       const { error, output } = await this.model.run([
         {
           role: "user",
           content: prompt
         }
       ], {
-        max_completion_tokens: 50,  // Limit response to 50 tokens
-        temperature: 0.3  // Lower temperature for more consistent categorization
+        max_completion_tokens: 50,
+        temperature: 0.3
       });
 
       if (error) {
-        console.error('AI Category Detection Error:', error);
-        return this.fallbackCategoryDetection(description);
+        console.error(`❌ AI Category Detection Error:`, error);
+        console.log(`🔄 Falling back to keyword detection`);
+        const fallbackCategory = this.fallbackCategoryDetection(description);
+        console.log(`🏷️  Final Category (Fallback): "${fallbackCategory}"`);
+        return fallbackCategory;
       }
 
       // Extract the category from the response
-      // The output might be an object with a message/content property
       let detectedCategory = '';
       if (typeof output === 'string') {
         detectedCategory = output.trim();
       } else if (output && typeof output === 'object') {
-        // Try different possible response formats
         detectedCategory = (output.message || output.content || output.text || output.response || '').trim();
       }
       
+      console.log(`📤 Raw AI Response: "${detectedCategory}"`);
+
       if (!detectedCategory) {
-        console.log('Empty AI response, using fallback detection');
-        return this.fallbackCategoryDetection(description);
+        console.log(`⚠️  Empty AI response, using fallback detection`);
+        const fallbackCategory = this.fallbackCategoryDetection(description);
+        console.log(`🏷️  Final Category (Fallback): "${fallbackCategory}"`);
+        return fallbackCategory;
       }
       
       // Validate that the detected category is in our list
@@ -132,16 +145,28 @@ Category:`;
         cat.toLowerCase() === detectedCategory.toLowerCase()
       );
 
+      console.log(`✅ AI Detected: "${detectedCategory}" → Matched: "${matchedCategory || 'INVALID'}"`);
+
       if (matchedCategory) {
+        console.log(`🎉 Final Category (AI): "${matchedCategory}"`);
+        console.log(`─────────────────────────────────────────\n`);
         return matchedCategory;
       }
 
       // If AI returned invalid category, use fallback
-      return this.fallbackCategoryDetection(description);
+      console.log(`⚠️  AI category not valid, using fallback detection`);
+      const fallbackCategory = this.fallbackCategoryDetection(description);
+      console.log(`🏷️  Final Category (Fallback): "${fallbackCategory}"`);
+      console.log(`─────────────────────────────────────────\n`);
+      return fallbackCategory;
 
     } catch (error) {
-      console.error('Error in AI category detection:', error);
-      return this.fallbackCategoryDetection(description);
+      console.error(`💥 Unexpected error in AI category detection:`, error);
+      console.log(`🔄 Falling back to keyword detection`);
+      const fallbackCategory = this.fallbackCategoryDetection(description);
+      console.log(`🏷️  Final Category (Fallback): "${fallbackCategory}"`);
+      console.log(`─────────────────────────────────────────\n`);
+      return fallbackCategory;
     }
   }
 
@@ -151,7 +176,12 @@ Category:`;
    * @returns {string} - The detected category
    */
   fallbackCategoryDetection(description) {
-    if (!description) return 'Other';
+    console.log(`🔍 Running fallback keyword detection for: "${description}"`);
+    
+    if (!description) {
+      console.log(`⚠️  Empty description → "Other"`);
+      return 'Other';
+    }
 
     const lowerDesc = description.toLowerCase();
     
@@ -159,11 +189,13 @@ Category:`;
     for (const [category, keywords] of Object.entries(EXPENSE_CATEGORIES)) {
       for (const keyword of keywords) {
         if (lowerDesc.includes(keyword.toLowerCase())) {
+          console.log(`✅ Keyword match: "${keyword}" → "${category}"`);
           return category;
         }
       }
     }
 
+    console.log(`❌ No keyword matches → "Other"`);
     return 'Other';
   }
 

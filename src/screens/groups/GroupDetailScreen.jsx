@@ -13,7 +13,8 @@ import {
   Activity as ActivityIcon,
   TrendingUp,
   Bell,
-  Check
+  Check,
+  Loader2
 } from 'lucide-react';
 import { Screen, Header } from '../../components/layout';
 import { 
@@ -35,6 +36,8 @@ export const GroupDetailScreen = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('expenses');
   const [showSettleUp, setShowSettleUp] = useState(false);
+  const [selectedDebt, setSelectedDebt] = useState(null);
+  const [isSettling, setIsSettling] = useState(false);
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [showEditExpense, setShowEditExpense] = useState(false);
   const [expenseToEdit, setExpenseToEdit] = useState(null);
@@ -112,12 +115,18 @@ export const GroupDetailScreen = () => {
     );
   }
 
-  const handleSettleUp = async (toUserId, amount, note) => {
+  const handleSettleUp = async () => {
+    if (!selectedDebt) return;
+    
+    setIsSettling(true);
     try {
-      await settleUp(toUserId, amount, groupId, note);
+      await settleUp(selectedDebt.user._id || selectedDebt.user.id, selectedDebt.amount, groupId, `Settlement in ${group.emoji} ${group.name}`);
       setShowSettleUp(false);
+      setSelectedDebt(null);
     } catch (err) {
       alert(err.message || 'Failed to record settlement');
+    } finally {
+      setIsSettling(false);
     }
   };
 
@@ -253,7 +262,10 @@ export const GroupDetailScreen = () => {
                     <div className="flex-shrink-0 flex items-center gap-3">
                       {youOwe ? (
                         <button
-                          onClick={() => setShowSettleUp(true)}
+                          onClick={() => {
+                            setSelectedDebt({ user, amount: Math.abs(amount) });
+                            setShowSettleUp(true);
+                          }}
                           className="text-sm font-medium text-orange-400 hover:text-orange-300 underline transition-colors flex-shrink-0"
                         >
                           Settle up
@@ -553,47 +565,48 @@ export const GroupDetailScreen = () => {
       {/* Settle Up Modal */}
       <Modal
         isOpen={showSettleUp}
-        onClose={() => setShowSettleUp(false)}
+        onClose={() => {
+          if (!isSettling) {
+            setShowSettleUp(false);
+            setSelectedDebt(null);
+          }
+        }}
         title="Settle Up"
-        description="Record a payment to settle your balances"
+        description="Record a payment to settle your balance"
       >
-        <div className="space-y-3">
-          {balances.filter(b => b.youOwe).map(({ user, amount }) => {
-            const userId = user._id || user.id;
-            
-            return (
-              <Card 
-                key={userId} 
-                variant="interactive" 
-                padding="md"
-                className="flex items-center justify-between"
+        {selectedDebt && (
+          <div className="space-y-4">
+            <p className="text-neutral-300">
+              You are about to settle {getCurrencySymbol('INR')}{selectedDebt.amount.toFixed(2)} with <strong>{selectedDebt.user.name}</strong> in <strong>{group.emoji} {group.name}</strong>
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button 
+                variant="secondary" 
+                onClick={() => {
+                  setShowSettleUp(false);
+                  setSelectedDebt(null);
+                }}
+                disabled={isSettling}
               >
-                <div className="flex items-center gap-3">
-                  <Avatar name={user.name} src={user.profileImage} size="md" />
-                  <div>
-                    <p className="font-medium text-neutral-100">{user.name}</p>
-                    <p className="text-sm text-neutral-500">
-                      You owe ₹{Math.abs(amount).toFixed(2)}
-                    </p>
-                  </div>
-                </div>
-                <Button 
-                  size="sm"
-                  onClick={() => handleSettleUp(userId, Math.abs(amount))}
-                >
-                  Settle ₹{Math.abs(amount).toFixed(2)}
-                </Button>
-              </Card>
-            );
-          })}
-          
-          {balances.filter(b => b.youOwe).length === 0 && (
-            <EmptyState
-              title="Nothing to settle"
-              description="You don't owe anyone in this group"
-            />
-          )}
-        </div>
+                Cancel
+              </Button>
+              <Button 
+                variant="primary" 
+                onClick={handleSettleUp}
+                disabled={isSettling}
+              >
+                {isSettling ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Settling...
+                  </>
+                ) : (
+                  'Confirm Settlement'
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* Add Expense Modal */}
