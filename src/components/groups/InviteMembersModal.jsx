@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Modal, Button, Input, Avatar } from '../ui';
 import { Link2, Mail, Copy, Check, UserPlus, Users, Loader2 } from 'lucide-react';
 import apiService from '../../services/api';
-
+import ReactGA from 'react-ga4';
 
 export const InviteMembersModal = ({ isOpen, onClose, groupId, groupName, existingMembers = [] }) => {
   const [inviteLink, setInviteLink] = useState('');
@@ -18,7 +18,6 @@ export const InviteMembersModal = ({ isOpen, onClose, groupId, groupName, existi
   const [selectedFriends, setSelectedFriends] = useState([]);
   const [addingFriends, setAddingFriends] = useState(false);
 
-
   useEffect(() => {
     if (isOpen && activeTab === 'friends') {
       fetchFriends();
@@ -27,7 +26,6 @@ export const InviteMembersModal = ({ isOpen, onClose, groupId, groupName, existi
       setSelectedFriends([]);
     }
   }, [isOpen, activeTab, existingMembers]);
-
 
   const fetchFriends = async () => {
     setFriendsLoading(true);
@@ -45,7 +43,6 @@ export const InviteMembersModal = ({ isOpen, onClose, groupId, groupName, existi
     }
   };
 
-
   const toggleFriendSelection = (friendId) => {
     setSelectedFriends(prev => 
       prev.includes(friendId) 
@@ -54,14 +51,12 @@ export const InviteMembersModal = ({ isOpen, onClose, groupId, groupName, existi
     );
   };
 
-
   const addFriendsToGroup = async () => {
     if (selectedFriends.length === 0) return;
     
     setAddingFriends(true);
     setError('');
     setSuccess('');
-
 
     try {
       await apiService.post(`/api/groups/${groupId}/add-friends`, {
@@ -71,6 +66,14 @@ export const InviteMembersModal = ({ isOpen, onClose, groupId, groupName, existi
       setFriends(prev => prev.filter(friend => 
         !selectedFriends.includes(friend._id || friend.id)
       ));
+      
+      // Track friends added to group
+      ReactGA.event({
+        category: 'Group',
+        action: 'Added Friends to Group',
+        label: groupName,
+        value: selectedFriends.length
+      });
       
       setSuccess(`Added ${selectedFriends.length} friend${selectedFriends.length !== 1 ? 's' : ''} to group!`);
       setSelectedFriends([]);
@@ -85,13 +88,19 @@ export const InviteMembersModal = ({ isOpen, onClose, groupId, groupName, existi
     }
   };
 
-
   const generateLink = async () => {
     setLoading(true);
     setError('');
     try {
       const response = await apiService.generateInviteLink(groupId);
-      setInviteLink(response.inviteLink); // ✅ Now gets shortened URL
+      setInviteLink(response.inviteLink);
+      
+      // Track invite link generated
+      ReactGA.event({
+        category: 'Group',
+        action: 'Generated Invite Link',
+        label: groupName
+      });
     } catch (err) {
       setError(err.message || 'Failed to generate invite link');
     } finally {
@@ -99,13 +108,19 @@ export const InviteMembersModal = ({ isOpen, onClose, groupId, groupName, existi
     }
   };
 
-
   const copyLink = () => {
     navigator.clipboard.writeText(inviteLink);
     setCopied(true);
+    
+    // Track invite link copied
+    ReactGA.event({
+      category: 'Group',
+      action: 'Copied Invite Link',
+      label: groupName
+    });
+    
     setTimeout(() => setCopied(false), 2000);
   };
-
 
   const sendEmail = async (e) => {
     e.preventDefault();
@@ -115,14 +130,20 @@ export const InviteMembersModal = ({ isOpen, onClose, groupId, groupName, existi
       return;
     }
 
-
     setEmailLoading(true);
     setError('');
     setSuccess('');
 
-
     try {
       await apiService.sendInviteEmail(groupId, email.trim());
+      
+      // Track email invite sent
+      ReactGA.event({
+        category: 'Group',
+        action: 'Sent Email Invite',
+        label: groupName
+      });
+      
       setSuccess('Invite sent successfully!');
       setEmail('');
       setTimeout(() => setSuccess(''), 3000);
@@ -132,7 +153,6 @@ export const InviteMembersModal = ({ isOpen, onClose, groupId, groupName, existi
       setEmailLoading(false);
     }
   };
-
 
   return (
     <Modal
@@ -167,7 +187,6 @@ export const InviteMembersModal = ({ isOpen, onClose, groupId, groupName, existi
             <span className="truncate">Invite Link</span>
           </button>
         </div>
-
 
         {/* Friends Tab */}
         {activeTab === 'friends' && (
@@ -231,7 +250,6 @@ export const InviteMembersModal = ({ isOpen, onClose, groupId, groupName, existi
           </div>
         )}
 
-
         {/* Link Tab */}
         {activeTab === 'link' && (
           <div className="space-y-6">
@@ -266,7 +284,6 @@ export const InviteMembersModal = ({ isOpen, onClose, groupId, groupName, existi
               )}
             </div>
 
-
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-neutral-700"></div>
@@ -275,7 +292,6 @@ export const InviteMembersModal = ({ isOpen, onClose, groupId, groupName, existi
                 <span className="px-2 bg-primary-900 text-neutral-500">OR</span>
               </div>
             </div>
-
 
             <div>
               <h3 className="text-sm font-medium text-neutral-300 mb-3 flex items-center gap-2">
@@ -303,7 +319,6 @@ export const InviteMembersModal = ({ isOpen, onClose, groupId, groupName, existi
             </div>
           </div>
         )}
-
 
         {error && (
           <p className="text-sm text-red-400">{error}</p>

@@ -15,11 +15,11 @@ import {
   ChevronRight,
   Bell
 } from 'lucide-react';
+import ReactGA from 'react-ga4';
 import { Screen, PageTitle } from '../../components/layout';
 import { Button, Card, Avatar, Modal } from '../../components/ui';
 import { useStore } from '../../store/useStore';
 import pushNotificationService from '../../services/pushNotification';
-
 
 export const ProfileScreen = () => {
   const navigate = useNavigate();
@@ -58,29 +58,33 @@ export const ProfileScreen = () => {
     '/avatars/male-white-phone.png',
   ];
 
-  // ✅ Check notification status only when page loads or becomes visible
-useEffect(() => {
-  const checkNotificationStatus = () => {
-    // ✅ Use isSubscribed instead of isPermissionGranted
-    setNotificationsEnabled(pushNotificationService.isSubscribed());
-  };
+  useEffect(() => {
+    const checkNotificationStatus = () => {
+      setNotificationsEnabled(pushNotificationService.isSubscribed());
+    };
 
-  checkNotificationStatus();
+    checkNotificationStatus();
 
-  const handleVisibilityChange = () => {
-    if (!document.hidden) {
-      checkNotificationStatus();
-    }
-  };
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        checkNotificationStatus();
+      }
+    };
 
-  document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
-  return () => {
-    document.removeEventListener('visibilitychange', handleVisibilityChange);
-  };
-}, []);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   const handleLogout = () => {
+    // Track logout
+    ReactGA.event({
+      category: 'User',
+      action: 'Logged Out'
+    });
+    
     logout();
     navigate('/login');
   };
@@ -88,6 +92,13 @@ useEffect(() => {
   const handleNameUpdate = async () => {
     if (editName.trim() && editName !== currentUser?.name) {
       await updateProfile({ name: editName });
+      
+      // Track profile update
+      ReactGA.event({
+        category: 'Profile',
+        action: 'Updated Name'
+      });
+      
       setEditingField(null);
     } else {
       setEditName(currentUser?.name || '');
@@ -105,6 +116,13 @@ useEffect(() => {
   const handleMobileUpdate = async () => {
     if (mobile !== currentUser?.mobile) {
       await updateProfile({ mobile });
+      
+      // Track mobile update
+      ReactGA.event({
+        category: 'Profile',
+        action: 'Updated Mobile'
+      });
+      
       setEditingField(null);
     } else {
       setMobile(currentUser?.mobile || '');
@@ -115,6 +133,13 @@ useEffect(() => {
   const handleGenderUpdate = async (newGender) => {
     setGender(newGender);
     await updateProfile({ gender: newGender });
+    
+    // Track gender update
+    ReactGA.event({
+      category: 'Profile',
+      action: 'Updated Gender',
+      label: newGender
+    });
   };
 
   const handleImageUpload = async (e) => {
@@ -128,6 +153,13 @@ useEffect(() => {
       const formData = new FormData();
       formData.append('profileImage', file);
       await updateProfile(formData);
+      
+      // Track custom image upload
+      ReactGA.event({
+        category: 'Profile',
+        action: 'Uploaded Custom Avatar'
+      });
+      
       setUploading(false);
       setShowAvatarPicker(false);
     }
@@ -136,37 +168,66 @@ useEffect(() => {
   const handleAvatarSelect = async (avatarUrl) => {
     setUploading(true);
     await updateProfile({ profileImage: avatarUrl });
+    
+    // Track predefined avatar selection
+    ReactGA.event({
+      category: 'Profile',
+      action: 'Selected Predefined Avatar'
+    });
+    
     setUploading(false);
     setShowAvatarPicker(false);
   };
 
   const handleDeleteImage = async () => {
     await deleteProfileImage();
+    
+    // Track avatar deletion
+    ReactGA.event({
+      category: 'Profile',
+      action: 'Deleted Avatar'
+    });
+    
     setShowDeleteConfirm(false);
   };
 
-  // ✅ Toggle notifications
- const handleToggleNotifications = async () => {
-  if (togglingNotifications) return;
+  const handleToggleNotifications = async () => {
+    if (togglingNotifications) return;
 
-  setTogglingNotifications(true);
-  
-  if (notificationsEnabled) {
-    // Disable
-    await pushNotificationService.unsubscribe();
-    setNotificationsEnabled(false);
+    setTogglingNotifications(true);
     
-  } else {
-    // Enable
-    const granted = await pushNotificationService.requestPermission();
-    setNotificationsEnabled(granted);
-    if (granted) {
+    if (notificationsEnabled) {
+      // Disable
+      await pushNotificationService.unsubscribe();
+      setNotificationsEnabled(false);
       
+      // Track notification disabled
+      ReactGA.event({
+        category: 'Notification',
+        action: 'Disabled from Profile'
+      });
+    } else {
+      // Enable
+      const granted = await pushNotificationService.requestPermission();
+      setNotificationsEnabled(granted);
+      
+      if (granted) {
+        // Track notification enabled
+        ReactGA.event({
+          category: 'Notification',
+          action: 'Enabled from Profile'
+        });
+      } else {
+        // Track notification denied
+        ReactGA.event({
+          category: 'Notification',
+          action: 'Denied from Profile'
+        });
+      }
     }
-  }
-  
-  setTogglingNotifications(false);
-};
+    
+    setTogglingNotifications(false);
+  };
 
   return (
     <Screen>
@@ -193,7 +254,15 @@ useEffect(() => {
               
               {/* Edit button */}
               <button
-                onClick={() => setShowAvatarPicker(true)}
+                onClick={() => {
+                  setShowAvatarPicker(true);
+                  
+                  // Track avatar picker opened
+                  ReactGA.event({
+                    category: 'Profile',
+                    action: 'Opened Avatar Picker'
+                  });
+                }}
                 disabled={uploading}
                 className="absolute bottom-0 right-0 p-2.5 rounded-full bg-secondary-500 hover:bg-secondary-600 transition-all shadow-lg hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -412,7 +481,7 @@ useEffect(() => {
           </Card>
         </div>
 
-        {/* ✅ SIMPLIFIED Notification Settings with Description */}
+        {/* Notification Settings */}
         {pushNotificationService.isSupported && (
           <div>
             <h3 className="text-sm font-semibold text-neutral-400 uppercase tracking-wider mb-3 px-1">
@@ -433,7 +502,7 @@ useEffect(() => {
                     </div>
                   </div>
 
-                  {/* ✅ Toggle Switch */}
+                  {/* Toggle Switch */}
                   <button
                     onClick={handleToggleNotifications}
                     disabled={togglingNotifications || pushNotificationService.isPermissionDenied()}
@@ -449,7 +518,6 @@ useEffect(() => {
                   </button>
                 </div>
 
-                {/* ✅ Description of what notifications will be sent */}
                 {!pushNotificationService.isPermissionDenied() && (
                   <div className="bg-primary-900 border border-neutral-700 rounded-lg p-3">
                     <p className="text-xs text-neutral-400 mb-2">
@@ -472,7 +540,6 @@ useEffect(() => {
                   </div>
                 )}
 
-                {/* ✅ Show help text only if blocked */}
                 {pushNotificationService.isPermissionDenied() && (
                   <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3">
                     <p className="text-xs text-red-400 font-medium mb-1">Notifications Blocked</p>

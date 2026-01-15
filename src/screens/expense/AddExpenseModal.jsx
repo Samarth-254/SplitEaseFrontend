@@ -5,6 +5,7 @@ import { Button, Input, Modal } from '../../components/ui';
 import { useStore } from '../../store/useStore';
 import { getCurrencySymbol } from '../../utils/currency';
 import { getCategoryIcon } from '../../utils/categoryDetection';
+import ReactGA from 'react-ga4';
 
 
 export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, expenseToEdit = null }) => {
@@ -268,99 +269,116 @@ export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, ex
 
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!amount || !description || !selectedGroup || splitBetween.length === 0) return;
+  e.preventDefault();
+  if (!amount || !description || !selectedGroup || splitBetween.length === 0) return;
+
+  if (splitType === 'custom') {
+    const totalPercent = getTotalSplitPercentage();
+    if (Math.abs(totalPercent - 100) > 0.01) {
+      setFormError(`Split percentages must total 100%. Current total: ${totalPercent.toFixed(2)}%`);
+      return;
+    }
+  }
+
+  setIsSubmitting(true);
+  setFormError('');
+  
+  try {
+    // Build splits array from percentages using paise so totals match exactly
+    const amountInPaise = Math.round(parseFloat(amount) * 100);
+    let splits = [];
 
     if (splitType === 'custom') {
-      const totalPercent = getTotalSplitPercentage();
-      if (Math.abs(totalPercent - 100) > 0.01) {
-        setFormError(`Split percentages must total 100%. Current total: ${totalPercent.toFixed(2)}%`);
-        return;
+      const raw = splitBetween.map((memberId) => {
+        const percent = parseFloat(customSplits[memberId]) || 0;
+        return { memberId, percent };
+      });
+
+      const paiseSplits = raw.map(({ memberId, percent }) => ({
+        user: memberId,
+        paise: Math.floor((amountInPaise * percent) / 100)
+      }));
+
+      let used = paiseSplits.reduce((s, x) => s + x.paise, 0);
+      let remainder = amountInPaise - used;
+      for (let i = 0; i < paiseSplits.length && remainder > 0; i += 1) {
+        paiseSplits[i].paise += 1;
+        remainder -= 1;
       }
+
+      splits = paiseSplits.map(s => ({ user: s.user, amount: s.paise / 100 }));
+    } else {
+      // For equal split, use customSplits percentages if available, otherwise calculate equal
+      const numberOfPeople = splitBetween.length;
+      const base = Math.floor(amountInPaise / numberOfPeople);
+      const rem = amountInPaise % numberOfPeople;
+      splits = splitBetween.map((userId, index) => ({
+        user: userId,
+        amount: (base + (index < rem ? 1 : 0)) / 100
+      }));
     }
 
-    setIsSubmitting(true);
-    setFormError('');
-    
-    try {
-      // Build splits array from percentages using paise so totals match exactly
-      const amountInPaise = Math.round(parseFloat(amount) * 100);
-      let splits = [];
+    const paidById = paidBy || (currentUser?._id || currentUser?.id);
 
-      if (splitType === 'custom') {
-        const raw = splitBetween.map((memberId) => {
-          const percent = parseFloat(customSplits[memberId]) || 0;
-          return { memberId, percent };
-        });
-
-        const paiseSplits = raw.map(({ memberId, percent }) => ({
-          user: memberId,
-          paise: Math.floor((amountInPaise * percent) / 100)
-        }));
-
-        let used = paiseSplits.reduce((s, x) => s + x.paise, 0);
-        let remainder = amountInPaise - used;
-        for (let i = 0; i < paiseSplits.length && remainder > 0; i += 1) {
-          paiseSplits[i].paise += 1;
-          remainder -= 1;
-        }
-
-        splits = paiseSplits.map(s => ({ user: s.user, amount: s.paise / 100 }));
-      } else {
-        // For equal split, use customSplits percentages if available, otherwise calculate equal
-        const numberOfPeople = splitBetween.length;
-        const base = Math.floor(amountInPaise / numberOfPeople);
-        const rem = amountInPaise % numberOfPeople;
-        splits = splitBetween.map((userId, index) => ({
-          user: userId,
-          amount: (base + (index < rem ? 1 : 0)) / 100
-        }));
-      }
-
-      const paidById = paidBy || (currentUser?._id || currentUser?.id);
-
-      if (isEditMode) {
-        const expenseId = expenseToEdit._id || expenseToEdit.id;
-        await updateExpense(expenseId, {
-          description,
-          amount: parseFloat(amount),
-          paidBy: paidById,
-          splitType,
-          splits,
-          currency,
-          category: category || undefined
-        });
-
-        setIsSubmitting(false);
-        onClose();
-        return;
-      }
-      
-      await addExpense({
-        groupId: selectedGroup,
+    if (isEditMode) {
+      const expenseId = expenseToEdit._id || expenseToEdit.id;
+      await updateExpense(expenseId, {
         description,
         amount: parseFloat(amount),
         paidBy: paidById,
-        splitBetween,
         splitType,
         splits,
-        currency
+        currency,
+        category: category || undefined
       });
 
-      setAmount('');
-      setDescription('');
-      setSelectedGroup(preSelectedGroupId || '');
-      setSplitBetween([]);
-      setCustomSplits({});
-      setSplitType('equal');
-      setCurrency('INR');
+      // Track expense updated
+      ReactGA.event({
+        category: 'Expense',
+        action: 'Updated Expense',
+        label: category || 'Other',
+        value: Math.round(parseFloat(amount))
+      });
+
       setIsSubmitting(false);
       onClose();
-    } catch (err) {
-      setFormError(err.message || (isEditMode ? 'Failed to update expense' : 'Failed to add expense'));
-      setIsSubmitting(false);
+      return;
     }
-  };
+    
+    await addExpense({
+      groupId: selectedGroup,
+      description,
+      amount: parseFloat(amount),
+      paidBy: paidById,
+      splitBetween,
+      splitType,
+      splits,
+      currency
+    });
+
+    // Track expense created
+    ReactGA.event({
+      category: 'Expense',
+      action: 'Created Expense',
+      label: splitType === 'custom' ? 'Custom Split' : 'Equal Split',
+      value: Math.round(parseFloat(amount))
+    });
+
+    setAmount('');
+    setDescription('');
+    setSelectedGroup(preSelectedGroupId || '');
+    setSplitBetween([]);
+    setCustomSplits({});
+    setSplitType('equal');
+    setCurrency('INR');
+    setIsSubmitting(false);
+    onClose();
+  } catch (err) {
+    setFormError(err.message || (isEditMode ? 'Failed to update expense' : 'Failed to add expense'));
+    setIsSubmitting(false);
+  }
+};
+
 
   const canDelete = (() => {
     if (!expenseToEdit || !currentUser) return false;
@@ -369,22 +387,31 @@ export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, ex
     return String(creatorId) === String(currentUserId);
   })();
 
-  const handleDelete = async () => {
-    if (!expenseToEdit) return;
-    if (!canDelete) return;
+ const handleDelete = async () => {
+  if (!expenseToEdit) return;
+  if (!canDelete) return;
 
-    try {
-      setIsSubmitting(true);
-      setFormError('');
-      await deleteExpense(expenseToEdit._id || expenseToEdit.id);
-      setIsSubmitting(false);
-      setShowDeleteConfirm(false);
-      onClose();
-    } catch (err) {
-      setIsSubmitting(false);
-      setFormError(err.message || 'Failed to delete expense');
-    }
-  };
+  try {
+    setIsSubmitting(true);
+    setFormError('');
+    await deleteExpense(expenseToEdit._id || expenseToEdit.id);
+    
+    // Track expense deleted
+    ReactGA.event({
+      category: 'Expense',
+      action: 'Deleted Expense',
+      label: expenseToEdit.category || 'Other'
+    });
+    
+    setIsSubmitting(false);
+    setShowDeleteConfirm(false);
+    onClose();
+  } catch (err) {
+    setIsSubmitting(false);
+    setFormError(err.message || 'Failed to delete expense');
+  }
+};
+
 
 
   const splitPreview = splitBetween.length > 0 && amount 
@@ -857,8 +884,3 @@ export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, ex
 
 
 export default AddExpenseModal;
-
-
-
-
-

@@ -30,6 +30,7 @@ import { InviteMembersModal } from '../../components/groups/InviteMembersModal';
 import { useStore } from '../../store/useStore';
 import { getCategoryIcon } from '../../utils/categoryDetection';
 import { getCurrencySymbol } from '../../utils/currency';
+import ReactGA from 'react-ga4';
 
 export const GroupDetailScreen = () => {
   const { groupId } = useParams();
@@ -115,20 +116,30 @@ export const GroupDetailScreen = () => {
     );
   }
 
-  const handleSettleUp = async () => {
-    if (!selectedDebt) return;
+ const handleSettleUp = async () => {
+  if (!selectedDebt) return;
+  
+  setIsSettling(true);
+  try {
+    await settleUp(selectedDebt.user._id || selectedDebt.user.id, selectedDebt.amount, groupId, `Settlement in ${group.emoji} ${group.name}`);
     
-    setIsSettling(true);
-    try {
-      await settleUp(selectedDebt.user._id || selectedDebt.user.id, selectedDebt.amount, groupId, `Settlement in ${group.emoji} ${group.name}`);
-      setShowSettleUp(false);
-      setSelectedDebt(null);
-    } catch (err) {
-      alert(err.message || 'Failed to record settlement');
-    } finally {
-      setIsSettling(false);
-    }
-  };
+    // Track settlement
+    ReactGA.event({
+      category: 'Settlement',
+      action: 'Settled Payment',
+      label: group.name,
+      value: Math.round(selectedDebt.amount)
+    });
+    
+    setShowSettleUp(false);
+    setSelectedDebt(null);
+  } catch (err) {
+    alert(err.message || 'Failed to record settlement');
+  } finally {
+    setIsSettling(false);
+  }
+};
+
 
   const handleSendReminder = async (memberId, amount, memberName) => {
     setRemindData({ memberId, amount, memberName });
@@ -136,20 +147,30 @@ export const GroupDetailScreen = () => {
     setShowRemindModal(true);
   };
 
-  const confirmSendReminder = async () => {
-    if (!remindData) return;
+ const confirmSendReminder = async () => {
+  if (!remindData) return;
+  
+  setIsSendingReminder(true);
+  try {
+    await sendReminder(groupId, remindData.memberId, remindData.amount);
     
-    setIsSendingReminder(true);
-    try {
-      await sendReminder(groupId, remindData.memberId, remindData.amount);
-      setIsSendingReminder(false);
-      setReminderSent(true);
-    } catch (err) {
-      console.error('Failed to send reminder:', err);
-      setIsSendingReminder(false);
-      setReminderSent(false);
-    }
-  };
+    // Track reminder sent
+    ReactGA.event({
+      category: 'Reminder',
+      action: 'Sent Payment Reminder',
+      label: group.name,
+      value: Math.round(remindData.amount)
+    });
+    
+    setIsSendingReminder(false);
+    setReminderSent(true);
+  } catch (err) {
+    console.error('Failed to send reminder:', err);
+    setIsSendingReminder(false);
+    setReminderSent(false);
+  }
+};
+
 
   const closeRemindModal = () => {
     setShowRemindModal(false);
@@ -199,13 +220,23 @@ export const GroupDetailScreen = () => {
 
   return (
     <Screen padded={false}>
-      <Header 
-        title={`${group.emoji} ${group.name}`} 
-        showBack 
-        rightAction
-        rightIcon={<UserPlus size={20} />}
-        onRightAction={() => setShowInviteModal(true)}
-      />
+     <Header 
+  title={`${group.emoji} ${group.name}`} 
+  showBack 
+  rightAction
+  rightIcon={<UserPlus size={20} />}
+  onRightAction={() => {
+    setShowInviteModal(true);
+    
+    // Track invite modal opened
+    ReactGA.event({
+      category: 'Group',
+      action: 'Opened Invite Modal',
+      label: group.name
+    });
+  }}
+/>
+
       
       <div className="px-4 lg:px-8">
         {/* Balance Summary */}

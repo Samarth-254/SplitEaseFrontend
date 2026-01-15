@@ -7,6 +7,7 @@ import { useStore } from '../../store/useStore';
 import apiService from '../../services/api';
 import socketService from '../../services/socket';
 import { getCurrencySymbol } from '../../utils/currency';
+import ReactGA from 'react-ga4';
 
 
 
@@ -270,152 +271,171 @@ export const FriendsScreen = () => {
 
 
 
-  const handleFriendClick = (friend) => {
-    setSelectedFriend(friend);
-    setShowSettleModal(true);
-  };
+const handleFriendClick = (friend) => {
+  setSelectedFriend(friend);
+  setShowSettleModal(true);
+  
+  // Track friend details viewed
+  ReactGA.event({
+    category: 'Friends',
+    action: 'Viewed Friend Details',
+    label: friend.name
+  });
+};
 
 
 
-  const handleSendReminder = (friendId, amount, friendName) => {
-    setRemindData({ friendId, amount, friendName });
-    setReminderSent(false);
-    setShowRemindModal(true);
-  };
-
+const handleSendReminder = (friendId, amount, friendName) => {
+  setRemindData({ friendId, amount, friendName });
+  setReminderSent(false);
+  setShowRemindModal(true);
+  
+  // Track reminder modal opened
+  ReactGA.event({
+    category: 'Reminder',
+    action: 'Opened Reminder Modal',
+    label: friendName
+  });
+};
 
 
   const confirmSendReminder = async () => {
-    if (!remindData) return;
+  if (!remindData) return;
+  
+  setIsSendingReminder(true);
+  try {
+    const groupBreakdown = getGroupWiseBreakdown(remindData.friendId);
     
-    setIsSendingReminder(true);
-    try {
-      const groupBreakdown = getGroupWiseBreakdown(remindData.friendId);
-      
-      if (groupBreakdown.length === 0) {
-        showToast('No balances found');
-        setIsSendingReminder(false);
-        setReminderSent(false);
-        return;
-      }
-      
-      const groupsTheyOwe = groupBreakdown.filter(g => g.balance > 0);
-      
-      if (groupsTheyOwe.length === 0) {
-        showToast('No balances to remind about');
-        setIsSendingReminder(false);
-        setReminderSent(false);
-        return;
-      }
-      
-      const emailBreakdown = groupsTheyOwe.map(g => ({
-        groupId: g.groupId,
-        groupName: g.groupName,
-        groupEmoji: g.groupEmoji,
-        amount: g.balance
-      }));
-      
-      const totalAmount = groupsTheyOwe.reduce((sum, g) => sum + g.balance, 0);
-      
-      const { sendCombinedReminder } = useStore.getState();
-      await sendCombinedReminder(
-        remindData.friendId,
-        totalAmount,
-        emailBreakdown
-      );
-      
-      setIsSendingReminder(false);
-      setReminderSent(true);
-    } catch (err) {
-      console.error('Failed to send reminder:', err);
+    if (groupBreakdown.length === 0) {
+      showToast('No balances found');
       setIsSendingReminder(false);
       setReminderSent(false);
-      showToast('Failed to send reminder');
+      return;
     }
-  };
+    
+    const groupsTheyOwe = groupBreakdown.filter(g => g.balance > 0);
+    
+    if (groupsTheyOwe.length === 0) {
+      showToast('No balances to remind about');
+      setIsSendingReminder(false);
+      setReminderSent(false);
+      return;
+    }
+    
+    const emailBreakdown = groupsTheyOwe.map(g => ({
+      groupId: g.groupId,
+      groupName: g.groupName,
+      groupEmoji: g.groupEmoji,
+      amount: g.balance
+    }));
+    
+    const totalAmount = groupsTheyOwe.reduce((sum, g) => sum + g.balance, 0);
+    
+    const { sendCombinedReminder } = useStore.getState();
+    await sendCombinedReminder(
+      remindData.friendId,
+      totalAmount,
+      emailBreakdown
+    );
+    
+    // ✅ Track reminder sent
+    ReactGA.event({
+      category: 'Reminder',
+      action: 'Sent Payment Reminder',
+      label: remindData.friendName,
+      value: Math.round(totalAmount)
+    });
+    
+    setIsSendingReminder(false);
+    setReminderSent(true);
+  } catch (err) {
+    console.error('Failed to send reminder:', err);
+    setIsSendingReminder(false);
+    setReminderSent(false);
+    showToast('Failed to send reminder');
+  }
+};
 
 
 
-  const handleSettleUp = async () => {
-    if (!selectedFriend) return;
+ const handleSettleUp = async () => {
+  if (!selectedFriend) return;
 
-
-
-    setIsSettling(true);
-    try {
-      const groupBreakdown = getGroupWiseBreakdown(selectedFriend._id);
-      
-      if (groupBreakdown.length === 0) {
-        showToast('No balances to settle');
-        setIsSettling(false);
-        return;
-      }
-
-
-
-      const friendId = String(selectedFriend._id || selectedFriend.id);
-      const myId = String(currentUser._id || currentUser.id);
-
-
-
-      const promises = [];
-      
-      for (const group of groupBreakdown) {
-        const groupBalance = group.balance;
-        const amount = Math.abs(groupBalance);
-        
-        if (amount < 0.01) continue;
-        
-        let fromUserId, toUserId;
-        
-        if (groupBalance < 0) {
-          fromUserId = myId;
-          toUserId = friendId;
-        } else {
-          fromUserId = friendId;
-          toUserId = myId;
-        }
-        
-        const note = groupBreakdown.length > 1 
-          ? `Net Settlement (${groupBreakdown.length} groups)` 
-          : 'Payment';
-        
-        promises.push(
-          apiService.recordSettlement(group.groupId, fromUserId, toUserId, amount, note)
-        );
-      }
-
-
-
-      await Promise.all(promises);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-
-
-      await loadGroups();
-      
-      for (const group of groupBreakdown) {
-        await loadGroupExpenses(group.groupId);
-        await loadGroupSettlements(group.groupId);
-      }
-      
-      refreshFriends();
-
-
-
-      setShowSettleUpModal(false);
-      setShowSettleModal(false);
-      setSelectedFriend(null);
-      
-      showToast(`Successfully settled with ${selectedFriend.name}!`);
-      
-    } catch (err) {
-      console.error('Settlement failed:', err);
-      showToast(err.response?.data?.message || 'Settlement failed');
-    } finally {
+  setIsSettling(true);
+  try {
+    const groupBreakdown = getGroupWiseBreakdown(selectedFriend._id);
+    
+    if (groupBreakdown.length === 0) {
+      showToast('No balances to settle');
       setIsSettling(false);
+      return;
     }
-  };
+
+    const friendId = String(selectedFriend._id || selectedFriend.id);
+    const myId = String(currentUser._id || currentUser.id);
+
+    const promises = [];
+    
+    for (const group of groupBreakdown) {
+      const groupBalance = group.balance;
+      const amount = Math.abs(groupBalance);
+      
+      if (amount < 0.01) continue;
+      
+      let fromUserId, toUserId;
+      
+      if (groupBalance < 0) {
+        fromUserId = myId;
+        toUserId = friendId;
+      } else {
+        fromUserId = friendId;
+        toUserId = myId;
+      }
+      
+      const note = groupBreakdown.length > 1 
+        ? `Net Settlement (${groupBreakdown.length} groups)` 
+        : 'Payment';
+      
+      promises.push(
+        apiService.recordSettlement(group.groupId, fromUserId, toUserId, amount, note)
+      );
+    }
+
+    await Promise.all(promises);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    await loadGroups();
+    
+    for (const group of groupBreakdown) {
+      await loadGroupExpenses(group.groupId);
+      await loadGroupSettlements(group.groupId);
+    }
+    
+    refreshFriends();
+
+    const totalAmount = groupBreakdown.reduce((sum, g) => sum + Math.abs(g.balance), 0);
+    
+    // ✅ Track settlement with friend
+    ReactGA.event({
+      category: 'Settlement',
+      action: 'Settled with Friend',
+      label: selectedFriend.name,
+      value: Math.round(totalAmount)
+    });
+
+    setShowSettleUpModal(false);
+    setShowSettleModal(false);
+    setSelectedFriend(null);
+    
+    showToast(`Successfully settled with ${selectedFriend.name}!`);
+    
+  } catch (err) {
+    console.error('Settlement failed:', err);
+    showToast(err.response?.data?.message || 'Settlement failed');
+  } finally {
+    setIsSettling(false);
+  }
+};
 
 
 

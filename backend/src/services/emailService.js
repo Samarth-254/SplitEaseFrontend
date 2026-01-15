@@ -314,7 +314,7 @@ const sendExpenseNotification = async (email, data) => {
     const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
     sendSmtpEmail.subject = emailContent.subject;
     sendSmtpEmail.htmlContent = emailContent.html;
-    sendSmtpEmail.sender = { name: "SplitEase", email: "samarthnagpal070@gmail.com" };
+    sendSmtpEmail.sender = { name: "SplitEase", email: "noreply@split-ease.app" };
     sendSmtpEmail.to = [{ email: email }];
 
     await apiInstance.sendTransacEmail(sendSmtpEmail);

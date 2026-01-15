@@ -58,7 +58,7 @@ exports.generateInviteLink = async (req, res) => {
 
     // Generate short 6-character code
     const code = crypto.randomBytes(3).toString('hex');
-    
+
     // Create invite in database
     await Invite.create({
       code,
@@ -67,8 +67,8 @@ exports.generateInviteLink = async (req, res) => {
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
     });
 
-    const frontendUrl = process.env.FRONTEND_URL || 
-                       (process.env.FRONTEND_URLS ? process.env.FRONTEND_URLS.split(',')[0].trim() : 'http://localhost:5173');
+    const frontendUrl = process.env.FRONTEND_URL ||
+      (process.env.FRONTEND_URLS ? process.env.FRONTEND_URLS.split(',')[0].trim() : 'http://localhost:5173');
 
     const inviteLink = `${frontendUrl}/join/${code}`;
 
@@ -87,7 +87,7 @@ exports.joinGroup = async (req, res) => {
     let groupId;
 
     // Try to find invite by short code first
-    const invite = await Invite.findOne({ 
+    const invite = await Invite.findOne({
       code: token,
       expiresAt: { $gt: new Date() }
     });
@@ -114,7 +114,7 @@ exports.joinGroup = async (req, res) => {
     if (!group.members.includes(req.user._id)) {
       group.members.push(req.user._id);
       await group.save();
-      
+
       // Emit socket event
       const io = req.app.get('io');
       if (io) {
@@ -210,99 +210,102 @@ exports.sendPaymentReminder = async (req, res) => {
       let apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
       apiInstance.setApiKey(SibApiV3Sdk.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY);
 
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      const logoUrl = "https://res.cloudinary.com/dsp0zmfcx/image/upload/v1768331606/icon-512_g9hfoe.png";
+
       const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
-      sendSmtpEmail.subject = `💰 Payment Reminder: ${group.emoji} ${group.name}`;
+      sendSmtpEmail.subject = `Payment Reminder: ${group.name}`;
       sendSmtpEmail.htmlContent = `
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Reminder</title>
+  <style>
+    body { margin: 0; padding: 0; background-color: #F3F4F6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    .wrapper { width: 100%; table-layout: fixed; background-color: #F3F4F6; padding-bottom: 40px; }
+    .main-table { background-color: #FFFFFF; margin: 0 auto; width: 100%; max-width: 500px; border-radius: 12px; border: 1px solid #E5E7EB; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+    .button { display: inline-block; background-color: #F97316; color: #FFFFFF !important; text-decoration: none; padding: 12px 32px; border-radius: 6px; font-weight: 600; font-size: 16px; text-align: center; }
+  </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-  <table role="presentation" style="width: 100%; border-collapse: collapse;">
-    <tr>
-      <td align="center" style="padding: 40px 0;">
-        <table role="presentation" style="width: 600px; max-width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+<body>
+  <center class="wrapper">
+    <table class="main-table" align="center" border="0" cellpadding="0" cellspacing="0" style="margin-top: 30px;">
+      
+      <tr>
+        <td style="padding: 32px 0 0; text-align: center;">
+          <table align="center" border="0" cellpadding="0" cellspacing="0" style="display: inline-table;">
+            <tr>
+              <td valign="middle" style="padding-right: 12px;">
+                <img src="${logoUrl}" alt="SplitEase" width="48" height="48" style="display: block; border-radius: 8px;">
+              </td>
+              <td valign="middle">
+                <span style="font-size: 24px; font-weight: 700; color: #111827;">SplitEase</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <tr>
+        <td style="padding: 32px 40px 40px;">
           
-          <tr>
-            <td style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 40px 40px 30px; border-radius: 16px 16px 0 0; text-align: center;">
-              <div style="background-color: rgba(255, 255, 255, 0.2); width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center;">
-                <span style="font-size: 32px;">💰</span>
-              </div>
-              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">
-                Payment Reminder
-              </h1>
-              <p style="margin: 8px 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">
-                ${group.emoji} ${group.name}
-              </p>
-            </td>
-          </tr>
+          <h1 style="margin: 0 0 16px; font-size: 22px; font-weight: 700; color: #111827; text-align: center;">
+            Payment Reminder
+          </h1>
+          
+          <p style="margin: 0 0 24px; font-size: 15px; color: #6B7280; text-align: center; line-height: 1.6;">
+            Hi <strong>${member.name}</strong>, <strong style="color: #111827;">${req.user.name}</strong> sent a reminder for <strong>${group.name}</strong>.
+          </p>
 
-          <tr>
-            <td style="padding: 40px;">
-              <p style="margin: 0 0 16px; color: #1f2937; font-size: 16px;">
-                Hi <strong>${member.name}</strong>,
-              </p>
-              <p style="margin: 0 0 24px; color: #4b5563; font-size: 15px; line-height: 1.7;">
-                <strong style="color: #1f2937;">${req.user.name}</strong> sent you a friendly reminder about your outstanding balance in <strong style="color: #ef4444;">${group.emoji} ${group.name}</strong>.
-              </p>
+          <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
+            <tr>
+              <td align="center">
+                <div style="display: inline-block; padding: 20px 40px; background-color: #FFF7ED; border-radius: 8px; border: 1px solid #FFEDD5;">
+                  <span style="font-size: 13px; display: block; color: #C2410C; font-weight: 600; text-transform: uppercase; margin-bottom: 4px;">Amount Due</span>
+                  <span style="font-size: 32px; display: block; color: #C2410C; font-weight: 700;">₹${Math.round(amount * 100) / 100}</span>
+                </div>
+              </td>
+            </tr>
+          </table>
 
-              <div style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); border: 2px solid #fca5a5; border-radius: 12px; padding: 24px; margin: 24px 0; text-align: center;">
-                <p style="margin: 0 0 8px; color: #991b1b; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
-                  Amount Due
-                </p>
-                <p style="margin: 0; color: #dc2626; font-size: 36px; font-weight: 700; line-height: 1;">
-                  ₹${Math.round(amount * 100) / 100}
-                </p>
-              </div>
+          <p style="margin: 0 0 32px; font-size: 14px; color: #6B7280; text-align: center;">
+            Please settle this amount at your earliest convenience to keep the group balances balanced!
+          </p>
 
-              <p style="margin: 24px 0 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
-                Please settle this amount at your earliest convenience. Keeping balances up to date helps everyone track expenses better! 🙏
-              </p>
+          <table width="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td align="center">
+                <a href="${frontendUrl}/group/${groupId}" class="button">Settle Up</a>
+              </td>
+            </tr>
+          </table>
 
-              <div style="background-color: #f0fdf4; border-left: 4px solid #22c55e; padding: 16px; margin: 24px 0; border-radius: 8px;">
-                <p style="margin: 0 0 8px; color: #166534; font-size: 13px; font-weight: 600;">
-                  💡 Settling up is easy:
-                </p>
-                <ol style="margin: 0; padding-left: 20px; color: #166534; font-size: 13px; line-height: 1.6;">
-                  <li style="margin-bottom: 4px;">Open SplitEase app or website</li>
-                  <li style="margin-bottom: 4px;">Go to ${group.emoji} ${group.name}</li>
-                  <li style="margin-bottom: 0;">Click "Settle Up" and confirm payment</li>
-                </ol>
-              </div>
+        </td>
+      </tr>
 
-              <table role="presentation" style="width: 100%; margin: 32px 0 0;">
-                <tr>
-                  <td align="center">
-                    <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/group/${groupId}" style="display: inline-block; background-color: #ef4444; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 10px; font-weight: 600; font-size: 15px; box-shadow: 0 4px 6px rgba(239, 68, 68, 0.25);">
-                      Open Group & Settle Up
-                    </a>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
+      <tr>
+        <td style="background-color: #FAFAFA; padding: 24px; text-align: center; border-top: 1px solid #E5E7EB;">
+          <p style="margin: 0; font-size: 12px; color: #6B7280; line-height: 1.5;">
+            This is an automated reminder from <strong>${req.user.name}</strong>
+          </p>
+        </td>
+      </tr>
+    </table>
 
-          <tr>
-            <td style="padding: 30px 40px; background-color: #f9fafb; border-radius: 0 0 16px 16px; border-top: 1px solid #e5e7eb;">
-              <p style="margin: 0 0 8px; color: #6b7280; font-size: 12px; text-align: center;">
-                This is an automated reminder from <strong style="color: #1f2937;">${req.user.name}</strong>
-              </p>
-              <p style="margin: 0; color: #9ca3af; font-size: 12px; text-align: center;">
-                © 2026 SplitEase • Making expense splitting simple
-              </p>
-            </td>
-          </tr>
-
-        </table>
-      </td>
-    </tr>
-  </table>
+    <table align="center" border="0" cellpadding="0" cellspacing="0" style="margin-top: 24px;">
+      <tr>
+        <td style="text-align: center;">
+          <p style="margin: 0; font-size: 12px; color: #9CA3AF;">© 2026 SplitEase.</p>
+        </td>
+      </tr>
+    </table>
+  </center>
 </body>
 </html>
       `;
-      sendSmtpEmail.sender = { name: "SplitEase", email: "samarthnagpal070@gmail.com" };
+      sendSmtpEmail.sender = { name: "SplitEase", email: "noreply@split-ease.app" };
       sendSmtpEmail.to = [{ email: member.email, name: member.name }];
 
       console.log('Attempting to send payment reminder to:', member.email);
@@ -352,126 +355,124 @@ exports.sendCombinedReminder = async (req, res) => {
       let apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
       apiInstance.setApiKey(SibApiV3Sdk.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY);
 
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      const logoUrl = "https://res.cloudinary.com/dsp0zmfcx/image/upload/v1768331606/icon-512_g9hfoe.png";
+
       // Build group breakdown HTML
-      const groupsHTML = groupBreakdown.map(group => `
-        <div style="background-color: #1f2937; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
-          <div style="display: flex; align-items: center; justify-content: space-between;">
-            <div style="display: flex; align-items: center; gap: 12px;">
-              <div style="background-color: #374151; width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px;">
-                ${group.groupEmoji}
-              </div>
-              <div>
-                <p style="margin: 0; font-weight: 600; color: #f3f4f6; font-size: 15px;">${group.groupName}</p>
-              </div>
-            </div>
-            <div style="text-align: right;">
-              <p style="margin: 0; font-size: 11px; color: #ef4444; text-transform: uppercase; letter-spacing: 0.5px;">Amount Due</p>
-              <p style="margin: 0; font-size: 18px; font-weight: 700; color: #ef4444;">₹${Math.round(group.amount * 100) / 100}</p>
-            </div>
-          </div>
-        </div>
+      const groupsHTML = groupBreakdown.map((group, index) => `
+        <tr style="border-bottom: 1px solid #E5E7EB;">
+          <td style="padding: 12px 0;">
+            <table width="100%" border="0" cellpadding="0" cellspacing="0">
+              <tr>
+                <td width="70%" valign="middle" style="font-size: 14px; color: #111827;">
+                  <span style="font-size: 18px; margin-right: 8px; vertical-align: middle;">${group.groupEmoji || '👥'}</span>
+                  <span style="font-weight: 600; vertical-align: middle;">${group.groupName}</span>
+                </td>
+                <td width="30%" align="right" valign="middle">
+                  <div style="font-size: 14px; font-weight: 700; color: #C2410C;">₹${Math.round(group.amount * 100) / 100}</div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
       `).join('');
 
       const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
-      sendSmtpEmail.subject = `💰 Payment Reminder from ${req.user.name}`;
+      sendSmtpEmail.subject = `Payment Reminder from ${req.user.name}`;
       sendSmtpEmail.htmlContent = `
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Combined Payment Reminder</title>
+  <style>
+    body { margin: 0; padding: 0; background-color: #F3F4F6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    .wrapper { width: 100%; table-layout: fixed; background-color: #F3F4F6; padding-bottom: 40px; }
+    .main-table { background-color: #FFFFFF; margin: 0 auto; width: 100%; max-width: 500px; border-radius: 12px; border: 1px solid #E5E7EB; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+    .button { display: inline-block; background-color: #F97316; color: #FFFFFF !important; text-decoration: none; padding: 12px 32px; border-radius: 6px; font-weight: 600; font-size: 16px; text-align: center; }
+  </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-  <table role="presentation" style="width: 100%; border-collapse: collapse;">
-    <tr>
-      <td align="center" style="padding: 40px 0;">
-        <table role="presentation" style="width: 600px; max-width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+<body>
+  <center class="wrapper">
+    <table class="main-table" align="center" border="0" cellpadding="0" cellspacing="0" style="margin-top: 30px;">
+      
+      <tr>
+        <td style="padding: 32px 0 0; text-align: center;">
+          <table align="center" border="0" cellpadding="0" cellspacing="0" style="display: inline-table;">
+            <tr>
+              <td valign="middle" style="padding-right: 12px;">
+                <img src="${logoUrl}" alt="SplitEase" width="48" height="48" style="display: block; border-radius: 8px;">
+              </td>
+              <td valign="middle">
+                <span style="font-size: 24px; font-weight: 700; color: #111827;">SplitEase</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <tr>
+        <td style="padding: 32px 40px 40px;">
           
-          <tr>
-            <td style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 40px 40px 30px; border-radius: 16px 16px 0 0; text-align: center;">
-              <div style="background-color: rgba(255, 255, 255, 0.2); width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 16px; display: inline-flex; align-items: center; justify-content: center;">
-                <span style="font-size: 32px;">💰</span>
-              </div>
-              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">
-                Payment Reminder
-              </h1>
-              <p style="margin: 8px 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">
-                ${groupBreakdown.length} Group${groupBreakdown.length > 1 ? 's' : ''}
-              </p>
-            </td>
-          </tr>
+          <h1 style="margin: 0 0 16px; font-size: 22px; font-weight: 700; color: #111827; text-align: center;">
+            Total Balance Due
+          </h1>
+          
+          <p style="margin: 0 0 24px; font-size: 15px; color: #6B7280; text-align: center; line-height: 1.6;">
+            Hi <strong>${member.name}</strong>, you have pending settlements across <strong>${groupBreakdown.length} groups</strong>.
+          </p>
 
-          <tr>
-            <td style="padding: 40px;">
-              <p style="margin: 0 0 16px; color: #1f2937; font-size: 16px;">
-                Hi <strong>${member.name}</strong>,
-              </p>
-              <p style="margin: 0 0 24px; color: #4b5563; font-size: 15px; line-height: 1.7;">
-                <strong style="color: #1f2937;">${req.user.name}</strong> sent you a friendly reminder about your outstanding balances across multiple groups.
-              </p>
+          <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 32px;">
+            <tr>
+              <td align="center">
+                <div style="display: inline-block; padding: 20px 40px; background-color: #FFF7ED; border-radius: 8px; border: 1px solid #FFEDD5;">
+                  <span style="font-size: 13px; display: block; color: #C2410C; font-weight: 600; text-transform: uppercase; margin-bottom: 4px;">Total To Pay</span>
+                  <span style="font-size: 32px; display: block; color: #C2410C; font-weight: 700;">₹${Math.round(totalAmount * 100) / 100}</span>
+                </div>
+              </td>
+            </tr>
+          </table>
 
-              <div style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); border: 2px solid #fca5a5; border-radius: 12px; padding: 24px; margin: 24px 0; text-align: center;">
-                <p style="margin: 0 0 8px; color: #991b1b; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
-                  Total Amount Due
-                </p>
-                <p style="margin: 0; color: #dc2626; font-size: 40px; font-weight: 700; line-height: 1;">
-                  ₹${Math.round(totalAmount * 100) / 100}
-                </p>
-              </div>
+          <div style="margin-bottom: 32px;">
+            <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; color: #9CA3AF; margin-bottom: 12px;">Breakdown</div>
+            <table width="100%" border="0" cellpadding="0" cellspacing="0" style="border-top: 1px solid #E5E7EB;">
+              ${groupsHTML}
+            </table>
+          </div>
 
-              <div style="margin: 24px 0;">
-                <p style="margin: 0 0 16px; color: #6b7280; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
-                  Breakdown by Group:
-                </p>
-                ${groupsHTML}
-              </div>
+          <table width="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td align="center">
+                <a href="${frontendUrl}/friends" class="button">View & Settle</a>
+              </td>
+            </tr>
+          </table>
 
-              <p style="margin: 24px 0 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
-                Please settle these amounts at your earliest convenience. Keeping balances up to date helps everyone track expenses better! 🙏
-              </p>
+        </td>
+      </tr>
 
-              <div style="background-color: #f0fdf4; border-left: 4px solid #22c55e; padding: 16px; margin: 24px 0; border-radius: 8px;">
-                <p style="margin: 0 0 8px; color: #166534; font-size: 13px; font-weight: 600;">
-                  💡 Settling up is easy:
-                </p>
-                <ol style="margin: 0; padding-left: 20px; color: #166534; font-size: 13px; line-height: 1.6;">
-                  <li style="margin-bottom: 4px;">Open SplitEase app or website</li>
-                  <li style="margin-bottom: 4px;">Go to Friends tab</li>
-                  <li style="margin-bottom: 0;">Click "Settle Up" and confirm payments</li>
-                </ol>
-              </div>
+      <tr>
+        <td style="background-color: #FAFAFA; padding: 24px; text-align: center; border-top: 1px solid #E5E7EB;">
+          <p style="margin: 0; font-size: 12px; color: #6B7280; line-height: 1.5;">
+            This is an automated reminder from <strong>${req.user.name}</strong>
+          </p>
+        </td>
+      </tr>
+    </table>
 
-              <table role="presentation" style="width: 100%; margin: 32px 0 0;">
-                <tr>
-                  <td align="center">
-                    <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/friends" style="display: inline-block; background-color: #ef4444; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 10px; font-weight: 600; font-size: 15px; box-shadow: 0 4px 6px rgba(239, 68, 68, 0.25);">
-                      Open SplitEase & Settle Up
-                    </a>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-
-          <tr>
-            <td style="padding: 30px 40px; background-color: #f9fafb; border-radius: 0 0 16px 16px; border-top: 1px solid #e5e7eb;">
-              <p style="margin: 0 0 8px; color: #6b7280; font-size: 12px; text-align: center;">
-                This is an automated reminder from <strong style="color: #1f2937;">${req.user.name}</strong>
-              </p>
-              <p style="margin: 0; color: #9ca3af; font-size: 12px; text-align: center;">
-                © 2026 SplitEase • Making expense splitting simple
-              </p>
-            </td>
-          </tr>
-
-        </table>
-      </td>
-    </tr>
-  </table>
+    <table align="center" border="0" cellpadding="0" cellspacing="0" style="margin-top: 24px;">
+      <tr>
+        <td style="text-align: center;">
+          <p style="margin: 0; font-size: 12px; color: #9CA3AF;">© 2026 SplitEase.</p>
+        </td>
+      </tr>
+    </table>
+  </center>
 </body>
 </html>
       `;
-      sendSmtpEmail.sender = { name: "SplitEase", email: "samarthnagpal070@gmail.com" };
+      sendSmtpEmail.sender = { name: "SplitEase", email: "noreply@split-ease.app" };
       sendSmtpEmail.to = [{ email: member.email, name: member.name }];
 
       console.log('Attempting to send combined reminder to:', member.email);
@@ -516,7 +517,7 @@ exports.addFriendsToGroup = async (req, res) => {
 
     if (newMembers.length > 0) {
       await group.save();
-      
+
       const io = req.app.get('io');
       if (io) {
         const addedUsers = await User.find({ _id: { $in: newMembers } }).select('name email profileImage mobile gender');
@@ -524,15 +525,15 @@ exports.addFriendsToGroup = async (req, res) => {
           ...user.toObject(),
           profileImage: user.profileImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name.replace(/\s+/g, '')}`
         }));
-        
-        // ✅ Emit to group room
+
+        // Emit to group room
         io.to(`group:${group._id}`).emit('members:added', {
           groupId: group._id,
           addedBy: req.user._id,
           members: addedUsersWithAvatars
         });
-        
-        // ✅ Emit to all members including new ones
+
+        // Emit to all members including new ones
         group.members.forEach(memberId => {
           io.to(`user:${memberId}`).emit('members:added', {
             groupId: group._id,
@@ -540,7 +541,7 @@ exports.addFriendsToGroup = async (req, res) => {
             members: addedUsersWithAvatars
           });
         });
-        
+
         // Notify new members specifically
         for (const userId of newMembers) {
           io.emit('friend:added-to-group', {
@@ -602,12 +603,12 @@ exports.recordSettlement = async (req, res) => {
     await settlement.populate('to', 'name profileImage email mobile');
 
     const io = req.app.get('io');
-    
+
     if (io) {
       io.to(`group:${groupId}`).emit('settlement:created', settlement);
       io.to(`user:${fromUserId}`).emit('settlement:created', settlement);
       io.to(`user:${toUserId}`).emit('settlement:created', settlement);
-      
+
       const fromUser = settlement.from;
       io.to(`user:${toUserId}`).emit('notification', {
         type: 'settlement_received',
@@ -631,17 +632,16 @@ exports.recordSettlement = async (req, res) => {
       toUserId,
       `✅ Payment received in ${group.name}`,
       `${settlement.from.name} paid you ₹${amount}`,
-      `/group/${groupId}`, 
-      io                 
+      `/group/${groupId}`,
+      io
     );
 
-    // ✅ FIXED LINE - Pass settlement object
     await notificationService.notifySettlement(
       toUserId,
       fromUserId,
       amount,
       User,
-      settlement  // ← THIS WAS MISSING!
+      settlement
     );
 
     res.status(201).json(settlement);
@@ -650,7 +650,6 @@ exports.recordSettlement = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
 
 exports.getGroupSettlements = async (req, res) => {
   try {

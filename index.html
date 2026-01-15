@@ -124,32 +124,39 @@
       }
     }
     </script>
-    
-    <title>SplitEase - Split Expenses with Friends</title>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    
+    <!-- ✅ Service Worker Registration -->
+    <!-- Network-first for API/WebSocket, Cache-first for static assets -->
     <script>
-      // Service Worker disabled - removed caching for simpler architecture
-      // Always fetch fresh data from backend
-      
-      // Unregister any existing service workers
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then((registrations) => {
-          registrations.forEach((registration) => {
-            registration.unregister();
-          });
-        });
-        
-        // Clear all caches
-        if ('caches' in window) {
-          caches.keys().then((names) => {
-            names.forEach((name) => {
-              caches.delete(name);
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+              console.log('✅ SW registered (Network-first for API, no stale data)');
+              
+              // Listen for updates
+              registration.addEventListener('updatefound', () => {
+                const newWorker = registration.installing;
+                console.log('🔄 New service worker found');
+                
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    console.log('✅ New version available - refresh to update');
+                    // Optionally show update toast here
+                  }
+                });
+              });
+            })
+            .catch(error => {
+              console.error('❌ SW registration failed:', error);
             });
-          });
-        }
+        });
+      } else {
+        console.warn('⚠️ Service Workers not supported');
       }
     </script>
   </body>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Modal, Button, Input } from '../ui';
 import { Users, Plus, ChevronRight } from 'lucide-react';
+import ReactGA from 'react-ga4';
 import apiService from '../../services/api';
 import { useStore } from '../../store/useStore';
 
@@ -46,11 +47,26 @@ export const CreateGroupModal = ({ isOpen, onClose }) => {
     try {
       const group = await apiService.createGroup(name.trim(), emoji);
       addGroup(group);
+      
+      // Track group creation
+      ReactGA.event({
+        category: 'Group',
+        action: 'Created Group',
+        label: emoji
+      });
+      
       setName('');
       setEmoji('🏠');
       onClose();
     } catch (err) {
       setError(err.message || 'Failed to create group');
+      
+      // Track group creation failure
+      ReactGA.event({
+        category: 'Group',
+        action: 'Group Creation Failed',
+        label: err.message || 'Unknown Error'
+      });
     } finally {
       setLoading(false);
     }

@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Plus, TrendingUp, TrendingDown, ChevronRight, Users, Wallet, Calendar, UserPlus, DollarSign, Loader2 } from 'lucide-react';
+import ReactGA from 'react-ga4';
 import { Screen } from '../../components/layout';
 import { Button, Card, Badge, EmptyState, Modal } from '../../components/ui';
 import { useStore } from '../../store/useStore';
@@ -28,7 +29,7 @@ export const DashboardScreen = () => {
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [showSettleModal, setShowSettleModal] = useState(false);
   const [selectedDebt, setSelectedDebt] = useState(null);
-  const [isSettling, setIsSettling] = useState(false); // ✅ LOADING STATE
+  const [isSettling, setIsSettling] = useState(false);
   
   // Show loading state until data is loaded
   const isDataLoading = !isInitialLoadComplete;
@@ -127,22 +128,37 @@ export const DashboardScreen = () => {
   const handleSettleDebt = (debt) => {
     setSelectedDebt(debt);
     setShowSettleModal(true);
+    
+    // Track settle modal opened from dashboard
+    ReactGA.event({
+      category: 'Settlement',
+      action: 'Opened Settle Modal from Dashboard',
+      label: debt.groupName
+    });
   };
 
   const handleSettleUp = async () => {
     if (!selectedDebt) return;
     
-    setIsSettling(true); // ✅ START LOADING
+    setIsSettling(true);
     
     try {
       await settleUp(selectedDebt.memberId, selectedDebt.amount, selectedDebt.groupId, `Settlement from dashboard`);
-      // ✅ AUTO-CLOSE ON SUCCESS (store updates trigger re-renders)
+      
+      // Track settlement from dashboard
+      ReactGA.event({
+        category: 'Settlement',
+        action: 'Settled from Dashboard',
+        label: selectedDebt.groupName,
+        value: Math.round(selectedDebt.amount)
+      });
+      
       setShowSettleModal(false);
       setSelectedDebt(null);
     } catch (err) {
       alert(err.message || 'Failed to settle up');
     } finally {
-      setIsSettling(false); // ✅ STOP LOADING
+      setIsSettling(false);
     }
   };
   
@@ -179,11 +195,37 @@ export const DashboardScreen = () => {
           </div>
           <div className="flex items-center gap-2">
             <div className="hidden lg:block">
-              <Button size="sm" variant="secondary" icon={<Plus size={16} />} onClick={() => setShowAddExpense(true)}>
+              <Button 
+                size="sm" 
+                variant="secondary" 
+                icon={<Plus size={16} />} 
+                onClick={() => {
+                  setShowAddExpense(true);
+                  
+                  // Track add expense opened from dashboard
+                  ReactGA.event({
+                    category: 'Expense',
+                    action: 'Opened Add Expense from Dashboard'
+                  });
+                }}
+              >
                 Expense
               </Button>
             </div>
-            <Button size="sm" variant="secondary" icon={<UserPlus size={16} />} onClick={() => setShowCreateGroup(true)}>
+            <Button 
+              size="sm" 
+              variant="secondary" 
+              icon={<UserPlus size={16} />} 
+              onClick={() => {
+                setShowCreateGroup(true);
+                
+                // Track create group opened from dashboard
+                ReactGA.event({
+                  category: 'Group',
+                  action: 'Opened Create Group from Dashboard'
+                });
+              }}
+            >
               Group
             </Button>
           </div>
@@ -381,7 +423,6 @@ export const DashboardScreen = () => {
             ) : (
               <div className="max-h-[400px] overflow-y-auto pr-2 space-y-3 scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-neutral-900">
                 {allDebts.map((debt, index) => {
-                  // ✅ Find the user object to get profile image
                   const group = groups.find(g => (g._id || g.id) === debt.groupId);
                   const member = group?.members?.find(m => (m._id || m.id) === debt.memberId);
                   
@@ -398,9 +439,7 @@ export const DashboardScreen = () => {
                         onClick={() => navigate(`/group/${debt.groupId}`)}
                       >
                         <div className="space-y-3">
-                          {/* Top Row: Avatar + Member Name + Amount */}
                           <div className="flex items-start gap-3">
-                            {/* ✅ User Avatar instead of icon */}
                             {member?.profileImage ? (
                               <img
                                 src={member.profileImage}
@@ -425,7 +464,6 @@ export const DashboardScreen = () => {
                             </p>
                           </div>
                           
-                          {/* Bottom Row: Group Name (left) + Settle Up (right) */}
                           <div className="flex items-center justify-between pt-2 border-t border-neutral-800">
                             <p className="text-xs text-neutral-500">
                               {debt.groupEmoji} {debt.groupName}
@@ -451,7 +489,7 @@ export const DashboardScreen = () => {
         </motion.div>
       </motion.div>
 
-      {/* ✅ UPDATED: Settle Up Modal with LOADING & AUTO-CLOSE */}
+      {/* Settle Up Modal */}
       <Modal
         isOpen={showSettleModal}
         onClose={() => {

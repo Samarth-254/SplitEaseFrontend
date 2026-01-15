@@ -137,7 +137,7 @@ const html = `
         process.env.BREVO_API_KEY
       );
 
-      const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.MAIL_USER || 'samarthnagpal070@gmail.com';
+      const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.MAIL_USER || 'noreply@split-ease.app';
       const senderName = process.env.BREVO_SENDER_NAME || 'SplitEase';
 
       const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();

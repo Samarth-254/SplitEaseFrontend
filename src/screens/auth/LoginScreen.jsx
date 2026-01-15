@@ -7,6 +7,8 @@ import { AuthScreen } from '../../components/layout';
 import { Button, Input } from '../../components/ui';
 import { useStore } from '../../store/useStore';
 import apiService from '../../services/api';
+import ReactGA from 'react-ga4';
+
 
 export const LoginScreen = () => {
   const navigate = useNavigate();
@@ -18,83 +20,119 @@ export const LoginScreen = () => {
   const [error, setError] = useState('');
 
   const handleGoogleSuccess = async (credentialResponse) => {
+  try {
+    setGoogleLoading(true);
+    setError('');
     
+    const response = await apiService.googleLogin(credentialResponse.credential);
     
-    try {
-      setGoogleLoading(true);
-      setError('');
-      
-      
-      const response = await apiService.googleLogin(credentialResponse.credential);
-      
-      
-      
-      apiService.setToken(response.token);
-      await setUser(response.user);
-      
-      
-      
-      const inviteToken = localStorage.getItem('inviteToken');
-      if (inviteToken) {
-        try {
-          const joinedGroup = await apiService.joinGroup(inviteToken);
-          localStorage.removeItem('inviteToken');
-          const { addGroup } = useStore.getState();
-          addGroup(joinedGroup);
-          
-          navigate(`/group/${joinedGroup._id || joinedGroup.id}`);
-        } catch (err) {
-          
-          localStorage.removeItem('inviteToken');
-          navigate('/dashboard');
-        }
-      } else {
+    apiService.setToken(response.token);
+    await setUser(response.user);
+    
+    // Track Google login success
+    ReactGA.event({
+      category: 'User',
+      action: 'Login',
+      label: 'Google OAuth'
+    });
+    
+    const inviteToken = localStorage.getItem('inviteToken');
+    if (inviteToken) {
+      try {
+        const joinedGroup = await apiService.joinGroup(inviteToken);
+        localStorage.removeItem('inviteToken');
+        const { addGroup } = useStore.getState();
+        addGroup(joinedGroup);
         
+        // Track group joined via invite
+        ReactGA.event({
+          category: 'Group',
+          action: 'Joined via Invite',
+          label: 'After Google Login'
+        });
+        
+        navigate(`/group/${joinedGroup._id || joinedGroup.id}`);
+      } catch (err) {
+        localStorage.removeItem('inviteToken');
         navigate('/dashboard');
       }
-    } catch (err) {
-      console.error('❌ Google Login Error:', err);
-      setError(err.message || 'Google sign-in failed');
-    } finally {
-      setGoogleLoading(false);
+    } else {
+      navigate('/dashboard');
     }
-  };
+  } catch (err) {
+    console.error('❌ Google Login Error:', err);
+    setError(err.message || 'Google sign-in failed');
+    
+    // Track Google login failure
+    ReactGA.event({
+      category: 'User',
+      action: 'Login Failed',
+      label: 'Google OAuth Error'
+    });
+  } finally {
+    setGoogleLoading(false);
+  }
+};
+
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+  e.preventDefault();
+  setError('');
+  setLoading(true);
+  
+  try {
+    if (!email || !password) {
+      throw new Error('Please fill in all fields');
+    }
     
-    try {
-      if (!email || !password) {
-        throw new Error('Please fill in all fields');
-      }
-      
-      const response = await apiService.login(email, password);
-      apiService.setToken(response.token);
-      await setUser(response.user);
-      
-      const inviteToken = localStorage.getItem('inviteToken');
-      if (inviteToken) {
-        try {
-          const joinedGroup = await apiService.joinGroup(inviteToken);
-          localStorage.removeItem('inviteToken');
-          const { addGroup } = useStore.getState();
-          addGroup(joinedGroup);
-          navigate(`/group/${joinedGroup._id || joinedGroup.id}`);
-        } catch (err) {
-          localStorage.removeItem('inviteToken');
-          navigate('/dashboard');
-        }
-      } else {
+    const response = await apiService.login(email, password);
+    apiService.setToken(response.token);
+    await setUser(response.user);
+    
+    // Track email login success
+    ReactGA.event({
+      category: 'User',
+      action: 'Login',
+      label: 'Email/Password'
+    });
+    
+    const inviteToken = localStorage.getItem('inviteToken');
+    if (inviteToken) {
+      try {
+        const joinedGroup = await apiService.joinGroup(inviteToken);
+        localStorage.removeItem('inviteToken');
+        const { addGroup } = useStore.getState();
+        addGroup(joinedGroup);
+        
+        // Track group joined via invite
+        ReactGA.event({
+          category: 'Group',
+          action: 'Joined via Invite',
+          label: 'After Email Login'
+        });
+        
+        navigate(`/group/${joinedGroup._id || joinedGroup.id}`);
+      } catch (err) {
+        localStorage.removeItem('inviteToken');
         navigate('/dashboard');
       }
-    } catch (err) {
-      setError(err.message || 'Login failed');
-    } finally {
-      setLoading(false);
+    } else {
+      navigate('/dashboard');
     }
-  };
+  } catch (err) {
+    setError(err.message || 'Login failed');
+    
+    // Track email login failure
+    ReactGA.event({
+      category: 'User',
+      action: 'Login Failed',
+      label: 'Email/Password Error'
+    });
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <AuthScreen>

@@ -7,6 +7,7 @@ import { AuthScreen } from '../../components/layout';
 import { Button, Input } from '../../components/ui';
 import { useStore } from '../../store/useStore';
 import apiService from '../../services/api';
+import ReactGA from 'react-ga4';
 
 /**
  * Signup Screen
@@ -29,87 +30,122 @@ export const SignupScreen = () => {
   const [error, setError] = useState('');
 
   const handleGoogleSuccess = async (credentialResponse) => {
-    
-    
-    try {
-      setGoogleLoading(true);
-      setError('');
-      
-      
-      const response = await apiService.googleLogin(credentialResponse.credential);
-      
-      
-      
-      apiService.setToken(response.token);
-      await setUser(response.user);
-      
-      
-      
-      const inviteToken = localStorage.getItem('inviteToken');
-      if (inviteToken) {
-        try {
-          const joinedGroup = await apiService.joinGroup(inviteToken);
-          localStorage.removeItem('inviteToken');
-          const { addGroup } = useStore.getState();
-          addGroup(joinedGroup);
-          
-          navigate(`/group/${joinedGroup._id || joinedGroup.id}`);
-        } catch (err) {
-          
-          localStorage.removeItem('inviteToken');
-          navigate('/dashboard');
-        }
-      } else {
-        
-        navigate('/dashboard');
-      }
-    } catch (err) {
-      console.error('❌ Google Signup Error:', err);
-      setError(err.message || 'Google sign-up failed');
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  try {
+    setGoogleLoading(true);
     setError('');
-    setLoading(true);
     
-    try {
-      if (!name || !email || !password) {
-        throw new Error('Please fill in all fields');
-      }
-      
-      if (password.length < 6) {
-        throw new Error('Password must be at least 6 characters');
-      }
-      
-      const response = await apiService.register(name, email, password);
-      apiService.setToken(response.token);
-      await setUser(response.user);
-      
-      const inviteToken = localStorage.getItem('inviteToken');
-      if (inviteToken) {
-        try {
-          const joinedGroup = await apiService.joinGroup(inviteToken);
-          localStorage.removeItem('inviteToken');
-          const { addGroup } = useStore.getState();
-          addGroup(joinedGroup);
-          navigate(`/group/${joinedGroup._id || joinedGroup.id}`);
-        } catch (err) {
-          localStorage.removeItem('inviteToken');
-          navigate('/dashboard');
-        }
-      } else {
+    const response = await apiService.googleLogin(credentialResponse.credential);
+    
+    apiService.setToken(response.token);
+    await setUser(response.user);
+    
+    // Track Google signup success
+    ReactGA.event({
+      category: 'User',
+      action: 'Signup',
+      label: 'Google OAuth'
+    });
+    
+    const inviteToken = localStorage.getItem('inviteToken');
+    if (inviteToken) {
+      try {
+        const joinedGroup = await apiService.joinGroup(inviteToken);
+        localStorage.removeItem('inviteToken');
+        const { addGroup } = useStore.getState();
+        addGroup(joinedGroup);
+        
+        // Track group joined via invite after signup
+        ReactGA.event({
+          category: 'Group',
+          action: 'Joined via Invite',
+          label: 'After Google Signup'
+        });
+        
+        navigate(`/group/${joinedGroup._id || joinedGroup.id}`);
+      } catch (err) {
+        localStorage.removeItem('inviteToken');
         navigate('/dashboard');
       }
-    } catch (err) {
-      setError(err.message || 'Could not create account');
-    } finally {
-      setLoading(false);
+    } else {
+      navigate('/dashboard');
     }
-  };
+  } catch (err) {
+    console.error('❌ Google Signup Error:', err);
+    setError(err.message || 'Google sign-up failed');
+    
+    // Track Google signup failure
+    ReactGA.event({
+      category: 'User',
+      action: 'Signup Failed',
+      label: 'Google OAuth Error'
+    });
+  } finally {
+    setGoogleLoading(false);
+  }
+};
+
+
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError('');
+  setLoading(true);
+  
+  try {
+    if (!name || !email || !password) {
+      throw new Error('Please fill in all fields');
+    }
+    
+    if (password.length < 6) {
+      throw new Error('Password must be at least 6 characters');
+    }
+    
+    const response = await apiService.register(name, email, password);
+    apiService.setToken(response.token);
+    await setUser(response.user);
+    
+    // Track email signup success
+    ReactGA.event({
+      category: 'User',
+      action: 'Signup',
+      label: 'Email/Password'
+    });
+    
+    const inviteToken = localStorage.getItem('inviteToken');
+    if (inviteToken) {
+      try {
+        const joinedGroup = await apiService.joinGroup(inviteToken);
+        localStorage.removeItem('inviteToken');
+        const { addGroup } = useStore.getState();
+        addGroup(joinedGroup);
+        
+        // Track group joined via invite after signup
+        ReactGA.event({
+          category: 'Group',
+          action: 'Joined via Invite',
+          label: 'After Email Signup'
+        });
+        
+        navigate(`/group/${joinedGroup._id || joinedGroup.id}`);
+      } catch (err) {
+        localStorage.removeItem('inviteToken');
+        navigate('/dashboard');
+      }
+    } else {
+      navigate('/dashboard');
+    }
+  } catch (err) {
+    setError(err.message || 'Could not create account');
+    
+    // Track email signup failure
+    ReactGA.event({
+      category: 'User',
+      action: 'Signup Failed',
+      label: err.message.includes('6 characters') ? 'Weak Password' : 'Email/Password Error'
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <AuthScreen>

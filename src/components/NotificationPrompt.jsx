@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Bell, X, Check, AlertCircle } from 'lucide-react';
 import { useState } from 'react';
+import ReactGA from 'react-ga4';
 import { Button, Card } from './ui';
 
 export const NotificationPrompt = ({ onEnable, onDismiss }) => {
@@ -17,12 +18,28 @@ export const NotificationPrompt = ({ onEnable, onDismiss }) => {
       // Check if user blocked or granted permission
       if (result === 'granted') {
         setStatus('success');
+        
+        // Track notification enabled
+        ReactGA.event({
+          category: 'Notification',
+          action: 'Enabled from Prompt',
+          label: 'Success'
+        });
+        
         // Auto dismiss after showing success
         setTimeout(() => {
           onDismiss();
         }, 1500);
       } else if (result === 'denied') {
         setStatus('denied');
+        
+        // Track notification denied
+        ReactGA.event({
+          category: 'Notification',
+          action: 'Denied from Prompt',
+          label: 'Blocked'
+        });
+        
         // Auto dismiss after showing error
         setTimeout(() => {
           onDismiss();
@@ -31,14 +48,40 @@ export const NotificationPrompt = ({ onEnable, onDismiss }) => {
         // Default permission (user closed prompt without action)
         setStatus('idle');
         setIsLoading(false);
+        
+        // Track notification prompt dismissed
+        ReactGA.event({
+          category: 'Notification',
+          action: 'Dismissed Browser Prompt',
+          label: 'No Action'
+        });
       }
     } catch (error) {
       console.error('Notification enable error:', error);
       setStatus('denied');
+      
+      // Track notification error
+      ReactGA.event({
+        category: 'Notification',
+        action: 'Enable Failed',
+        label: error.message || 'Unknown Error'
+      });
+      
       setTimeout(() => {
         onDismiss();
       }, 3000);
     }
+  };
+
+  const handleDismiss = () => {
+    // Track "Later" button click
+    ReactGA.event({
+      category: 'Notification',
+      action: 'Clicked Later',
+      label: 'Postponed'
+    });
+    
+    onDismiss();
   };
 
   return (
@@ -52,7 +95,7 @@ export const NotificationPrompt = ({ onEnable, onDismiss }) => {
       <Card className="bg-primary-800/95 backdrop-blur-xl border border-neutral-700 shadow-2xl">
         {status === 'idle' && (
           <button
-            onClick={onDismiss}
+            onClick={handleDismiss}
             className="absolute top-2 right-2 p-1 rounded-md hover:bg-white/10 transition-colors"
           >
             <X size={14} className="text-neutral-500" />
@@ -84,7 +127,7 @@ export const NotificationPrompt = ({ onEnable, onDismiss }) => {
                   Enable
                 </Button>
                 <Button
-                  onClick={onDismiss}
+                  onClick={handleDismiss}
                   variant="secondary"
                   className="px-4 text-sm py-2"
                 >

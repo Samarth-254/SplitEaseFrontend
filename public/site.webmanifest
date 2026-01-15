@@ -2,12 +2,13 @@
   "name": "SplitEase - Split Expenses with Friends",
   "short_name": "SplitEase",
   "description": "Split expenses and bills with friends easily",
-  "start_url": "/",
+  "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
   "theme_color": "#ef4444",
   "background_color": "#000000",
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/icon-192.png",
@@ -45,11 +46,25 @@
       "name": "Add Expense",
       "short_name": "Add Expense",
       "description": "Quickly add a new expense",
-      "url": "/dashboard?action=add",
+      "url": "/?action=add-expense",
       "icons": [
         {
           "src": "/icon-192.png",
-          "sizes": "192x192"
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Create Group",
+      "short_name": "New Group",
+      "description": "Create a new group",
+      "url": "/?action=create-group",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
         }
       ]
     }

@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Users, CheckCircle, XCircle, Loader, UserPlus } from 'lucide-react';
+import ReactGA from 'react-ga4';
 import { Button } from '../../components/ui';
 import apiService from '../../services/api';
 import { useStore } from '../../store/useStore';
-
 
 export const JoinGroupScreen = () => {
   const { token } = useParams();
@@ -16,7 +16,6 @@ export const JoinGroupScreen = () => {
   const [inviteInfo, setInviteInfo] = useState(null);
   const [error, setError] = useState('');
 
-
   useEffect(() => {
     const checkInvite = async () => {
       const authToken = localStorage.getItem('token');
@@ -25,6 +24,13 @@ export const JoinGroupScreen = () => {
         try {
           const info = await apiService.getInviteInfo(token);
           setInviteInfo(info);
+          
+          // Track invite link viewed (not logged in)
+          ReactGA.event({
+            category: 'Group',
+            action: 'Viewed Invite Link',
+            label: 'Not Authenticated'
+          });
         } catch (err) {
           // Ignore error
         }
@@ -40,18 +46,31 @@ export const JoinGroupScreen = () => {
         addGroup(joinedGroup);
         setStatus('success');
         
+        // Track successful group join via invite link
+        ReactGA.event({
+          category: 'Group',
+          action: 'Joined via Invite Link',
+          label: joinedGroup.name || 'Unknown Group'
+        });
+        
         setTimeout(() => {
           navigate(`/group/${joinedGroup._id || joinedGroup.id}`);
         }, 2000);
       } catch (err) {
         setStatus('error');
         setError(err.message || 'Invalid or expired invite link');
+        
+        // Track invite link error
+        ReactGA.event({
+          category: 'Group',
+          action: 'Invite Link Failed',
+          label: err.message || 'Invalid/Expired Link'
+        });
       }
     };
 
     checkInvite();
   }, [token]);
-
 
   return (
     <div className="min-h-screen bg-primary-950 flex flex-col items-center justify-center p-4">
@@ -112,6 +131,14 @@ export const JoinGroupScreen = () => {
                   size="xl"
                   onClick={() => {
                     localStorage.setItem('inviteToken', token);
+                    
+                    // Track redirect to login from invite
+                    ReactGA.event({
+                      category: 'User',
+                      action: 'Clicked Login from Invite',
+                      label: inviteInfo?.groupName || 'Unknown Group'
+                    });
+                    
                     navigate('/login');
                   }}
                 >
@@ -123,6 +150,14 @@ export const JoinGroupScreen = () => {
                   size="xl"
                   onClick={() => {
                     localStorage.setItem('inviteToken', token);
+                    
+                    // Track redirect to signup from invite
+                    ReactGA.event({
+                      category: 'User',
+                      action: 'Clicked Signup from Invite',
+                      label: inviteInfo?.groupName || 'Unknown Group'
+                    });
+                    
                     navigate('/signup');
                   }}
                 >
