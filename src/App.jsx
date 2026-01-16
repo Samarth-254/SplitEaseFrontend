@@ -69,7 +69,7 @@ function App() {
           siteSpeedSampleRate: 100
         }
       });
-      console.log('✅ Google Analytics initialized with ID:', GA_MEASUREMENT_ID);
+      
     } else {
       console.warn('⚠️ GA Measurement ID not found in environment variables');
     }

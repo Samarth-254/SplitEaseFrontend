@@ -1,4 +1,5 @@
-const CACHE_NAME = 'splitease-v8';
+const CACHE_NAME = 'splitease-v9'; // ✅ Bumped to v9
+
 
 // ✅ Only cache static assets (NEVER API data)
 const STATIC_ASSETS = [
@@ -11,16 +12,17 @@ const STATIC_ASSETS = [
   '/manifest.json'
 ];
 
+
 // ============================================
 // INSTALL - Cache static assets only
 // ============================================
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing...');
+  
   
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('[SW] Caching static assets');
+        
         return cache.addAll(STATIC_ASSETS);
       })
       .catch(err => console.error('[SW] Cache failed:', err))
@@ -29,6 +31,7 @@ self.addEventListener('install', (event) => {
   // Don't activate immediately - wait for user refresh
   // self.skipWaiting(); // ❌ KEEP COMMENTED
 });
+
 
 // ============================================
 // FETCH - Network-first for everything except static assets
@@ -94,24 +97,25 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
+
 // ============================================
 // ACTIVATE - Clean up old caches
 // ============================================
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating...');
+  
   
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
           if (cacheName !== CACHE_NAME) {
-            console.log('[SW] Deleting old cache:', cacheName);
+            
             return caches.delete(cacheName);
           }
         })
       );
     }).then(() => {
-      console.log('[SW] Activated');
+      
     })
   );
   
@@ -119,11 +123,12 @@ self.addEventListener('activate', (event) => {
   // self.clients.claim(); // ❌ KEEP COMMENTED
 });
 
+
 // ============================================
 // PUSH NOTIFICATIONS - WebSocket alternative
 // ============================================
 self.addEventListener('push', function(event) {
-  console.log('[SW] Push notification received');
+  
   
   let data = {
     title: 'SplitEase',
@@ -133,10 +138,11 @@ self.addEventListener('push', function(event) {
     badge: '/badge-72.png'
   };
 
+
   try {
     if (event.data) {
       data = event.data.json();
-      console.log('[SW] Push data:', data);
+      
     }
   } catch (e) {
     console.error('[SW] Error parsing push data:', e);
@@ -146,7 +152,8 @@ self.addEventListener('push', function(event) {
     body: data.body,
     icon: data.icon || '/icon-192.png',
     badge: data.badge || '/badge-72.png',
-    vibrate: [200, 100, 200],
+    vibrate: [150], // ✅ CHANGED: Single gentle vibration (150ms)
+    silent: false, // ✅ ADDED: Use system notification sound
     tag: 'splitease-notification',
     requireInteraction: false,
     data: {
@@ -159,21 +166,24 @@ self.addEventListener('push', function(event) {
     ]
   };
 
+
   event.waitUntil(
     self.registration.showNotification(data.title, options)
   );
 });
 
+
 // ============================================
 // NOTIFICATION CLICK - Open app
 // ============================================
 self.addEventListener('notificationclick', function(event) {
-  console.log('[SW] Notification clicked:', event.action);
+  
   event.notification.close();
   
   if (event.action === 'close') {
     return;
   }
+
 
   const urlToOpen = new URL(
     event.notification.data.url || '/', 
@@ -200,11 +210,12 @@ self.addEventListener('notificationclick', function(event) {
   );
 });
 
+
 // ============================================
 // PUSH SUBSCRIPTION CHANGE - Resubscribe
 // ============================================
 self.addEventListener('pushsubscriptionchange', function(event) {
-  console.log('[SW] Push subscription changed');
+  
   
   event.waitUntil(
     self.registration.pushManager.subscribe({
@@ -212,7 +223,7 @@ self.addEventListener('pushsubscriptionchange', function(event) {
       applicationServerKey: event.oldSubscription?.options.applicationServerKey
     })
       .then(function(newSubscription) {
-        console.log('[SW] Resubscribed:', newSubscription);
+        
         
         // Notify clients about subscription change
         return self.clients.matchAll().then(clients => {
@@ -230,11 +241,12 @@ self.addEventListener('pushsubscriptionchange', function(event) {
   );
 });
 
+
 // ============================================
 // MESSAGE - Handle client messages
 // ============================================
 self.addEventListener('message', (event) => {
-  console.log('[SW] Message received:', event.data);
+  
   
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();

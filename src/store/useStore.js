@@ -3,6 +3,7 @@ import apiService from '../services/api';
 import socketService from '../services/socket';
 import pushNotificationService from '../services/pushNotification';  
 
+
 export const useStore = create((set, get) => ({
   // Auth State
   currentUser: null,
@@ -26,6 +27,28 @@ export const useStore = create((set, get) => ({
   activeGroupId: null,
   isAddExpenseOpen: false,
   isSettleUpOpen: false,
+
+  refreshAllData: async () => {
+  
+  const startTime = Date.now();
+  
+  try {
+    const state = get();
+    
+    // Load data in parallel for speed
+    await Promise.all([
+      state.loadGroups(),
+      state.loadAllExpenses(),
+      state.loadAllSettlements(),
+    ]);
+    state.loadFriends();
+    
+    const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+    
+  } catch (error) {
+    console.error('❌ Global refresh failed:', error);
+  }
+},
   
   // Auth Actions
   initializeAuth: async () => {
@@ -41,22 +64,28 @@ export const useStore = create((set, get) => ({
       try {
         apiService.setToken(token);
         const { user } = await apiService.getMe();
+        
+        // ✅ CHANGED: Load data in parallel BEFORE setting user
+        await Promise.all([
+          get().loadGroups(),
+          get().loadAllExpenses(),
+          get().loadAllSettlements(),
+        ]);
+        get().loadFriends();
+        
+        // ✅ CHANGED: Set user AFTER data loaded
         set({ 
           currentUser: user, 
           isAuthenticated: true,
+          isInitialLoadComplete: true 
         });
-        // Load initial data to prevent stale data
-        await get().loadGroups();
-        await get().loadAllExpenses();
-        await get().loadAllSettlements();
-        get().loadFriends();
-        // Mark initial load as complete
-        set({ isInitialLoadComplete: true });
+        
         // Initialize socket connection
         get().initializeSocket();
         
         // ✅ Initialize push notifications
         await pushNotificationService.initialize();
+        
       } catch (err) {
         console.error('Auth initialization failed:', err);
         localStorage.removeItem('token');
@@ -71,36 +100,35 @@ export const useStore = create((set, get) => ({
     }
   },
 
+
   setUser: async (user) => {
-  // Set user and clear old data
-  set({ 
-    currentUser: user, 
-    isAuthenticated: true,
-    users: [],
-    groups: [],
-    expenses: [],
-    settlements: [],
-    friends: [],
-    hasLoadedFriends: false,
-    isLoadingGroups: false,
-    isLoadingExpenses: false
-  });
-  // Initialize socket connection
-  get().initializeSocket();
-  
-  // ❌ REMOVE THESE 2 LINES - initialize() already called in initializeAuth()
-  // await pushNotificationService.initialize();
-  
-  // Load fresh data after login
-  try {
-    await get().loadGroups();
-    await get().loadAllExpenses();
-    await get().loadAllSettlements();
-    get().loadFriends();
-  } catch (err) {
-    console.error('Failed to load data after login:', err);
-  }
-},
+    // Set user and clear old data
+    set({ 
+      currentUser: user, 
+      isAuthenticated: true,
+      users: [],
+      groups: [],
+      expenses: [],
+      settlements: [],
+      friends: [],
+      hasLoadedFriends: false,
+      isLoadingGroups: false,
+      isLoadingExpenses: false
+    });
+    
+    // Initialize socket connection
+    get().initializeSocket();
+    
+    // Load fresh data after login
+    try {
+      await get().loadGroups();
+      await get().loadAllExpenses();
+      await get().loadAllSettlements();
+      get().loadFriends();
+    } catch (err) {
+      console.error('Failed to load data after login:', err);
+    }
+  },
 
   
   logout: () => {
@@ -111,6 +139,7 @@ export const useStore = create((set, get) => ({
     // ✅ Stop push notification monitoring
     pushNotificationService.stopSubscriptionMonitoring();
     
+    // ✅ CHANGED: Clear ALL data including isInitialLoadComplete
     set({ 
       isAuthenticated: false, 
       currentUser: null,
@@ -120,11 +149,16 @@ export const useStore = create((set, get) => ({
       settlements: [],
       friends: [],
       hasLoadedFriends: false,
+      isLoadingGroups: false,
+      isLoadingExpenses: false,
+      // isInitialLoadComplete: false, // ✅ ADDED THIS
     });
   },
 
+
   // ... REST OF YOUR CODE STAYS EXACTLY THE SAME ...
   // (All other methods remain unchanged)
+
 
   updateUser: (updatedUser) => {
     set(state => ({
@@ -200,6 +234,7 @@ export const useStore = create((set, get) => ({
       
       let splits = Array.isArray(providedSplits) ? providedSplits : [];
 
+
       if (splits.length === 0) {
         const numberOfPeople = splitBetween.length;
         const baseAmountPerPerson = Math.floor(amountInPaise / numberOfPeople);
@@ -209,6 +244,7 @@ export const useStore = create((set, get) => ({
           amount: (baseAmountPerPerson + (index < remainder ? 1 : 0)) / 100
         }));
       }
+
 
       const expense = await apiService.addExpense(
         groupId,
@@ -220,6 +256,7 @@ export const useStore = create((set, get) => ({
         paidBy,
         currency
       );
+
 
       set({ isAddExpenseOpen: false });
       
@@ -241,6 +278,7 @@ export const useStore = create((set, get) => ({
     }
   },
 
+
   updateExpense: async (expenseId, payload) => {
     try {
       const updated = await apiService.updateExpense(expenseId, payload);
@@ -253,6 +291,7 @@ export const useStore = create((set, get) => ({
       throw err;
     }
   },
+
 
   loadGroupExpenses: async (groupId) => {
     try {
@@ -267,6 +306,7 @@ export const useStore = create((set, get) => ({
       console.error('Failed to load expenses:', err);
     }
   },
+
 
   loadAllExpenses: async () => {
     try {
@@ -301,6 +341,7 @@ export const useStore = create((set, get) => ({
     }
   },
 
+
   loadGroupBalances: async (groupId) => {
     try {
       const balances = await apiService.getGroupBalances(groupId);
@@ -334,6 +375,7 @@ export const useStore = create((set, get) => ({
     }
   },
 
+
   loadGroupSettlements: async (groupId) => {
     try {
       const settlements = await apiService.getGroupSettlements(groupId);
@@ -347,6 +389,7 @@ export const useStore = create((set, get) => ({
       console.error('Failed to load settlements:', err);
     }
   },
+
 
   loadAllSettlements: async () => {
     try {
@@ -369,6 +412,7 @@ export const useStore = create((set, get) => ({
     }
   },
 
+
   sendReminder: async (groupId, memberId, amount) => {
     try {
       await apiService.sendPaymentReminder(groupId, memberId, amount);
@@ -379,6 +423,7 @@ export const useStore = create((set, get) => ({
     }
   },
 
+
   sendCombinedReminder: async (memberId, totalAmount, groupBreakdown) => {
     try {
       await apiService.sendCombinedReminder(memberId, totalAmount, groupBreakdown);
@@ -388,6 +433,7 @@ export const useStore = create((set, get) => ({
       throw err;
     }
   },
+
 
   // Friends Actions - Computed from group memberships
   loadFriends: () => {
@@ -430,9 +476,11 @@ export const useStore = create((set, get) => ({
     return friends;
   },
 
+
   refreshFriends: () => {
     return get().loadFriends();
   },
+
 
   updateProfile: async (data) => {
     try {
@@ -451,6 +499,7 @@ export const useStore = create((set, get) => ({
           : group.createdBy
       }));
 
+
       const updatedExpenses = expenses.map(expense => ({
         ...expense,
         paidBy: (expense.paidBy?._id || expense.paidBy) === updatedUser._id
@@ -464,6 +513,7 @@ export const useStore = create((set, get) => ({
         }))
       }));
 
+
       const updatedSettlements = settlements.map(settlement => ({
         ...settlement,
         from: (settlement.from?._id || settlement.from) === updatedUser._id
@@ -473,6 +523,7 @@ export const useStore = create((set, get) => ({
           ? { ...settlement.to, ...updatedUser }
           : settlement.to
       }));
+
 
       set({ 
         currentUser: updatedUser,
@@ -486,6 +537,7 @@ export const useStore = create((set, get) => ({
       throw err;
     }
   },
+
 
   deleteProfileImage: async () => {
     try {
@@ -504,6 +556,7 @@ export const useStore = create((set, get) => ({
           : group.createdBy
       }));
 
+
       const updatedExpenses = expenses.map(expense => ({
         ...expense,
         paidBy: (expense.paidBy?._id || expense.paidBy) === user._id
@@ -517,6 +570,7 @@ export const useStore = create((set, get) => ({
         }))
       }));
 
+
       const updatedSettlements = settlements.map(settlement => ({
         ...settlement,
         from: (settlement.from?._id || settlement.from) === user._id
@@ -526,6 +580,7 @@ export const useStore = create((set, get) => ({
           ? { ...settlement.to, ...user }
           : settlement.to
       }));
+
 
       set({ 
         currentUser: user,
@@ -802,7 +857,7 @@ export const useStore = create((set, get) => ({
       } else if (splitBetween && splitBetween.length > 0) {
         const amountInPaise = Math.round(expense.amount * 100);
         const baseShare = Math.floor(amountInPaise / splitBetween.length);
-        const remainder = amountInPaise % numberOfPeople;
+        const remainder = amountInPaise % splitBetween.length;
         
         splitBetween.forEach((userId, index) => {
           if (!balances[userId]) balances[userId] = {};
@@ -860,6 +915,7 @@ export const useStore = create((set, get) => ({
     };
   },
 
+
   // ✅ SOCKET ACTIONS - WITH RECONNECT DATA SYNC
   initializeSocket: () => {
     const token = localStorage.getItem('token');
@@ -867,7 +923,9 @@ export const useStore = create((set, get) => ({
       return;
     }
 
+
     socketService.connect(token);
+ socketService.onReconnect(get().refreshAllData);
 
     const { currentUser, groups } = get();
     
@@ -879,6 +937,7 @@ export const useStore = create((set, get) => ({
       console.error('❌ No user ID found, cannot join user room');
     }
 
+
     // Join all group rooms
     groups.forEach(group => {
       const groupId = group._id || group.id;
@@ -886,6 +945,7 @@ export const useStore = create((set, get) => ({
         socketService.joinGroup(groupId);
       }
     });
+
 
     // Set up all event listeners
     socketService.onExpenseCreated((expense) => {
@@ -899,11 +959,13 @@ export const useStore = create((set, get) => ({
       });
     });
 
+
     socketService.onExpenseDeleted(({ expenseId }) => {
       set(state => ({
         expenses: state.expenses.filter(e => (e._id || e.id) !== expenseId)
       }));
     });
+
 
     socketService.onExpenseUpdated((updatedExpense) => {
       set(state => ({
@@ -912,6 +974,7 @@ export const useStore = create((set, get) => ({
         )
       }));
     });
+
 
     socketService.onSettlementCreated((settlement) => {
       set(state => {
@@ -924,11 +987,13 @@ export const useStore = create((set, get) => ({
       });
     });
 
+
     socketService.onMemberJoined(({ groupId, userId, user }) => {
       if (!user || !groupId || !userId) {
         console.error('❌ Invalid member joined data');
         return;
       }
+
 
       set(state => ({
         groups: state.groups.map(g => {
@@ -944,11 +1009,13 @@ export const useStore = create((set, get) => ({
       get().refreshFriends();
     });
 
+
     socketService.onMembersAdded(({ groupId, members }) => {
       if (!groupId || !Array.isArray(members)) {
         console.error('❌ Invalid members added data');
         return;
       }
+
 
       const { currentUser } = get();
       const currentUserId = (currentUser?._id || currentUser?.id)?.toString();
@@ -973,12 +1040,14 @@ export const useStore = create((set, get) => ({
       get().refreshFriends();
     });
 
+
     socketService.onFriendAddedToGroup(({ userId, groupId }) => {
       const { currentUser } = get();
       if ((currentUser?._id || currentUser?.id)?.toString() === userId?.toString()) {
         get().loadGroups();
       }
     });
+
 
     socketService.onNotification((notification) => {
       if ('Notification' in window && Notification.permission === 'granted') {
@@ -990,6 +1059,7 @@ export const useStore = create((set, get) => ({
           requireInteraction: false
         });
 
+
         notif.onclick = () => {
           window.focus();
           if (notification.groupId) {
@@ -999,6 +1069,7 @@ export const useStore = create((set, get) => ({
         };
       }
     });
+
 
     // ✅ Handle reconnection - sync missed data
     if (socketService.getSocket()) {
@@ -1027,9 +1098,11 @@ export const useStore = create((set, get) => ({
     }
   },
 
+
   joinSocketGroup: (groupId) => {
     socketService.joinGroup(groupId);
   },
+
 
   leaveSocketGroup: (groupId) => {
     socketService.leaveGroup(groupId);

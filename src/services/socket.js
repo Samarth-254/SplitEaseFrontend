@@ -1,18 +1,24 @@
 import { io } from 'socket.io-client';
 import pushNotificationService from './pushNotification';  
 
+
 class SocketService {
   constructor() {
     this.socket = null;
     this.connected = false;
     this.userId = null;
     this.joinedGroups = new Set();
+    this.reconnectCallbacks = []; // ✅ NEW: Store reconnect callbacks
+    this.setupVisibilityListener(); // ✅ NEW: Setup tab visibility
   }
+
 
   connect(token) {
     if (this.socket?.connected) {
+      
       return this.socket;
     }
+
 
     const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
     
@@ -26,40 +32,60 @@ class SocketService {
       timeout: 20000
     });
 
+
     this.socket.on('connect', () => {
       
       this.connected = true;
       this.rejoinRooms();
+      
+      // ✅ Trigger reconnect callbacks (refresh data)
+      this.triggerReconnectCallbacks();
     });
+
 
     this.socket.on('disconnect', (reason) => {
       
       this.connected = false;
+      
+      // ✅ Auto-reconnect if tab is visible and disconnect wasn't intentional
+      if (document.visibilityState === 'visible' && reason === 'transport close') {
+        
+        setTimeout(() => this.reconnect(), 1000);
+      }
     });
+
 
     this.socket.on('reconnect', (attemptNumber) => {
       
       this.connected = true;
       this.rejoinRooms();
+      
+      // ✅ Trigger reconnect callbacks (refresh data)
+      this.triggerReconnectCallbacks();
     });
+
 
     this.socket.on('reconnect_attempt', (attemptNumber) => {
       
     });
 
+
     this.socket.on('reconnect_error', (error) => {
       console.error('❌ Reconnection error:', error);
     });
+
 
     this.socket.on('reconnect_failed', () => {
       console.error('❌ Reconnection failed');
     });
 
+
     this.socket.on('connect_error', (error) => {
       console.error('❌ Socket connection error:', error);
     });
 
-    // ✅ NEW: Listen for subscription expiry and auto-resubscribe
+
+    // ✅ Listen for subscription expiry and auto-resubscribe
     this.socket.on('subscription-expired', async (data) => {
       
       
@@ -76,8 +102,83 @@ class SocketService {
       }
     });
 
+
     return this.socket;
   }
+
+
+  // ✅ NEW: Setup visibility listener
+  setupVisibilityListener() {
+    if (typeof document === 'undefined') return;
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        
+        
+        if (this.socket && !this.socket.connected) {
+          
+          this.reconnect();
+        } else if (this.socket?.connected) {
+          // ✅ Refresh data even if already connected (might be stale)
+          
+          this.triggerReconnectCallbacks();
+        }
+      } else {
+        
+      }
+    });
+
+    window.addEventListener('focus', () => {
+      if (this.socket && !this.socket.connected) {
+        
+        this.reconnect();
+      } else if (this.socket?.connected) {
+        // ✅ Refresh on window focus too
+        
+        this.triggerReconnectCallbacks();
+      }
+    });
+  }
+
+
+  // ✅ NEW: Manual reconnection
+  reconnect() {
+    if (!this.socket) return;
+    if (this.socket.connected) {
+      
+      return;
+    }
+    this.socket.connect();
+  }
+
+
+  // ✅ NEW: Register callback to run on reconnect/visibility
+  onReconnect(callback) {
+    if (typeof callback === 'function') {
+      this.reconnectCallbacks.push(callback);
+      
+    }
+  }
+
+
+  // ✅ NEW: Unregister callback
+  offReconnect(callback) {
+    this.reconnectCallbacks = this.reconnectCallbacks.filter(cb => cb !== callback);
+  }
+
+
+  // ✅ NEW: Trigger all reconnect callbacks
+  triggerReconnectCallbacks() {
+    
+    this.reconnectCallbacks.forEach(callback => {
+      try {
+        callback();
+      } catch (error) {
+        console.error('❌ Reconnect callback error:', error);
+      }
+    });
+  }
+
 
   rejoinRooms() {
     if (this.userId) {
@@ -91,6 +192,7 @@ class SocketService {
     });
   }
 
+
   disconnect() {
     if (this.socket) {
       
@@ -99,8 +201,10 @@ class SocketService {
       this.connected = false;
       this.userId = null;
       this.joinedGroups.clear();
+      this.reconnectCallbacks = []; // ✅ Clear callbacks on disconnect
     }
   }
+
 
   joinUserRoom(userId) {
     if (!userId) {
@@ -118,6 +222,7 @@ class SocketService {
     }
   }
 
+
   joinGroup(groupId) {
     if (!groupId) {
       console.error('❌ Cannot join group: No group ID provided');
@@ -134,6 +239,7 @@ class SocketService {
     }
   }
 
+
   leaveGroup(groupId) {
     this.joinedGroups.delete(groupId);
     
@@ -142,6 +248,7 @@ class SocketService {
       
     }
   }
+
 
   emit(event, data) {
     if (this.socket && this.isConnected()) {
@@ -152,6 +259,7 @@ class SocketService {
       return false;
     }
   }
+
 
   // EXPENSE EVENTS
   onExpenseCreated(callback) {
@@ -164,6 +272,7 @@ class SocketService {
     }
   }
 
+
   onExpenseDeleted(callback) {
     if (this.socket) {
       this.socket.off('expense:deleted');
@@ -174,6 +283,7 @@ class SocketService {
     }
   }
 
+
   onExpenseUpdated(callback) {
     if (this.socket) {
       this.socket.off('expense:updated');
@@ -183,6 +293,7 @@ class SocketService {
       });
     }
   }
+
 
   // SETTLEMENT EVENTS
   onSettlementCreated(callback) {
@@ -195,6 +306,7 @@ class SocketService {
     }
   }
 
+
   // MEMBER EVENTS
   onMemberJoined(callback) {
     if (this.socket) {
@@ -206,6 +318,7 @@ class SocketService {
     }
   }
 
+
   onMembersAdded(callback) {
     if (this.socket) {
       this.socket.off('members:added');
@@ -216,6 +329,7 @@ class SocketService {
     }
   }
 
+
   onFriendAddedToGroup(callback) {
     if (this.socket) {
       this.socket.off('friend:added-to-group');
@@ -225,6 +339,7 @@ class SocketService {
       });
     }
   }
+
 
   // NOTIFICATION EVENTS
   onNotification(callback) {
@@ -237,6 +352,7 @@ class SocketService {
     }
   }
 
+
   // Remove listeners
   offExpenseCreated(callback) {
     if (this.socket) {
@@ -244,11 +360,13 @@ class SocketService {
     }
   }
 
+
   offExpenseDeleted(callback) {
     if (this.socket) {
       this.socket.off('expense:deleted', callback);
     }
   }
+
 
   offExpenseUpdated(callback) {
     if (this.socket) {
@@ -256,11 +374,13 @@ class SocketService {
     }
   }
 
+
   offSettlementCreated(callback) {
     if (this.socket) {
       this.socket.off('settlement:created', callback);
     }
   }
+
 
   offMemberJoined(callback) {
     if (this.socket) {
@@ -268,11 +388,13 @@ class SocketService {
     }
   }
 
+
   offMembersAdded(callback) {
     if (this.socket) {
       this.socket.off('members:added', callback);
     }
   }
+
 
   offFriendAddedToGroup(callback) {
     if (this.socket) {
@@ -280,20 +402,24 @@ class SocketService {
     }
   }
 
+
   offNotification(callback) {
     if (this.socket) {
       this.socket.off('notification', callback);
     }
   }
 
+
   getSocket() {
     return this.socket;
   }
+
 
   isConnected() {
     return this.connected && this.socket?.connected;
   }
 }
+
 
 const socketService = new SocketService();
 export default socketService;
