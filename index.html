@@ -136,16 +136,16 @@
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js')
             .then(registration => {
-              console.log('✅ SW registered (Network-first for API, no stale data)');
+              
               
               // Listen for updates
               registration.addEventListener('updatefound', () => {
                 const newWorker = registration.installing;
-                console.log('🔄 New service worker found');
+                
                 
                 newWorker.addEventListener('statechange', () => {
                   if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    console.log('✅ New version available - refresh to update');
+                    
                     // Optionally show update toast here
                   }
                 });

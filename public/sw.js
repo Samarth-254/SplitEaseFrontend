@@ -1,4 +1,4 @@
-const CACHE_NAME = 'splitease-v10'; // ✅ Bumped to v10
+const CACHE_NAME = 'splitease-v11'; // ✅ Bumped to v11
 
 
 // ✅ Only cache static assets (NEVER API data)
@@ -36,9 +36,17 @@ self.addEventListener('install', (event) => {
 // ============================================
 // FETCH - Network-first for everything except static assets
 // ============================================
+// ============================================
+// FETCH - Network-first for everything except static assets
+// ============================================
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
+  
+  // ✅ FIX: Ignore non-HTTP(S) requests (chrome-extension, blob, data, etc.)
+  if (!request.url.startsWith('http')) {
+    return; // Let browser handle it natively
+  }
   
   // ✅ NEVER cache these (always fresh from network)
   const NEVER_CACHE = [
@@ -79,11 +87,14 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(request)
       .then(response => {
-        // Optionally cache successful responses
-        if (response && response.status === 200) {
+        // ✅ Only cache valid HTTP responses
+        if (response && response.status === 200 && response.type !== 'opaque') {
           const responseClone = response.clone();
           caches.open(CACHE_NAME).then(cache => {
-            cache.put(request, responseClone);
+            cache.put(request, responseClone).catch(err => {
+              // Silently ignore cache errors (e.g., quota exceeded)
+              console.warn('[SW] Cache put failed:', err);
+            });
           });
         }
         return response;
@@ -96,6 +107,7 @@ self.addEventListener('fetch', (event) => {
       })
   );
 });
+
 
 
 // ============================================

@@ -19,6 +19,7 @@ import {
 import { FriendsScreen } from './screens/friends';
 import { NotificationPrompt } from './components/NotificationPrompt';
 import { InstallPrompt } from './components/InstallPrompt';
+import { usePWAInstall } from './utils/usePWAInstall';
 import pushNotificationService from './services/pushNotification';
 
 // Component to track route changes for Google Analytics
@@ -26,7 +27,6 @@ const RouteChangeTracker = () => {
   const location = useLocation();
 
   useEffect(() => {
-    // Track page view on every route change
     ReactGA.send({ 
       hitType: "pageview", 
       page: location.pathname + location.search 
@@ -58,9 +58,10 @@ const PublicRoute = ({ children }) => {
 
 function App() {
   const { initializeAuth, isInitialLoadComplete, isAuthenticated } = useStore();
+  const { isInstallable } = usePWAInstall();
+  
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [notificationPromptDismissed, setNotificationPromptDismissed] = useState(false);
 
   // Initialize Google Analytics
@@ -82,27 +83,6 @@ function App() {
     initializeAuth();
   }, []);
 
-  // ✅ Capture PWA install prompt
-  useEffect(() => {
-    // Check if already installed
-    if (window.matchMedia('(display-mode: standalone)').matches || 
-        window.navigator.standalone === true) {
-      return;
-    }
-
-    const handleBeforeInstall = (e) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-      console.log('✅ Install prompt captured');
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
-    };
-  }, []);
-
   // ✅ Show NOTIFICATION prompt first (after 5 seconds)
   useEffect(() => {
     if (!isAuthenticated) {
@@ -112,7 +92,6 @@ function App() {
 
     // Only show if permission is default (not granted or denied)
     if (!pushNotificationService.isPermissionDefault()) {
-      // If permission already handled, mark as dismissed
       setNotificationPromptDismissed(true);
       return;
     }
@@ -125,7 +104,6 @@ function App() {
       const timeSinceDismissed = now - parseInt(lastDismissed);
       const twentyFourHours = 24 * 60 * 60 * 1000;
       
-      // If dismissed less than 24 hours ago, don't show
       if (timeSinceDismissed < twentyFourHours) {
         setNotificationPromptDismissed(true);
         return;
@@ -142,14 +120,8 @@ function App() {
 
   // ✅ Show INSTALL prompt AFTER notification is dismissed (with 5 second cooldown)
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !isInstallable) {
       setShowInstallPrompt(false);
-      return;
-    }
-
-    // Check if already installed
-    if (window.matchMedia('(display-mode: standalone)').matches || 
-        window.navigator.standalone === true) {
       return;
     }
 
@@ -177,41 +149,7 @@ function App() {
     }, 5000);
 
     return () => clearTimeout(timer);
-  }, [isAuthenticated, notificationPromptDismissed]);
-
-  // ✅ Handle Install
-  const handleInstall = async () => {
-    if (!deferredPrompt) {
-      // Fallback for iOS or when prompt not available
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-      if (isIOS) {
-        alert('Tap the Share button ⎙ then "Add to Home Screen"');
-      } else {
-        alert('Look for "Install" in your browser menu');
-      }
-      return 'dismissed';
-    }
-
-    // Show native install prompt
-    deferredPrompt.prompt();
-    
-    const { outcome } = await deferredPrompt.userChoice;
-    
-    if (outcome === 'accepted') {
-      console.log('✅ User accepted install');
-      ReactGA.event({
-        category: 'PWA',
-        action: 'Installed',
-        label: 'From Prompt'
-      });
-      
-      setDeferredPrompt(null);
-      return 'accepted';
-    }
-    
-    setDeferredPrompt(null);
-    return 'dismissed';
-  };
+  }, [isAuthenticated, notificationPromptDismissed, isInstallable]);
 
   const handleDismissInstall = () => {
     setShowInstallPrompt(false);
@@ -258,7 +196,7 @@ function App() {
 
   const handleDismissNotification = () => {
     setShowNotificationPrompt(false);
-    setNotificationPromptDismissed(true); // ✅ Mark as dismissed
+    setNotificationPromptDismissed(true);
     localStorage.setItem('notification-prompt-dismissed', Date.now().toString());
     
     ReactGA.event({
@@ -388,11 +326,8 @@ function App() {
 
         {/* ✅ Install Prompt - Shows AFTER notification (5s cooldown) */}
         <AnimatePresence>
-          {showInstallPrompt && (
-            <InstallPrompt
-              onInstall={handleInstall}
-              onDismiss={handleDismissInstall}
-            />
+          {showInstallPrompt && isInstallable && (
+            <InstallPrompt onDismiss={handleDismissInstall} />
           )}
         </AnimatePresence>
       </Router>

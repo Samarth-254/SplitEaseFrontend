@@ -1,7 +1,7 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, TrendingUp, TrendingDown, ChevronRight, Users, Wallet, Calendar, UserPlus, DollarSign, Loader2, Download } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, ChevronRight, Users, Wallet, Calendar, UserPlus, Loader2, Download } from 'lucide-react';
 import ReactGA from 'react-ga4';
 import { Screen } from '../../components/layout';
 import { Button, Card, Badge, EmptyState, Modal } from '../../components/ui';
@@ -9,7 +9,7 @@ import { useStore } from '../../store/useStore';
 import { AddExpenseModal } from '../expense/AddExpenseModal';
 import { CreateGroupModal } from '../../components/groups/CreateGroupModal';
 import { getCurrencySymbol } from '../../utils/currency';
-
+import { usePWAInstall } from '../../utils/usePWAInstall';
 
 export const DashboardScreen = () => {
   const navigate = useNavigate();
@@ -19,7 +19,6 @@ export const DashboardScreen = () => {
     settlements, 
     getTotalBalance, 
     getGroupSummary, 
-    getGroupMembers, 
     currentUser, 
     settleUp, 
     getGroupBalances, 
@@ -32,9 +31,8 @@ export const DashboardScreen = () => {
   const [selectedDebt, setSelectedDebt] = useState(null);
   const [isSettling, setIsSettling] = useState(false);
   
-  // ✅ PWA Install states
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [isInstalled, setIsInstalled] = useState(false);
+  // ✅ Use centralized PWA hook
+  const { isInstallable, promptInstall } = usePWAInstall();
   
   // Show loading state until data is loaded
   const isDataLoading = !isInitialLoadComplete;
@@ -49,7 +47,6 @@ export const DashboardScreen = () => {
       return expDate.getMonth() === now.getMonth() && expDate.getFullYear() === now.getFullYear();
     });
   }, [expenses]);
-
 
   const thisMonthTotal = useMemo(() => {
     return thisMonthExpenses.reduce((sum, expense) => {
@@ -80,7 +77,6 @@ export const DashboardScreen = () => {
     }, 0);
   }, [thisMonthExpenses, currentUser]);
 
-
   // ✅ REACTIVE: Recalculate debts when data changes
   const allDebts = useMemo(() => {
     const debts = [];
@@ -106,11 +102,9 @@ export const DashboardScreen = () => {
           const oldestExpense = memberExpenses
             .sort((a, b) => new Date(a.createdAt || a.date) - new Date(b.createdAt || b.date))[0];
 
-
           const daysDue = oldestExpense 
             ? Math.floor((new Date() - new Date(oldestExpense.createdAt || oldestExpense.date)) / (1000 * 60 * 60 * 24))
             : 0;
-
 
           debts.push({
             groupId,
@@ -134,80 +128,25 @@ export const DashboardScreen = () => {
     });
   }, [groups, expenses, settlements, currentUser]);
 
-
-  // ✅ PWA Install Logic
-  useEffect(() => {
-    // Check if already installed
-    if (window.matchMedia('(display-mode: standalone)').matches || 
-        window.navigator.standalone === true) {
-      setIsInstalled(true);
-      return;
-    }
-
-    // Capture the beforeinstallprompt event
-    const handleBeforeInstall = (e) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-      console.log('✅ Install prompt captured');
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
-
-    // Check if app was just installed
-    window.addEventListener('appinstalled', () => {
-      console.log('✅ App installed');
-      setIsInstalled(true);
-      setDeferredPrompt(null);
-    });
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
-    };
-  }, []);
-
-
+  // ✅ Handle Install Click
   const handleInstallClick = async () => {
-    if (!deferredPrompt) {
-      console.log('❌ No install prompt available');
-      return;
+    const result = await promptInstall('Dashboard Header');
+    
+    if (result === 'unavailable') {
+      alert('Install not available. The app may already be installed, or try refreshing the page.');
     }
-
-    // Show native install prompt
-    deferredPrompt.prompt();
-    
-    const { outcome } = await deferredPrompt.userChoice;
-    
-    if (outcome === 'accepted') {
-      console.log('✅ User accepted install');
-      
-      // Track install in analytics
-      ReactGA.event({
-        category: 'PWA',
-        action: 'Installed from Header',
-        label: 'Dashboard'
-      });
-      
-      setIsInstalled(true);
-    } else {
-      console.log('❌ User dismissed install');
-    }
-    
-    setDeferredPrompt(null);
   };
-
 
   const handleSettleDebt = (debt) => {
     setSelectedDebt(debt);
     setShowSettleModal(true);
     
-    // Track settle modal opened from dashboard
     ReactGA.event({
       category: 'Settlement',
       action: 'Opened Settle Modal from Dashboard',
       label: debt.groupName
     });
   };
-
 
   const handleSettleUp = async () => {
     if (!selectedDebt) return;
@@ -217,7 +156,6 @@ export const DashboardScreen = () => {
     try {
       await settleUp(selectedDebt.memberId, selectedDebt.amount, selectedDebt.groupId, `Settlement from dashboard`);
       
-      // Track settlement from dashboard
       ReactGA.event({
         category: 'Settlement',
         action: 'Settled from Dashboard',
@@ -249,7 +187,6 @@ export const DashboardScreen = () => {
     visible: { opacity: 1, y: 0 }
   };
 
-
   return (
     <Screen>
       <motion.div
@@ -259,66 +196,63 @@ export const DashboardScreen = () => {
         className="space-y-5"
       >
         {/* Header with Actions */}
-       {/* Header with Actions */}
-<motion.div variants={itemVariants} className="flex items-center justify-between">
-  <div>
-    <p className="text-neutral-500 text-xs sm:text-sm">Welcome back,</p>
-    <h1 className="text-xl sm:text-2xl font-bold text-neutral-100">
-      {currentUser?.name || 'User'} 👋
-    </h1>
-  </div>
-  
-  <div className="flex items-center gap-2">
-    {/* Expense Button - Desktop only */}
-    <div className="hidden lg:block">
-      <Button 
-        size="sm" 
-        variant="secondary" 
-        icon={<Plus size={16} />} 
-        onClick={() => {
-          setShowAddExpense(true);
-          ReactGA.event({
-            category: 'Expense',
-            action: 'Opened Add Expense from Dashboard'
-          });
-        }}
-      >
-        Expense
-      </Button>
-    </div>
-    
-    {/* Group Button - Icon only on mobile */}
-    <Button 
-      size="sm" 
-      variant="secondary" 
-      icon={<UserPlus size={16} />} 
-      onClick={() => {
-        setShowCreateGroup(true);
-        ReactGA.event({
-          category: 'Group',
-          action: 'Opened Create Group from Dashboard'
-        });
-      }}
-    >
-      <span className="hidden sm:inline">Group</span>
-    </Button>
-    
-    {/* Install Button - Icon only on mobile, always visible */}
-    {!isInstalled && (
-      <Button 
-        size="sm" 
-        variant="secondary" 
-        onClick={handleInstallClick}
-        title="Install App"
-      >
-        <Download size={16} className="sm:mr-2" />
-        <span className="hidden sm:inline">Install</span>
-      </Button>
-    )}
-  </div>
-</motion.div>
-
-
+        <motion.div variants={itemVariants} className="flex items-center justify-between">
+          <div>
+            <p className="text-neutral-500 text-xs sm:text-sm">Welcome back,</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-neutral-100">
+              {currentUser?.name || 'User'} 👋
+            </h1>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            {/* Expense Button - Desktop only */}
+            <div className="hidden lg:block">
+              <Button 
+                size="sm" 
+                variant="secondary" 
+                icon={<Plus size={16} />} 
+                onClick={() => {
+                  setShowAddExpense(true);
+                  ReactGA.event({
+                    category: 'Expense',
+                    action: 'Opened Add Expense from Dashboard'
+                  });
+                }}
+              >
+                Expense
+              </Button>
+            </div>
+            
+            {/* Group Button - Icon only on mobile */}
+            <Button 
+              size="sm" 
+              variant="secondary" 
+              icon={<UserPlus size={16} />} 
+              onClick={() => {
+                setShowCreateGroup(true);
+                ReactGA.event({
+                  category: 'Group',
+                  action: 'Opened Create Group from Dashboard'
+                });
+              }}
+            >
+              <span className="hidden sm:inline">Group</span>
+            </Button>
+            
+            {/* Install Button - Only show when installable */}
+            {isInstallable && (
+              <Button 
+                size="sm" 
+                variant="secondary" 
+                onClick={handleInstallClick}
+                title="Install App"
+              >
+                <Download size={16} className="sm:mr-2" />
+                <span className="hidden sm:inline">Install</span>
+              </Button>
+            )}
+          </div>
+        </motion.div>
 
         {/* Stats Grid */}
         <motion.div variants={itemVariants} className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -423,7 +357,6 @@ export const DashboardScreen = () => {
           </div>
         </motion.div>
 
-
         {/* Groups and Debts */}
         <motion.div variants={itemVariants} className="grid gap-3 lg:grid-cols-2">
           {/* Your Groups */}
@@ -436,7 +369,6 @@ export const DashboardScreen = () => {
                 </Button>
               </Link>
             </div>
-
 
             {groups.length === 0 ? (
               <EmptyState
@@ -498,14 +430,12 @@ export const DashboardScreen = () => {
             )}
           </div>
 
-
           {/* You Owe (Debts) */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-base sm:text-lg font-semibold text-neutral-100">You Owe</h2>
               <span className="text-xs sm:text-sm text-neutral-500">{allDebts.length} {allDebts.length === 1 ? 'debt' : 'debts'}</span>
             </div>
-
 
             {allDebts.length === 0 ? (
               <EmptyState
@@ -582,7 +512,6 @@ export const DashboardScreen = () => {
         </motion.div>
       </motion.div>
 
-
       {/* Settle Up Modal */}
       <Modal
         isOpen={showSettleModal}
@@ -629,12 +558,10 @@ export const DashboardScreen = () => {
         )}
       </Modal>
 
-
       <AddExpenseModal 
         isOpen={showAddExpense} 
         onClose={() => setShowAddExpense(false)} 
       />
-
 
       <CreateGroupModal
         isOpen={showCreateGroup}
