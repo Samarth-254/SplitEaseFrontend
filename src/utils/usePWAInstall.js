@@ -3,19 +3,26 @@ import ReactGA from 'react-ga4';
 
 export const usePWAInstall = () => {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showInstructionsModal, setShowInstructionsModal] = useState(false);
 
   useEffect(() => {
-    // Capture install prompt when available
     const handleBeforeInstall = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
       console.log('✅ Install prompt available');
     };
 
+    const handleAppInstalled = () => {
+      console.log('✅ App installed');
+      setDeferredPrompt(null);
+    };
+
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    window.addEventListener('appinstalled', handleAppInstalled);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+      window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
 
@@ -42,29 +49,26 @@ export const usePWAInstall = () => {
       }
     }
     
-    // ✅ No prompt? Show manual instructions
-    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    const isAndroid = /android/i.test(navigator.userAgent);
-    
-    if (isIOS) {
-      alert('📱 Install on iPhone:\n\n1. Tap Share (⎙)\n2. Add to Home Screen');
-    } else if (isAndroid) {
-      alert('📱 Install on Android:\n\n1. Tap menu (⋮)\n2. Install app');
-    } else {
-      alert('💻 Install:\n\n1. Click menu (⋮)\n2. Install SplitEase\n\nTip: Refresh page if option missing');
-    }
+    // ✅ No prompt? Show professional modal
+    setShowInstructionsModal(true);
     
     ReactGA.event({
       category: 'PWA',
-      action: 'Manual Instructions',
+      action: 'Manual Instructions Modal Shown',
       label: source
     });
     
     return 'manual';
   };
 
+  const closeInstructionsModal = () => {
+    setShowInstructionsModal(false);
+  };
+
   return {
-    isInstallable: true, // ✅ ALWAYS TRUE - button always shows
-    promptInstall
+    isInstallable: true,
+    promptInstall,
+    showInstructionsModal,
+    closeInstructionsModal
   };
 };

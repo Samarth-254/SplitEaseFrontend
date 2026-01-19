@@ -21,6 +21,7 @@ import { NotificationPrompt } from './components/NotificationPrompt';
 import { InstallPrompt } from './components/InstallPrompt';
 import { usePWAInstall } from './utils/usePWAInstall';
 import pushNotificationService from './services/pushNotification';
+import { InstallInstructionsModal } from './components/InstallInstructionsModal';
 
 // Component to track route changes for Google Analytics
 const RouteChangeTracker = () => {
@@ -58,11 +59,11 @@ const PublicRoute = ({ children }) => {
 
 function App() {
   const { initializeAuth, isInitialLoadComplete, isAuthenticated } = useStore();
-  const { isInstallable } = usePWAInstall();
   
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [notificationPromptDismissed, setNotificationPromptDismissed] = useState(false);
+  const { isInstallable, showInstructionsModal, closeInstructionsModal } = usePWAInstall();
 
   // Initialize Google Analytics
   useEffect(() => {
@@ -330,6 +331,12 @@ function App() {
             <InstallPrompt onDismiss={handleDismissInstall} />
           )}
         </AnimatePresence>
+        {/* Install Instructions Modal */}
+<InstallInstructionsModal 
+  isOpen={showInstructionsModal} 
+  onClose={closeInstructionsModal} 
+/>
+
       </Router>
     </GoogleOAuthProvider>
   );

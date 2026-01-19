@@ -10,6 +10,7 @@ import { AddExpenseModal } from '../expense/AddExpenseModal';
 import { CreateGroupModal } from '../../components/groups/CreateGroupModal';
 import { getCurrencySymbol } from '../../utils/currency';
 import { usePWAInstall } from '../../utils/usePWAInstall';
+import { InstallInstructionsModal } from '../../components/InstallInstructionsModal';
 
 export const DashboardScreen = () => {
   const navigate = useNavigate();
@@ -32,8 +33,7 @@ export const DashboardScreen = () => {
   const [isSettling, setIsSettling] = useState(false);
   
   // ✅ Use centralized PWA hook
-  const { isInstallable, promptInstall } = usePWAInstall();
-  
+  const { isInstallable, promptInstall, showInstructionsModal, closeInstructionsModal } = usePWAInstall();
   // Show loading state until data is loaded
   const isDataLoading = !isInitialLoadComplete;
   
@@ -567,6 +567,12 @@ export const DashboardScreen = () => {
         isOpen={showCreateGroup}
         onClose={() => setShowCreateGroup(false)}
       />
+      {/* Install Instructions Modal */}
+<InstallInstructionsModal 
+  isOpen={showInstructionsModal} 
+  onClose={closeInstructionsModal} 
+/>
+
     </Screen>
   );
 };
