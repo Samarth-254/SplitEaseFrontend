@@ -1,4 +1,4 @@
-const CACHE_NAME = 'splitease-v11'; // ✅ Bumped to v11
+const CACHE_NAME = 'splitease-v12'; // ✅ Bumped to v12
 
 
 // ✅ Only cache static assets (NEVER API data)
