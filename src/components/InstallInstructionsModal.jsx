@@ -19,7 +19,7 @@ export const InstallInstructionsModal = ({ isOpen, onClose }) => {
 
   const instructions = {
     android: {
-      icon: <Smartphone className="text-green-500" size={28} />,
+      icon: <Smartphone className="text-orange-500" size={28} />,
       title: 'Install on Android',
       steps: [
         'Tap the three dots (⋮) at top right',
@@ -28,7 +28,7 @@ export const InstallInstructionsModal = ({ isOpen, onClose }) => {
       ]
     },
     ios: {
-      icon: <Smartphone className="text-blue-500" size={28} />,
+      icon: <Smartphone className="text-orange-500" size={28} />,
       title: 'Install on iPhone',
       steps: [
         'Tap the Share button (⎙) at bottom',
@@ -41,8 +41,8 @@ export const InstallInstructionsModal = ({ isOpen, onClose }) => {
       title: 'Install on Desktop',
       steps: [
         'Click the three dots (⋮) at top right',
-        'Click "Install SplitEase"',
-        'Click "Install" in the popup'
+        'Click Cast,Save and Share',
+        'Click "Install SplitEase"'
       ]
     }
   };
