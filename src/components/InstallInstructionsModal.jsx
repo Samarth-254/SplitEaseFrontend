@@ -19,7 +19,7 @@ export const InstallInstructionsModal = ({ isOpen, onClose }) => {
 
   const instructions = {
     android: {
-      icon: <Smartphone className="text-green-500" size={32} />,
+      icon: <Smartphone className="text-green-500" size={28} />,
       title: 'Install on Android',
       steps: [
         'Tap the three dots (⋮) at top right',
@@ -28,7 +28,7 @@ export const InstallInstructionsModal = ({ isOpen, onClose }) => {
       ]
     },
     ios: {
-      icon: <Smartphone className="text-blue-500" size={32} />,
+      icon: <Smartphone className="text-blue-500" size={28} />,
       title: 'Install on iPhone',
       steps: [
         'Tap the Share button (⎙) at bottom',
@@ -37,12 +37,12 @@ export const InstallInstructionsModal = ({ isOpen, onClose }) => {
       ]
     },
     desktop: {
-      icon: <Monitor className="text-orange-500" size={32} />,
+      icon: <Monitor className="text-orange-500" size={28} />,
       title: 'Install on Desktop',
       steps: [
-        'Click menu (⋮) at top right',
+        'Click the three dots (⋮) at top right',
         'Click "Install SplitEase"',
-        'Click "Install" to confirm'
+        'Click "Install" in the popup'
       ]
     }
   };
@@ -64,19 +64,19 @@ export const InstallInstructionsModal = ({ isOpen, onClose }) => {
           {/* Close Button */}
           <button
             onClick={onClose}
-            className="absolute top-3 right-3 p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 transition-colors"
+            className="absolute top-3 right-3 p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 transition-colors z-10"
           >
             <X size={18} className="text-neutral-400" />
           </button>
 
-          {/* Header */}
-          <div className="bg-gradient-to-br from-orange-500/10 to-red-500/10 border-b border-neutral-800 p-4 text-center">
-            <div className="flex justify-center mb-2">
+          {/* Header - Icon and Title in Same Line */}
+          <div className="bg-gradient-to-br from-orange-500/10 to-red-500/10 border-b border-neutral-800 p-4">
+            <div className="flex items-center justify-center gap-3">
               {currentInstructions.icon}
+              <h2 className="text-lg font-bold text-neutral-100">
+                {currentInstructions.title}
+              </h2>
             </div>
-            <h2 className="text-lg font-bold text-neutral-100">
-              {currentInstructions.title}
-            </h2>
           </div>
 
           {/* Steps */}
