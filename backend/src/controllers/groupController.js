@@ -111,7 +111,9 @@ exports.joinGroup = async (req, res) => {
       return res.status(404).json({ message: "Group not found" });
     }
 
-    if (!group.members.includes(req.user._id)) {
+    const isNewMember = !group.members.includes(req.user._id);
+
+    if (isNewMember) {
       group.members.push(req.user._id);
       await group.save();
 
@@ -128,6 +130,18 @@ exports.joinGroup = async (req, res) => {
             profileImage: req.user.profileImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${req.user.name.replace(/\s+/g, '')}`
           }
         });
+
+        // ✅ SEND WEB PUSH TO ALL EXISTING MEMBERS ABOUT NEW MEMBER
+        const existingMembers = group.members.filter(m => m.toString() !== req.user._id.toString());
+        for (const memberId of existingMembers) {
+          await sendNotification(
+            memberId,
+            `${group.emoji} New Member Joined`,
+            `${req.user.name} joined "${group.name}"`,
+            `/group/${groupId}`,
+            io
+          );
+        }
       }
     }
 
@@ -149,6 +163,7 @@ exports.joinGroup = async (req, res) => {
     res.status(400).json({ message: "Invalid or expired invite" });
   }
 };
+
 
 exports.getUserGroups = async (req, res) => {
   try {
@@ -544,6 +559,16 @@ exports.addFriendsToGroup = async (req, res) => {
 
         // Notify new members specifically
         for (const userId of newMembers) {
+          // ✅ SEND WEB PUSH TO NEWLY ADDED MEMBERS
+          const user = addedUsersWithAvatars.find(u => u._id.toString() === userId.toString());
+          await sendNotification(
+            userId,
+            `${group.emoji} Added to Group`,
+            `${req.user.name} added you to "${group.name}"`,
+            `/group/${group._id}`,
+            io
+          );
+
           io.emit('friend:added-to-group', {
             userId,
             groupId: group._id,
@@ -572,6 +597,7 @@ exports.addFriendsToGroup = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 exports.recordSettlement = async (req, res) => {
   try {
