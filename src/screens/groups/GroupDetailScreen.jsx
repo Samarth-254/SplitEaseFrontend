@@ -500,6 +500,15 @@ export const GroupDetailScreen = () => {
   const isCurrentUserFrom = (settlement.from?._id || settlement.from) === currentUserId;
   const isCurrentUserTo = (settlement.to?._id || settlement.to) === currentUserId;
 
+  // ✅ Truncate names intelligently
+  const truncateName = (name, maxLength = 12) => {
+    if (!name || name.length <= maxLength) return name;
+    return name.substring(0, maxLength) + '...';
+  };
+
+  const fromName = isCurrentUserFrom ? 'You' : truncateName(from?.name);
+  const toName = isCurrentUserTo ? 'you' : truncateName(to?.name);
+
   return (
     <Card key={settlement._id || settlement.id} padding="md" className="border-green-900/30">
       <div className="flex items-center gap-3">
@@ -508,17 +517,14 @@ export const GroupDetailScreen = () => {
         </div>
         
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 justify-between flex-wrap">
-            <h4 className="font-medium text-neutral-100 text-sm">
-              {isCurrentUserFrom ? 'You paid' : `${from?.name} paid`}{' '}
-              {isCurrentUserTo ? 'you' : to?.name}
-              {/* {settlement.note && settlement.note.includes('Net Settlement') && (
-                <span className="ml-1 text-xs bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full">
-                  {settlement.note}
-                </span>
-              )} */}
+          {/* ✅ Single row with truncation */}
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="font-medium text-neutral-100 text-sm truncate">
+              <span className="text-neutral-300">{fromName}</span>
+              <span className="text-neutral-500"> paid </span>
+              <span className="text-neutral-300">{toName}</span>
             </h4>
-            <p className="text-base font-bold text-green-400 flex-shrink-0">
+            <p className="text-base font-bold text-green-400 flex-shrink-0 whitespace-nowrap">
               ₹{settlement.amount.toFixed(2)}
             </p>
           </div>
@@ -530,6 +536,7 @@ export const GroupDetailScreen = () => {
     </Card>
   );
 })}
+
 
 
                     </div>

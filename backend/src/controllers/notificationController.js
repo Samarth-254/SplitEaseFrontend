@@ -1,11 +1,13 @@
 const PushSubscription = require('../models/PushSubscription');
 const webpush = require('web-push');
 
+
 webpush.setVapidDetails(
   'mailto:samarthnagpal070@gmail.com',
   process.env.VAPID_PUBLIC_KEY,
   process.env.VAPID_PRIVATE_KEY
 );
+
 
 exports.subscribe = async (req, res) => {
   try {
@@ -20,10 +22,12 @@ exports.subscribe = async (req, res) => {
       return res.status(400).json({ message: 'Invalid subscription data' });
     }
 
+
     const existing = await PushSubscription.findOne({
       user: req.user._id,
       'subscription.endpoint': subscriptionData.endpoint
     });
+
 
     if (existing) {
       console.log('✅ Subscription already exists, updating...');
@@ -32,6 +36,7 @@ exports.subscribe = async (req, res) => {
       await existing.save();
       return res.json({ message: 'Subscription updated', existing: true });
     }
+
 
     const newSub = await PushSubscription.create({
       user: req.user._id,
@@ -56,6 +61,7 @@ exports.subscribe = async (req, res) => {
   }
 };
 
+
 exports.unsubscribe = async (req, res) => {
   try {
     const { endpoint } = req.body;
@@ -78,6 +84,7 @@ exports.unsubscribe = async (req, res) => {
   }
 };
 
+
 exports.verifySubscription = async (req, res) => {
   try {
     const { endpoint } = req.body;
@@ -94,7 +101,8 @@ exports.verifySubscription = async (req, res) => {
   }
 };
 
-exports.sendNotification = async (userId, title, body, url, io) => {  // ✅ Added io param
+
+exports.sendNotification = async (userId, title, body, url, io) => {
   try {
     const subscriptions = await PushSubscription.find({ user: userId });
     
@@ -103,23 +111,33 @@ exports.sendNotification = async (userId, title, body, url, io) => {  // ✅ Add
       return { success: true, sent: 0, failed: 0 };
     }
 
+
     console.log(`📱 Sending push to ${subscriptions.length} device(s) for user: ${userId}`);
+
 
     const payload = JSON.stringify({
       title,
       body,
       url: url || '/',
-      icon: '/icon-192.png',
-      badge: '/badge-72.png',
+      icon: 'https://www.split-ease.app/icon-192.png', // ✅ Full URL
+      badge: 'https://www.split-ease.app/badge-72.png', // ✅ Full URL
       timestamp: new Date().toISOString()
     });
+
+    // ✅ ADDED: Push options with HIGH URGENCY for heads-up notification
+    const options = {
+      urgency: 'high', // ✅ Makes it show at top center
+      TTL: 86400, // 24 hours time to live
+    };
+
 
     let sent = 0;
     let failed = 0;
 
+
     for (const sub of subscriptions) {
       try {
-        await webpush.sendNotification(sub.subscription, payload);
+        await webpush.sendNotification(sub.subscription, payload, options); // ✅ Added options
         sent++;
         console.log(`✅ Push notification sent to user: ${userId} (device ${sent})`);
         
@@ -150,6 +168,7 @@ exports.sendNotification = async (userId, title, body, url, io) => {  // ✅ Add
       }
     }
 
+
     console.log(`📊 Push result: ${sent} sent, ${failed} failed for user: ${userId}`);
     return { success: sent > 0, sent, failed };
     
@@ -158,6 +177,7 @@ exports.sendNotification = async (userId, title, body, url, io) => {  // ✅ Add
     return { success: false, sent: 0, failed: 1 };
   }
 };
+
 
 exports.sendBulkNotifications = async (userIds, title, body, url, io) => { 
   try {
@@ -184,6 +204,7 @@ exports.sendBulkNotifications = async (userIds, title, body, url, io) => {
   }
 };
 
+
 exports.checkSubscription = async (req, res) => {
   try {
     const { endpoint } = req.body;
@@ -200,8 +221,10 @@ exports.checkSubscription = async (req, res) => {
   }
 };
 
+
 exports.getVapidPublicKey = (req, res) => {
   res.json({ publicKey: process.env.VAPID_PUBLIC_KEY });
 };
+
 
 module.exports = exports;

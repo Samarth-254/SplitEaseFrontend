@@ -18,6 +18,7 @@ import {
 } from './screens';
 import { FriendsScreen } from './screens/friends';
 import { NotificationPrompt } from './components/NotificationPrompt';
+import { InstallPrompt } from './components/InstallPrompt';
 import pushNotificationService from './services/pushNotification';
 
 // Component to track route changes for Google Analytics
@@ -58,6 +59,9 @@ const PublicRoute = ({ children }) => {
 function App() {
   const { initializeAuth, isInitialLoadComplete, isAuthenticated } = useStore();
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [notificationPromptDismissed, setNotificationPromptDismissed] = useState(false);
 
   // Initialize Google Analytics
   useEffect(() => {
@@ -69,7 +73,6 @@ function App() {
           siteSpeedSampleRate: 100
         }
       });
-      
     } else {
       console.warn('⚠️ GA Measurement ID not found in environment variables');
     }
@@ -79,19 +82,42 @@ function App() {
     initializeAuth();
   }, []);
 
-  // ✅ Show notification prompt every 24 hours until enabled
+  // ✅ Capture PWA install prompt
+  useEffect(() => {
+    // Check if already installed
+    if (window.matchMedia('(display-mode: standalone)').matches || 
+        window.navigator.standalone === true) {
+      return;
+    }
+
+    const handleBeforeInstall = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      console.log('✅ Install prompt captured');
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+    };
+  }, []);
+
+  // ✅ Show NOTIFICATION prompt first (after 5 seconds)
   useEffect(() => {
     if (!isAuthenticated) {
       setShowNotificationPrompt(false);
       return;
     }
 
-    // ✅ Only show if permission is default (not granted or denied)
+    // Only show if permission is default (not granted or denied)
     if (!pushNotificationService.isPermissionDefault()) {
+      // If permission already handled, mark as dismissed
+      setNotificationPromptDismissed(true);
       return;
     }
 
-    // ✅ Check when last dismissed
+    // Check when last dismissed
     const lastDismissed = localStorage.getItem('notification-prompt-dismissed');
     const now = Date.now();
     
@@ -101,52 +127,127 @@ function App() {
       
       // If dismissed less than 24 hours ago, don't show
       if (timeSinceDismissed < twentyFourHours) {
+        setNotificationPromptDismissed(true);
         return;
       }
     }
 
-    // ✅ Show prompt after 10 seconds
+    // Show prompt after 5 seconds
     const timer = setTimeout(() => {
       setShowNotificationPrompt(true);
-    }, 10000);
+    }, 5000);
 
     return () => clearTimeout(timer);
   }, [isAuthenticated]);
 
-  // ✅ UPDATED: Returns permission status for NotificationPrompt component
+  // ✅ Show INSTALL prompt AFTER notification is dismissed (with 5 second cooldown)
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setShowInstallPrompt(false);
+      return;
+    }
+
+    // Check if already installed
+    if (window.matchMedia('(display-mode: standalone)').matches || 
+        window.navigator.standalone === true) {
+      return;
+    }
+
+    // ✅ ONLY show if notification prompt has been dismissed/handled
+    if (!notificationPromptDismissed) {
+      return;
+    }
+
+    // Check when last dismissed
+    const lastDismissed = localStorage.getItem('install-prompt-dismissed');
+    const now = Date.now();
+    
+    if (lastDismissed) {
+      const timeSinceDismissed = now - parseInt(lastDismissed);
+      const twentyFourHours = 24 * 60 * 60 * 1000;
+      
+      if (timeSinceDismissed < twentyFourHours) {
+        return;
+      }
+    }
+
+    // ✅ Show prompt 5 seconds AFTER notification is dismissed
+    const timer = setTimeout(() => {
+      setShowInstallPrompt(true);
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [isAuthenticated, notificationPromptDismissed]);
+
+  // ✅ Handle Install
+  const handleInstall = async () => {
+    if (!deferredPrompt) {
+      // Fallback for iOS or when prompt not available
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      if (isIOS) {
+        alert('Tap the Share button ⎙ then "Add to Home Screen"');
+      } else {
+        alert('Look for "Install" in your browser menu');
+      }
+      return 'dismissed';
+    }
+
+    // Show native install prompt
+    deferredPrompt.prompt();
+    
+    const { outcome } = await deferredPrompt.userChoice;
+    
+    if (outcome === 'accepted') {
+      console.log('✅ User accepted install');
+      ReactGA.event({
+        category: 'PWA',
+        action: 'Installed',
+        label: 'From Prompt'
+      });
+      
+      setDeferredPrompt(null);
+      return 'accepted';
+    }
+    
+    setDeferredPrompt(null);
+    return 'dismissed';
+  };
+
+  const handleDismissInstall = () => {
+    setShowInstallPrompt(false);
+    localStorage.setItem('install-prompt-dismissed', Date.now().toString());
+    
+    ReactGA.event({
+      category: 'PWA',
+      action: 'Install Prompt Dismissed'
+    });
+  };
+
+  // ✅ Handle Notifications
   const handleEnableNotifications = async () => {
     try {
-      // Request notification permission
       const permission = await Notification.requestPermission();
       
       if (permission === 'granted') {
-        // Register push notifications
         const granted = await pushNotificationService.requestPermission();
         if (granted) {
-          // Track notification permission granted
           ReactGA.event({
             category: 'Notification',
             action: 'Permission Granted'
           });
         }
         
-        // Clear dismissed timestamp since they enabled it
         localStorage.removeItem('notification-prompt-dismissed');
-        
         return 'granted';
       } else if (permission === 'denied') {
-        // Track notification permission denied
         ReactGA.event({
           category: 'Notification',
           action: 'Permission Denied'
         });
         
-        // Save timestamp - will show again after 24 hours
         localStorage.setItem('notification-prompt-dismissed', Date.now().toString());
-        
         return 'denied';
       } else {
-        // User dismissed without choosing (default)
         return 'default';
       }
     } catch (error) {
@@ -155,12 +256,11 @@ function App() {
     }
   };
 
-  const handleDismissPrompt = () => {
+  const handleDismissNotification = () => {
     setShowNotificationPrompt(false);
-    // ✅ Save timestamp - will show again after 24 hours
+    setNotificationPromptDismissed(true); // ✅ Mark as dismissed
     localStorage.setItem('notification-prompt-dismissed', Date.now().toString());
     
-    // Track notification prompt dismissed
     ReactGA.event({
       category: 'Notification',
       action: 'Prompt Dismissed'
@@ -181,7 +281,6 @@ function App() {
   return (
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
       <Router>
-        {/* Track route changes for Google Analytics */}
         <RouteChangeTracker />
         
         <Routes>
@@ -277,12 +376,22 @@ function App() {
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
 
-        {/* Notification Prompt - Shows every 24 hours until enabled */}
+        {/* ✅ Notification Prompt - Shows FIRST */}
         <AnimatePresence>
           {showNotificationPrompt && (
             <NotificationPrompt
               onEnable={handleEnableNotifications}
-              onDismiss={handleDismissPrompt}
+              onDismiss={handleDismissNotification}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* ✅ Install Prompt - Shows AFTER notification (5s cooldown) */}
+        <AnimatePresence>
+          {showInstallPrompt && (
+            <InstallPrompt
+              onInstall={handleInstall}
+              onDismiss={handleDismissInstall}
             />
           )}
         </AnimatePresence>
