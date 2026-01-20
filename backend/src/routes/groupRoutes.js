@@ -1,6 +1,7 @@
 const express = require("express");
 const {
   createGroup,
+  updateGroup,
   generateInviteLink,
   joinGroup,
   getUserGroups,
@@ -16,6 +17,7 @@ const router = express.Router();
 
 router.get("/", protect, getUserGroups);
 router.post("/", protect, createGroup);
+router.put("/:groupId", protect, updateGroup);
 router.post("/:groupId/invite", protect, generateInviteLink);
 router.post("/join", protect, joinGroup);
 router.post("/:groupId/remind", protect, sendPaymentReminder);

@@ -9,11 +9,11 @@ export const usePWAInstall = () => {
     const handleBeforeInstall = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      console.log('✅ Install prompt available');
+      
     };
 
     const handleAppInstalled = () => {
-      console.log('✅ App installed');
+      
       setDeferredPrompt(null);
     };
 
@@ -33,7 +33,7 @@ export const usePWAInstall = () => {
         await deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
         
-        console.log(`User ${outcome} the install`);
+        
         
         ReactGA.event({
           category: 'PWA',

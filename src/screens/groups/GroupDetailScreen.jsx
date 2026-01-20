@@ -27,10 +27,12 @@ import {
 } from '../../components/ui';
 import { AddExpenseModal } from '../expense/AddExpenseModal';
 import { InviteMembersModal } from '../../components/groups/InviteMembersModal';
+import { CreateGroupModal } from '../../components/groups/CreateGroupModal';
 import { useStore } from '../../store/useStore';
 import { getCategoryIcon } from '../../utils/categoryDetection';
 import { getCurrencySymbol } from '../../utils/currency';
 import ReactGA from 'react-ga4';
+import apiService from '../../services/api';
 
 export const GroupDetailScreen = () => {
   const { groupId } = useParams();
@@ -48,6 +50,7 @@ export const GroupDetailScreen = () => {
   const [isSendingReminder, setIsSendingReminder] = useState(false);
   const [reminderSent, setReminderSent] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [showUpdateGroupModal, setShowUpdateGroupModal] = useState(false);
   
   const { 
     getGroupById, 
@@ -63,6 +66,7 @@ export const GroupDetailScreen = () => {
     loadGroupExpenses,
     loadGroupSettlements,
     sendReminder,
+    updateGroup,
     expenses: allExpenses,
     settlements: allSettlements
   } = useStore();
@@ -223,18 +227,34 @@ export const GroupDetailScreen = () => {
      <Header 
   title={`${group.emoji} ${group.name}`} 
   showBack 
-  rightAction
-  rightIcon={<UserPlus size={20} />}
-  onRightAction={() => {
-    setShowInviteModal(true);
-    
-    // Track invite modal opened
-    ReactGA.event({
-      category: 'Group',
-      action: 'Opened Invite Modal',
-      label: group.name
-    });
-  }}
+  rightActions={[
+    {
+      icon: <UserPlus size={20} />,
+      onClick: () => {
+        setShowInviteModal(true);
+        
+        // Track invite modal opened
+        ReactGA.event({
+          category: 'Group',
+          action: 'Opened Invite Modal',
+          label: group.name
+        });
+      }
+    },
+    {
+      icon: <Settings size={20} />,
+      onClick: () => {
+        setShowUpdateGroupModal(true);
+        
+        // Track update modal opened
+        ReactGA.event({
+          category: 'Group',
+          action: 'Opened Update Group Modal',
+          label: group.name
+        });
+      }
+    }
+  ]}
 />
 
       
@@ -742,6 +762,16 @@ export const GroupDetailScreen = () => {
           </div>
         )}
       </Modal>
+
+      {/* Update Group Modal */}
+      <CreateGroupModal
+        isOpen={showUpdateGroupModal}
+        onClose={() => setShowUpdateGroupModal(false)}
+        initialName={group.name}
+        initialEmoji={group.emoji}
+        isUpdate={true}
+        groupId={groupId}
+      />
     </Screen>
   );
 };

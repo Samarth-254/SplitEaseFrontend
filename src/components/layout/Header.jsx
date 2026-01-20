@@ -17,6 +17,7 @@ export const Header = ({
   rightAction,
   rightIcon,
   onRightAction,
+  rightActions, // New prop: array of { icon, onClick, key? }
   transparent = false,
   className = '',
 }) => {
@@ -29,6 +30,9 @@ export const Header = ({
       navigate(-1);
     }
   };
+
+  // Support both old single action and new multiple actions
+  const actions = rightActions || (rightAction || onRightAction ? [{ icon: rightIcon, onClick: onRightAction }] : []);
 
   return (
     <header className={`
@@ -62,18 +66,19 @@ export const Header = ({
           )}
         </div>
         
-        {/* Right - Action button or spacer */}
-        <div className="w-10 flex justify-end">
-          {(rightAction || onRightAction) && (
+        {/* Right - Action buttons or spacer */}
+        <div className="flex justify-end gap-1">
+          {actions.map((action, index) => (
             <Button
+              key={action.key || index}
               variant="ghost"
               size="icon-sm"
-              onClick={onRightAction}
-              className="text-neutral-300 hover:text-neutral-100 -mr-2"
+              onClick={action.onClick}
+              className="text-neutral-300 hover:text-neutral-100"
             >
-              {rightIcon || <MoreVertical size={20} />}
+              {action.icon || <MoreVertical size={20} />}
             </Button>
-          )}
+          ))}
         </div>
       </div>
     </header>

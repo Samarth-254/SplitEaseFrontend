@@ -2,7 +2,7 @@
   "name": "SplitEase - Split Expenses with Friends",
   "short_name": "SplitEase",
   "description": "Split expenses easily with friends and groups",
-  "version": "4.4.8",
+  "version": "4.5.0",
   "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",

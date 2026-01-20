@@ -212,6 +212,24 @@ export const useStore = create((set, get) => ({
     });
   },
   
+  updateGroup: async (groupId, updates) => {
+    try {
+      const updated = await apiService.updateGroup(groupId, updates);
+      set(state => ({
+        groups: state.groups.map(g => {
+          if ((g._id || g.id) === groupId) {
+            return { ...g, ...updated };
+          }
+          return g;
+        })
+      }));
+      return updated;
+    } catch (err) {
+      console.error('Failed to update group:', err);
+      throw err;
+    }
+  },
+  
   createGroup: (name, emoji, memberIds) => {
     const { currentUser } = get();
     const newGroup = {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Modal, Button, Input } from '../ui';
 import { Users, Plus } from 'lucide-react';
 import ReactGA from 'react-ga4';
@@ -25,13 +25,31 @@ const ALL_EMOJIS = [
   '👥', '👤', '👩', '👨', '👧', '👦', '👩‍👩‍👧', '👨‍👩‍👦', '👨‍👩‍👦‍👦', '👨‍👨‍👧‍👧'
 ].filter((emoji, index, self) => self.indexOf(emoji) === index);
 
-export const CreateGroupModal = ({ isOpen, onClose }) => {
-  const { addGroup } = useStore();
-  const [name, setName] = useState('');
-  const [emoji, setEmoji] = useState('🏠');
+export const CreateGroupModal = ({ 
+  isOpen, 
+  onClose, 
+  initialName = '', 
+  initialEmoji = '🏠',
+  isUpdate = false,
+  groupId,
+  onUpdate 
+}) => {
+  const { addGroup, updateGroup } = useStore();
+  const [name, setName] = useState(initialName);
+  const [emoji, setEmoji] = useState(initialEmoji);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showAllEmojis, setShowAllEmojis] = useState(false);
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setName(initialName);
+      setEmoji(initialEmoji);
+      setError('');
+      setShowAllEmojis(false);
+    }
+  }, [isOpen, initialName, initialEmoji]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -45,24 +63,35 @@ export const CreateGroupModal = ({ isOpen, onClose }) => {
     setError('');
 
     try {
-      const group = await apiService.createGroup(name.trim(), emoji);
-      addGroup(group);
+      if (isUpdate && groupId) {
+        await updateGroup(groupId, { name: name.trim(), emoji });
+        
+        ReactGA.event({
+          category: 'Group',
+          action: 'Updated Group',
+          label: emoji
+        });
+      } else {
+        const group = await apiService.createGroup(name.trim(), emoji);
+        addGroup(group);
+        
+        ReactGA.event({
+          category: 'Group',
+          action: 'Created Group',
+          label: emoji
+        });
+        
+        setName('');
+        setEmoji('🏠');
+      }
       
-      ReactGA.event({
-        category: 'Group',
-        action: 'Created Group',
-        label: emoji
-      });
-      
-      setName('');
-      setEmoji('🏠');
       onClose();
     } catch (err) {
-      setError(err.message || 'Failed to create group');
+      setError(err.message || `Failed to ${isUpdate ? 'update' : 'create'} group`);
       
       ReactGA.event({
         category: 'Group',
-        action: 'Group Creation Failed',
+        action: `Group ${isUpdate ? 'Update' : 'Creation'} Failed`,
         label: err.message || 'Unknown Error'
       });
     } finally {
@@ -73,7 +102,7 @@ export const CreateGroupModal = ({ isOpen, onClose }) => {
   const moreCount = ALL_EMOJIS.length - PRIMARY_EMOJIS.length;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Create New Group" size="md">
+    <Modal isOpen={isOpen} onClose={onClose} title={isUpdate ? "Update Group" : "Create New Group"} size="md">
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Emoji Picker - 2 ROWS ON MOBILE */}
         <div>
@@ -146,7 +175,7 @@ export const CreateGroupModal = ({ isOpen, onClose }) => {
             Cancel
           </Button>
           <Button type="submit" loading={loading} fullWidth>
-            Create Group
+            {isUpdate ? 'Update Group' : 'Create Group'}
           </Button>
         </div>
       </form>

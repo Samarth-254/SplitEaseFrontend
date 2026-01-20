@@ -43,6 +43,39 @@ exports.createGroup = async (req, res) => {
   }
 };
 
+exports.updateGroup = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const { name, emoji } = req.body;
+
+    const group = await Group.findById(groupId);
+    if (!group || group.isArchived) {
+      return res.status(404).json({ message: "Group not found" });
+    }
+
+    if (!group.members.includes(req.user._id)) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    // Update only name and emoji
+    if (name !== undefined) group.name = name;
+    if (emoji !== undefined) group.emoji = emoji;
+    group.updatedAt = new Date();
+
+    await group.save();
+
+    res.json({
+      _id: group._id,
+      name: group.name,
+      emoji: group.emoji,
+      updatedAt: group.updatedAt
+    });
+  } catch (err) {
+    console.error("Update group error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 exports.generateInviteLink = async (req, res) => {
   try {
     const { groupId } = req.params;

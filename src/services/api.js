@@ -195,6 +195,10 @@ class ApiService {
     return this.post('/api/groups', { name, emoji });
   }
 
+  async updateGroup(groupId, updates) {
+    return this.put(`/api/groups/${groupId}`, updates);
+  }
+
   async getGroups() {
     return this.get('/api/groups');
   }
