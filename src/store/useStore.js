@@ -734,94 +734,112 @@ export const useStore = create((set, get) => ({
   
   // Get total balance for current user across all groups
   getTotalBalance: () => {
-    const { groups, expenses, settlements, currentUser, users } = get();
-    if (!currentUser) return { totalOwed: 0, totalOwing: 0, netBalance: 0 };
-    
-    let totalOwedInPaise = 0;
-    let totalOwingInPaise = 0;
-    
-    groups.forEach(group => {
-      const groupId = group._id || group.id;
-      const groupExpenses = expenses.filter(e => e.groupId === groupId);
-      const groupSettlements = settlements.filter(s => s.groupId === groupId);
-      const balances = {};
-      
-      groupExpenses.forEach(expense => {
-        const splits = expense.splits || [];
-        const splitBetween = expense.splitBetween || splits.map(s => s.user);
-        const paidById = expense.paidBy?._id || expense.paidBy;
-        
-        if (splits.length > 0) {
-          splits.forEach(split => {
-            const userId = split.user?._id || split.user;
-            const splitAmountInPaise = Math.round(split.amount * 100);
-            
-            if (!balances[userId]) balances[userId] = {};
-            
-            if (userId !== paidById) {
-              if (!balances[userId][paidById]) balances[userId][paidById] = 0;
-              balances[userId][paidById] -= splitAmountInPaise;
-              
-              if (!balances[paidById]) balances[paidById] = {};
-              if (!balances[paidById][userId]) balances[paidById][userId] = 0;
-              balances[paidById][userId] += splitAmountInPaise;
-            }
-          });
-        } else if (splitBetween && splitBetween.length > 0) {
-          const amountInPaise = Math.round(expense.amount * 100);
-          const baseShare = Math.floor(amountInPaise / splitBetween.length);
-          const remainder = amountInPaise % splitBetween.length;
-          
-          splitBetween.forEach((userId, index) => {
-            if (!balances[userId]) balances[userId] = {};
-            
-            if (userId !== paidById) {
-              const shareInPaise = baseShare + (index < remainder ? 1 : 0);
-              
-              if (!balances[userId][paidById]) balances[userId][paidById] = 0;
-              balances[userId][paidById] -= shareInPaise;
-              
-              if (!balances[paidById]) balances[paidById] = {};
-              if (!balances[paidById][userId]) balances[paidById][userId] = 0;
-              balances[paidById][userId] += shareInPaise;
-            }
-          });
-        }
-      });
-      
-      groupSettlements.forEach(settlement => {
-        const fromId = settlement.from?._id || settlement.from;
-        const toId = settlement.to?._id || settlement.to;
-        
-        if (!balances[fromId]) balances[fromId] = {};
-        if (!balances[toId]) balances[toId] = {};
-        
-        if (!balances[fromId][toId]) balances[fromId][toId] = 0;
-        if (!balances[toId][fromId]) balances[toId][fromId] = 0;
-        
-        const settlementInPaise = Math.round(settlement.amount * 100);
-        balances[fromId][toId] += settlementInPaise;
-        balances[toId][fromId] -= settlementInPaise;
-      });
-      
-      const currentUserId = currentUser._id || currentUser.id;
-      const currentUserBalances = balances[currentUserId] || {};
-      Object.values(currentUserBalances).forEach(amountInPaise => {
-        if (amountInPaise > 0) totalOwedInPaise += amountInPaise;
-        else totalOwingInPaise += Math.abs(amountInPaise);
-      });
+  const state = get();
+  const currentUserId = state.currentUser?._id || state.currentUser?.id;
+  
+  if (!currentUserId) return { netBalance: 0, totalOwed: 0, totalOwing: 0 };
+
+  // ✅ Step 1: Build a map of net balances per person
+  const personBalances = new Map();
+  
+  // Get all unique members from all groups
+  const allMembers = new Set();
+  state.groups.forEach(group => {
+    (group.members || []).forEach(member => {
+      const memberId = member._id || member.id;
+      if (String(memberId) !== String(currentUserId)) {
+        allMembers.add(String(memberId));
+      }
     });
-    
-    const totalOwed = totalOwedInPaise / 100;
-    const totalOwing = totalOwingInPaise / 100;
-    const netBalance = (totalOwedInPaise - totalOwingInPaise) / 100;
-    
-    return {
-      totalOwed: Math.abs(totalOwed) < 0.05 ? 0 : totalOwed,
-      totalOwing: Math.abs(totalOwing) < 0.05 ? 0 : totalOwing,
-      netBalance: Math.abs(netBalance) < 0.05 ? 0 : netBalance,
-    };
-  },
+  });
+
+  // Calculate net balance with each person
+  allMembers.forEach(memberId => {
+    let youOwe = 0;
+    let theyOwe = 0;
+    const currentUserIdStr = String(currentUserId);
+    const memberIdStr = String(memberId);
+
+    // Process expenses
+    if (Array.isArray(state.expenses)) {
+      state.expenses.forEach(expense => {
+        try {
+          if (!expense?.paidBy || !Array.isArray(expense?.splits)) return;
+          
+          const paidBy = expense.paidBy?._id || expense.paidBy?.id || expense.paidBy;
+          if (!paidBy) return;
+          
+          const paidByStr = String(paidBy);
+          
+          expense.splits.forEach(split => {
+            try {
+              if (!split?.user) return;
+              
+              const splitUserId = split.user?._id || split.user?.id || split.user;
+              if (!splitUserId) return;
+              
+              const splitUserIdStr = String(splitUserId);
+              const amount = Number(split.amount) || 0;
+              
+              if (paidByStr === memberIdStr && splitUserIdStr === currentUserIdStr) {
+                youOwe += amount;
+              }
+              
+              if (paidByStr === currentUserIdStr && splitUserIdStr === memberIdStr) {
+                theyOwe += amount;
+              }
+            } catch (err) {}
+          });
+        } catch (err) {}
+      });
+    }
+
+    // Process settlements
+    if (Array.isArray(state.settlements)) {
+      state.settlements.forEach(settlement => {
+        try {
+          if (!settlement?.from || !settlement?.to) return;
+          
+          const fromId = String(settlement.from?._id || settlement.from?.id || settlement.from);
+          const toId = String(settlement.to?._id || settlement.to?.id || settlement.to);
+          const amount = Number(settlement.amount) || 0;
+          
+          if (fromId === currentUserIdStr && toId === memberIdStr) {
+            youOwe -= amount;
+          }
+          
+          if (fromId === memberIdStr && toId === currentUserIdStr) {
+            theyOwe -= amount;
+          }
+        } catch (err) {}
+      });
+    }
+
+    const netBalance = theyOwe - youOwe;
+    personBalances.set(memberIdStr, netBalance);
+  });
+
+  // ✅ Step 2: Sum up only NET positive (you get) and NET negative (you owe)
+  let totalOwed = 0;   // Total you GET (positive balances)
+  let totalOwing = 0;  // Total you OWE (negative balances)
+
+  personBalances.forEach((netBalance) => {
+    if (netBalance > 0.01) {
+      totalOwed += netBalance;  // They owe you
+    } else if (netBalance < -0.01) {
+      totalOwing += Math.abs(netBalance);  // You owe them
+    }
+  });
+
+  const netBalance = totalOwed - totalOwing;
+
+  return {
+    netBalance,
+    totalOwed,
+    totalOwing
+  };
+},
+
   
   // Get summary for each group
   getGroupSummary: (groupId) => {

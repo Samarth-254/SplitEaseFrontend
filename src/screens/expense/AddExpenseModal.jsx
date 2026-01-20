@@ -71,12 +71,15 @@ export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, ex
         : users.filter(u => selectedGroupData.members.includes(u._id || u.id)))
     : [];
 
-  // Auto-select all members when group is preselected on mount
-  useEffect(() => {
-    if (preSelectedGroupId && groups.length > 0) {
+// ✅ Auto-select group when preSelectedGroupId is provided
+useEffect(() => {
+  if (isOpen && preSelectedGroupId && groups.length > 0) {
+    // Only set if not editing an expense
+    if (!expenseToEdit) {
       handleGroupChange(preSelectedGroupId);
     }
-  }, [preSelectedGroupId, groups.length]);
+  }
+}, [isOpen, preSelectedGroupId, groups.length, expenseToEdit]);
 
   // Populate form when editing
   useEffect(() => {
@@ -580,26 +583,33 @@ export const AddExpenseModal = ({ isOpen, onClose, preSelectedGroupId = null, ex
                   )}
 
                   {/* Group Select */}
-                  <div>
-                    <label className="text-sm text-neutral-400 mb-1.5 block">Group</label>
-                    <div className="relative">
-                      <select
-                        value={selectedGroup}
-                        onChange={(e) => handleGroupChange(e.target.value)}
-                        className="w-full bg-neutral-800 border border-neutral-700 rounded-xl py-3 pl-4 pr-10 text-white focus:outline-none focus:border-orange-500 transition-colors appearance-none cursor-pointer"
-                        required
-                        disabled={!!preSelectedGroupId}
-                      >
-                        <option value="">Select a group</option>
-                        {groups.map(group => (
-                          <option key={group._id || group.id} value={group._id || group.id}>
-                            {group.emoji} {group.name}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none" />
-                    </div>
-                  </div>
+                  {/* Group Select */}
+<div>
+  <label className="text-sm text-neutral-400 mb-1.5 block">Group</label>
+  <div className="relative">
+    <select
+      value={selectedGroup}
+      onChange={(e) => handleGroupChange(e.target.value)}
+      className={`w-full bg-neutral-800 border border-neutral-700 rounded-xl py-3 pl-4 text-white focus:outline-none focus:border-orange-500 transition-colors appearance-none ${
+        preSelectedGroupId ? 'cursor-not-allowed opacity-60 pr-4' : 'cursor-pointer pr-10'
+      }`}
+      required
+      disabled={!!preSelectedGroupId}
+    >
+      <option value="">Select a group</option>
+      {groups.map(group => (
+        <option key={group._id || group.id} value={group._id || group.id}>
+          {group.emoji} {group.name}
+        </option>
+      ))}
+    </select>
+    {/* ✅ Only show chevron if NOT preselected */}
+    {!preSelectedGroupId && (
+      <ChevronDown size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none" />
+    )}
+  </div>
+</div>
+
 
                   {/* Paid By */}
                   {selectedGroup && groupMembers.length > 0 && (

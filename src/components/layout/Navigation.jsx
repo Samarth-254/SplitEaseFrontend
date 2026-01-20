@@ -1,24 +1,10 @@
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Home, Users, Plus, Receipt, User, LogOut, UserPlus } from 'lucide-react';
 import { useStore } from '../../store/useStore';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Modal, Button } from '../ui';
 import { AddExpenseModal } from '../../screens/expense/AddExpenseModal';
-
-
-
-/**
- * Bottom Navigation
- * 
- * Mobile-first bottom navigation bar
- * - Large touch targets (48px min)
- * - Clear active states
- * - Safe area padding for notched devices
- * - FAB positioned in thumb zone (bottom-right)
- */
-
-
 
 const navItems = [
   { path: '/dashboard', icon: Home, label: 'Home' },
@@ -28,11 +14,15 @@ const navItems = [
   { path: '/profile', icon: User, label: 'Profile' },
 ];
 
-
-
 export const BottomNav = () => {
   const location = useLocation();
   const [showAddExpense, setShowAddExpense] = useState(false);
+  
+  // ✅ Extract groupId from URL if user is in a group
+  const currentGroupId = useMemo(() => {
+    const match = location.pathname.match(/^\/group\/([^/]+)/);
+    return match ? match[1] : null;
+  }, [location.pathname]);
   
   return (
     <>
@@ -56,7 +46,6 @@ export const BottomNav = () => {
         <Plus size={24} className="text-black" strokeWidth={2.5} />
       </button>
 
-
       <nav className="
         fixed bottom-0 left-0 right-0
         bg-primary-950/95 backdrop-blur-lg
@@ -69,7 +58,6 @@ export const BottomNav = () => {
           {navItems.map(({ path, icon: Icon, label }) => {
             const isActive = location.pathname === path ||
               (path === '/groups' && location.pathname.startsWith('/group/'));
-
 
             return (
               <NavLink
@@ -99,20 +87,16 @@ export const BottomNav = () => {
         </div>
       </nav>
       
-      {/* Add Expense Modal */}
+      {/* ✅ Add Expense Modal with auto-selected group */}
       <AddExpenseModal 
         isOpen={showAddExpense} 
-        onClose={() => setShowAddExpense(false)} 
+        onClose={() => setShowAddExpense(false)}
+        preSelectedGroupId={currentGroupId} // ✅ Auto-select current group
       />
     </>
   );
 };
 
-
-
-/**
- * Desktop Sidebar Navigation
- */
 export const Sidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -121,7 +105,11 @@ export const Sidebar = () => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showAddExpense, setShowAddExpense] = useState(false);
 
-
+  // ✅ Extract groupId from URL for sidebar too
+  const currentGroupId = useMemo(() => {
+    const match = location.pathname.match(/^\/group\/([^/]+)/);
+    return match ? match[1] : null;
+  }, [location.pathname]);
 
   const handleLogout = () => {
     logout();
@@ -134,8 +122,6 @@ export const Sidebar = () => {
     { path: '/friends', icon: UserPlus, label: 'Friends' },
     { path: '/activity', icon: Receipt, label: 'Activity' },
   ];
-
-
 
   return (
     <aside className="
@@ -159,18 +145,6 @@ export const Sidebar = () => {
           SplitEase
         </h1>
       </div>
-      
-      {/* Balance Summary */}
-      {/* <div className="p-4 mx-4 mt-4 rounded-xl bg-primary-900 border border-border">
-        <p className="text-xs text-neutral-500 uppercase tracking-wider mb-2">Your Balance</p>
-        <p className={`text-2xl font-bold ${balance.netBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-          {balance.netBalance >= 0 ? '+' : '-'}${Math.abs(balance.netBalance).toFixed(2)}
-        </p>
-        <div className="flex gap-4 mt-2 text-xs">
-          <span className="text-green-400">+${balance.totalOwed.toFixed(2)} owed</span>
-          <span className="text-red-400">-${balance.totalOwing.toFixed(2)} owing</span>
-        </div>
-      </div> */}
       
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-1">
@@ -199,23 +173,6 @@ export const Sidebar = () => {
             </NavLink>
           );
         })}
-        
-        {/* Add Expense Button */}
-        {/* <button
-          type="button"
-          onClick={() => setShowAddExpense(true)}
-          className="
-            flex items-center justify-center gap-2
-            mt-4 px-4 py-3
-            bg-secondary-500 hover:bg-secondary-600
-            text-black font-semibold
-            rounded-xl
-            transition-colors duration-200
-          "
-        >
-          <Plus size={20} />
-          Add Expense
-        </button> */}
       </nav>
       
       {/* User */}
@@ -255,8 +212,6 @@ export const Sidebar = () => {
         </div>
       </div>
 
-
-
       {/* Logout Confirmation Modal */}
       <Modal
         isOpen={showLogoutConfirm}
@@ -279,12 +234,11 @@ export const Sidebar = () => {
         </p>
       </Modal>
 
-
-
-      {/* Add Expense Modal */}
+      {/* ✅ Add Expense Modal with auto-selected group */}
       <AddExpenseModal 
         isOpen={showAddExpense} 
-        onClose={() => setShowAddExpense(false)} 
+        onClose={() => setShowAddExpense(false)}
+        preSelectedGroupId={currentGroupId} // ✅ Auto-select current group
       />
     </aside>
   );
