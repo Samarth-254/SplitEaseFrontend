@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion ,AnimatePresence } from 'framer-motion';
-import { Plus, TrendingUp, TrendingDown, ChevronRight, Users, Wallet, Calendar, UserPlus, Loader2, Download, X,Check  } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Plus, TrendingUp, TrendingDown, ChevronRight, Users, Wallet, Calendar, UserPlus, Download, X, Check } from 'lucide-react';
 import ReactGA from 'react-ga4';
 import { Screen } from '../../components/layout';
 import { Button, Card, Badge, EmptyState, Modal, Avatar } from '../../components/ui';
@@ -12,9 +12,12 @@ import { getCurrencySymbol } from '../../utils/currency';
 import { usePWAInstall } from '../../utils/usePWAInstall';
 import { InstallInstructionsModal } from '../../components/InstallInstructionsModal';
 import apiService from '../../services/api';
+import { DashboardSkeleton } from './DashboardSkeleton';
 
 export const DashboardScreen = () => {
   const navigate = useNavigate();
+  
+  // ✅ 1. ALL HOOKS FIRST - BEFORE ANY RETURNS
   const { 
     groups, 
     expenses, 
@@ -22,8 +25,8 @@ export const DashboardScreen = () => {
     getTotalBalance, 
     getGroupSummary, 
     currentUser, 
-    settleUp, 
-    getGroupBalances,
+    isLoadingGroups,  
+    isLoadingExpenses, 
     isInitialLoadComplete,
     loadGroups,
     loadGroupExpenses,
@@ -42,8 +45,8 @@ export const DashboardScreen = () => {
   const [successMessage, setSuccessMessage] = useState('');
   
   const { isInstallable, promptInstall, showInstructionsModal, closeInstructionsModal } = usePWAInstall();
-  const isDataLoading = !isInitialLoadComplete;
-  
+
+  // ✅ 2. ALL useMemo and useCallback hooks
   const balance = useMemo(() => getTotalBalance(), [expenses, settlements, currentUser]);
   
   const thisMonthExpenses = useMemo(() => {
@@ -83,8 +86,8 @@ export const DashboardScreen = () => {
     }, 0);
   }, [thisMonthExpenses, currentUser]);
 
-  // ✅ EXACT COPY from Friends: Calculate balance with a member
-  const calculateMemberBalance = (memberId) => {
+  // ✅ Define functions with useCallback
+  const calculateMemberBalance = useCallback((memberId) => {
     try {
       let youOwe = 0;
       let theyOwe = 0;
@@ -159,10 +162,9 @@ export const DashboardScreen = () => {
     } catch (error) {
       return 0;
     }
-  };
+  }, [expenses, settlements, currentUser]);
 
-  // ✅ EXACT COPY from Friends: Get groupwise breakdown
-  const getGroupWiseBreakdown = (memberId) => {
+  const getGroupWiseBreakdown = useCallback((memberId) => {
     const currentUserId = currentUser?.id || currentUser?._id;
     const groupMap = new Map();
     
@@ -171,7 +173,6 @@ export const DashboardScreen = () => {
     const currentUserIdStr = String(currentUserId);
     const memberIdStr = String(memberId);
     
-    // Process expenses
     if (Array.isArray(expenses)) {
       expenses.forEach(expense => {
         if (!expense?.splits || !Array.isArray(expense.splits)) return;
@@ -190,14 +191,12 @@ export const DashboardScreen = () => {
           const splitUserIdStr = String(splitUserId);
           const amount = Number(split.amount) || 0;
           
-          // Member paid and YOU have a split = you owe them (negative balance)
           if (paidByStr === memberIdStr && splitUserIdStr === currentUserIdStr) {
             const current = groupMap.get(groupId) || { balance: 0 };
             current.balance -= amount;
             groupMap.set(groupId, current);
           }
           
-          // YOU paid and MEMBER has a split = they owe you (positive balance)
           if (paidByStr === currentUserIdStr && splitUserIdStr === memberIdStr) {
             const current = groupMap.get(groupId) || { balance: 0 };
             current.balance += amount;
@@ -207,7 +206,6 @@ export const DashboardScreen = () => {
       });
     }
     
-    // Process settlements
     if (Array.isArray(settlements)) {
       settlements.forEach(settlement => {
         if (!settlement?.from || !settlement?.to) return;
@@ -218,14 +216,12 @@ export const DashboardScreen = () => {
         const toId = String(settlement.to?._id || settlement.to?.id || settlement.to);
         const amount = Number(settlement.amount) || 0;
         
-        // You paid the member
         if (fromId === currentUserIdStr && toId === memberIdStr) {
           const current = groupMap.get(groupId) || { balance: 0 };
           current.balance += amount;
           groupMap.set(groupId, current);
         }
         
-        // Member paid you
         if (fromId === memberIdStr && toId === currentUserIdStr) {
           const current = groupMap.get(groupId) || { balance: 0 };
           current.balance -= amount;
@@ -236,7 +232,7 @@ export const DashboardScreen = () => {
     
     const result = [];
     groupMap.forEach((data, groupId) => {
-      if (Math.abs(data.balance) < 0.01) return; // Skip settled groups
+      if (Math.abs(data.balance) < 0.01) return;
       
       const group = groups.find(g => String(g._id || g.id) === groupId);
       if (!group) return;
@@ -252,15 +248,8 @@ export const DashboardScreen = () => {
     result.sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance));
     
     return result;
-  };
+  }, [expenses, settlements, currentUser, groups]);
 
-  const showToast = (message) => {
-    setSuccessMessage(message);
-    setShowSuccessToast(true);
-    setTimeout(() => setShowSuccessToast(false), 3000);
-  };
-
-  // ✅ Build member list from all groups
   const allMembers = useMemo(() => {
     const memberMap = new Map();
     
@@ -270,7 +259,6 @@ export const DashboardScreen = () => {
         const memberId = member._id || member.id;
         const currentUserId = currentUser?._id || currentUser?.id;
         
-        // Skip current user
         if (String(memberId) === String(currentUserId)) return;
         
         if (!memberMap.has(memberId)) {
@@ -286,36 +274,45 @@ export const DashboardScreen = () => {
     return Array.from(memberMap.values());
   }, [groups, currentUser]);
 
-// ✅ Calculate debts with FULL breakdown stored
-const allDebts = useMemo(() => {
-  return allMembers
-    .map(member => {
-      const memberId = member._id || member.id;
-      const netBalance = calculateMemberBalance(memberId);
-      const fullGroupBreakdown = getGroupWiseBreakdown(memberId); // ALL groups
-      
-      // Filter only groups where you owe them (negative balance)
-      const groupsYouOwe = fullGroupBreakdown.filter(g => g.balance < 0);
-      
-      // Sort by amount descending
-      groupsYouOwe.sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance));
-      
-      return {
-        memberId,
-        memberName: member.name,
-        member,
-        netBalance,
-        fullGroupBreakdown, // Store ALL groups for modal
-        groupsYouOwe, // Only groups where you owe
-        totalAmount: Math.abs(netBalance),
-        primaryGroup: groupsYouOwe[0], // Largest debt group
-        additionalGroupsCount: fullGroupBreakdown.length - 1  // ✅ Count ALL groups
-      };
-    })
-    .filter(debt => debt.netBalance < -0.01) // Only show if NET you owe them
-    .sort((a, b) => b.totalAmount - a.totalAmount);
-}, [allMembers, expenses, settlements, currentUser, groups]);
+  const allDebts = useMemo(() => {
+    return allMembers
+      .map(member => {
+        const memberId = member._id || member.id;
+        const netBalance = calculateMemberBalance(memberId);
+        const fullGroupBreakdown = getGroupWiseBreakdown(memberId);
+        
+        const groupsYouOwe = fullGroupBreakdown.filter(g => g.balance < 0);
+        groupsYouOwe.sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance));
+        
+        return {
+          memberId,
+          memberName: member.name,
+          member,
+          netBalance,
+          fullGroupBreakdown,
+          groupsYouOwe,
+          totalAmount: Math.abs(netBalance),
+          primaryGroup: groupsYouOwe[0],
+          additionalGroupsCount: fullGroupBreakdown.length - 1
+        };
+      })
+      .filter(debt => debt.netBalance < -0.01)
+      .sort((a, b) => b.totalAmount - a.totalAmount);
+  }, [allMembers, calculateMemberBalance, getGroupWiseBreakdown]);
 
+  // ✅ 3. NOW CHECK LOADING - AFTER ALL HOOKS
+  if (isLoadingGroups || isLoadingExpenses) {
+    return <DashboardSkeleton />;
+  }
+
+  // ✅ 4. REGULAR VARIABLES AND FUNCTIONS (NON-HOOKS)
+  const isDataLoading = !isInitialLoadComplete;
+
+  const showToast = (message) => {
+    setSuccessMessage(message);
+    setShowSuccessToast(true);
+    setTimeout(() => setShowSuccessToast(false), 3000);
+  };
 
   const handleInstallClick = async () => {
     const result = await promptInstall('Dashboard Header');
@@ -347,13 +344,12 @@ const allDebts = useMemo(() => {
     });
   };
 
-  // ✅ EXACT COPY from Friends: Multi-group settlement
   const handleSettleUp = async () => {
     if (!selectedDebt) return;
 
     setIsSettling(true);
     try {
-      const groupBreakdown = selectedDebt.fullGroupBreakdown; // Use ALL groups
+      const groupBreakdown = selectedDebt.fullGroupBreakdown;
       
       if (groupBreakdown.length === 0) {
         showToast('No balances to settle');
@@ -678,7 +674,7 @@ const allDebts = useMemo(() => {
             )}
           </div>
 
-          {/* ✅ FIXED: You Owe */}
+          {/* You Owe */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-base sm:text-lg font-semibold text-neutral-100">You Owe</h2>
@@ -731,30 +727,29 @@ const allDebts = useMemo(() => {
                           </p>
                         </div>
                         
-{/* ✅ Show primary group + count */}
-<div className="flex items-center justify-between pt-2 border-t border-neutral-800">
-  {debt.primaryGroup && (
-    <div className="flex items-center gap-1.5 flex-1 min-w-0 mr-3">
-      <span className="text-xs text-neutral-500 truncate">
-        {debt.primaryGroup.groupEmoji} {debt.primaryGroup.groupName}
-        {debt.additionalGroupsCount > 0 && (
-          <span className="text-neutral-600">
-            {' '}and {debt.additionalGroupsCount} more {debt.additionalGroupsCount === 1 ? 'group' : 'groups'}
-          </span>
-        )}
-      </span>
-    </div>
-  )}
-  <button
-    onClick={(e) => {
-      e.stopPropagation();
-      handleSettleDebt(debt);
-    }}
-    className="text-xs sm:text-sm font-medium text-orange-400 hover:text-orange-300 underline transition-colors whitespace-nowrap flex-shrink-0"
-  >
-    Settle Up
-  </button>
-</div>
+                        <div className="flex items-center justify-between pt-2 border-t border-neutral-800">
+                          {debt.primaryGroup && (
+                            <div className="flex items-center gap-1.5 flex-1 min-w-0 mr-3">
+                              <span className="text-xs text-neutral-500 truncate">
+                                {debt.primaryGroup.groupEmoji} {debt.primaryGroup.groupName}
+                                {debt.additionalGroupsCount > 0 && (
+                                  <span className="text-neutral-600">
+                                    {' '}and {debt.additionalGroupsCount} more {debt.additionalGroupsCount === 1 ? 'group' : 'groups'}
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                          )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSettleDebt(debt);
+                            }}
+                            className="text-xs sm:text-sm font-medium text-orange-400 hover:text-orange-300 underline transition-colors whitespace-nowrap flex-shrink-0"
+                          >
+                            Settle Up
+                          </button>
+                        </div>
                       </div>
                     </Card>
                   </motion.div>
@@ -765,7 +760,7 @@ const allDebts = useMemo(() => {
         </motion.div>
       </motion.div>
 
-      {/* ✅ Group Breakdown Modal (Click debt card) */}
+      {/* Modals... rest remains the same */}
       {selectedDebtBreakdown && (
         <Modal
           isOpen={showGroupBreakdownModal}
@@ -804,7 +799,6 @@ const allDebts = useMemo(() => {
                 Balances by Group
               </h3>
               <div className="space-y-2">
-                {/* ✅ Show ALL groups (not just ones you owe) */}
                 {selectedDebtBreakdown.fullGroupBreakdown.map((group) => (
                   <Card 
                     key={group.groupId} 
@@ -835,7 +829,6 @@ const allDebts = useMemo(() => {
                 ))}
               </div>
 
-              {/* ✅ Action Button */}
               <div className="space-y-2 pt-4 mt-4 border-t border-neutral-700">
                 {selectedDebtBreakdown.netBalance < 0 ? (
                   <Button
@@ -870,7 +863,6 @@ const allDebts = useMemo(() => {
         </Modal>
       )}
 
-      {/* ✅ Settle Up Confirmation Modal (EXACT COPY from Friends) */}
       {selectedDebt && (
         <Modal
           isOpen={showSettleUpModal}
@@ -978,7 +970,6 @@ const allDebts = useMemo(() => {
         onClose={closeInstructionsModal} 
       />
 
-      {/* Success Toast */}
       <AnimatePresence>
         {showSuccessToast && (
           <motion.div

@@ -51,113 +51,125 @@ export const useStore = create((set, get) => ({
 },
   
   // Auth Actions
-  initializeAuth: async () => {
-    const token = localStorage.getItem('token');
-    
-    // Listen for unauthorized events from API
-    window.addEventListener('unauthorized', () => {
-      get().logout();
-      window.location.href = '/login';
-    });
-    
-    if (token) {
-      try {
-        apiService.setToken(token);
-        const { user } = await apiService.getMe();
-        
-        // ✅ CHANGED: Load data in parallel BEFORE setting user
-        await Promise.all([
-          get().loadGroups(),
-          get().loadAllExpenses(),
-          get().loadAllSettlements(),
-        ]);
-        get().loadFriends();
-        
-        // ✅ CHANGED: Set user AFTER data loaded
-        set({ 
-          currentUser: user, 
-          isAuthenticated: true,
-          isInitialLoadComplete: true 
-        });
-        
-        // Initialize socket connection
-        get().initializeSocket();
-        
-        // ✅ Initialize push notifications
-        await pushNotificationService.initialize();
-        
-      } catch (err) {
-        console.error('Auth initialization failed:', err);
-        localStorage.removeItem('token');
-        set({ 
-          currentUser: null, 
-          isAuthenticated: false,
-          isInitialLoadComplete: true
-        });
-      }
-    } else {
-      set({ isInitialLoadComplete: true });
-    }
-  },
-
-
-  setUser: async (user) => {
-    // Set user and clear old data
-    set({ 
-      currentUser: user, 
-      isAuthenticated: true,
-      users: [],
-      groups: [],
-      expenses: [],
-      settlements: [],
-      friends: [],
-      hasLoadedFriends: false,
-      isLoadingGroups: false,
-      isLoadingExpenses: false
-    });
-    
-    // Initialize socket connection
-    get().initializeSocket();
-    
-    // Load fresh data after login
+initializeAuth: async () => {
+  const token = localStorage.getItem('token');
+  
+  window.addEventListener('unauthorized', () => {
+    get().logout();
+    window.location.href = '/login';
+  });
+  
+  if (token) {
     try {
-      await get().loadGroups();
-      await get().loadAllExpenses();
-      await get().loadAllSettlements();
+      apiService.setToken(token);
+      const { user } = await apiService.getMe();
+      
+      // ✅ CLEAR OLD DATA FIRST
+      set({ 
+        currentUser: null,
+        isAuthenticated: false,
+        users: [],
+        groups: [],
+        expenses: [],
+        settlements: [],
+        friends: [],
+        hasLoadedFriends: false,
+      });
+      
+      // ✅ Load ALL data in parallel
+      await Promise.all([
+        get().loadGroups(),
+        get().loadAllExpenses(),
+        get().loadAllSettlements(),
+      ]);
       get().loadFriends();
+      
+      // ✅ Set user ONLY after data is loaded
+      set({ 
+        currentUser: user, 
+        isAuthenticated: true,
+        isInitialLoadComplete: true 
+      });
+      
+      // Initialize socket after everything is ready
+      get().initializeSocket();
+      await pushNotificationService.initialize();
+      
     } catch (err) {
-      console.error('Failed to load data after login:', err);
+      console.error('Auth initialization failed:', err);
+      localStorage.removeItem('token');
+      set({ 
+        currentUser: null, 
+        isAuthenticated: false,
+        isInitialLoadComplete: true
+      });
     }
-  },
+  } else {
+    set({ isInitialLoadComplete: true });
+  }
+},
+
+
+
+setUser: (user) => {
+  set({ 
+    currentUser: user, 
+    isAuthenticated: true,
+    isLoadingGroups: true,
+    isLoadingExpenses: true,
+    isInitialLoadComplete: true,  // ✅ SET THIS IMMEDIATELY
+  });
+  
+  get().loadGroups()
+    .then(() => {
+      get().initializeSocket();
+      return Promise.all([
+        get().loadAllExpenses(),
+        get().loadAllSettlements(),
+      ]);
+    })
+    .then(() => {
+      get().loadFriends();
+      set({ 
+        isLoadingGroups: false,
+        isLoadingExpenses: false,
+      });
+    })
+    .catch((err) => {
+      console.error('Failed to load data after login:', err);
+      set({ 
+        isLoadingGroups: false,
+        isLoadingExpenses: false,
+      });
+    });
+},
+
+
+
+
+
 
   
-  logout: () => {
-    apiService.clearToken();
-    // Disconnect socket
-    socketService.disconnect();
-    
-    // ✅ Stop push notification monitoring
-    pushNotificationService.stopSubscriptionMonitoring();
-    
-    // ✅ CHANGED: Clear ALL data including isInitialLoadComplete
-    set({ 
-      isAuthenticated: false, 
-      currentUser: null,
-      users: [],
-      groups: [],
-      expenses: [],
-      settlements: [],
-      friends: [],
-      hasLoadedFriends: false,
-      isLoadingGroups: false,
-      isLoadingExpenses: false,
-      // isInitialLoadComplete: false, // ✅ ADDED THIS
-    });
-  },
-
-
-  // ... REST OF YOUR CODE STAYS EXACTLY THE SAME ...
-  // (All other methods remain unchanged)
+logout: () => {
+  apiService.clearToken();
+  socketService.disconnect();
+  pushNotificationService.stopSubscriptionMonitoring();
+  
+  // ✅ Reset EVERYTHING including isInitialLoadComplete
+  set({ 
+    isAuthenticated: false, 
+    currentUser: null,
+    users: [],
+    groups: [],
+    expenses: [],
+    settlements: [],
+    friends: [],
+    hasLoadedFriends: false,
+    isLoadingGroups: false,
+    isLoadingExpenses: false,
+    isInitialLoadComplete: false,  // ✅ MUST RESET THIS
+  });
+},
 
 
   updateUser: (updatedUser) => {

@@ -4,7 +4,7 @@ class ApiService {
   constructor() {
     this.baseURL = API_URL;
     this.token = localStorage.getItem('token');
-    this.requestTimeout = 30000; // 30 seconds
+    this.requestTimeout = 30000;
   }
 
   setToken(token) {
@@ -21,7 +21,6 @@ class ApiService {
     localStorage.removeItem('token');
   }
 
-  // ✅ Helper to check if error is from notifications
   isNotificationError(endpoint) {
     const notificationEndpoints = [
       '/notifications',
@@ -32,7 +31,6 @@ class ApiService {
     return notificationEndpoints.some(path => endpoint.includes(path));
   }
 
-  // ✅ Request with timeout
   async fetchWithTimeout(url, options, timeout = this.requestTimeout) {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
@@ -71,7 +69,6 @@ class ApiService {
     try {
       const response = await this.fetchWithTimeout(`${this.baseURL}${endpoint}`, config);
       
-      // ✅ Handle empty responses (204 No Content, etc)
       const contentType = response.headers.get('content-type');
       let data;
       
@@ -84,32 +81,30 @@ class ApiService {
       }
 
       if (!response.ok) {
-        if (response.status === 401) {
-          // ✅ Don't logout for notification errors
+        // ✅ Check if this is a login/register attempt - don't logout for these
+        const isAuthAttempt = endpoint.includes('/login') || endpoint.includes('/register');
+        
+        if (response.status === 401 && !isAuthAttempt) {
           if (this.isNotificationError(endpoint)) {
             console.warn('⚠️ Notification error (non-critical):', data.message);
             throw new Error(data.message || 'Notification error');
           }
           
-          // Logout for real auth failures
           console.error('❌ Authentication failed, logging out');
           this.clearToken();
           window.dispatchEvent(new CustomEvent('unauthorized'));
         }
         
-        // ✅ Better error messages
         const errorMessage = data.message || data.error || `HTTP ${response.status}: ${response.statusText}`;
         throw new Error(errorMessage);
       }
 
       return data;
     } catch (error) {
-      // ✅ Network error handling
       if (error.message === 'Failed to fetch') {
         throw new Error('Network error - please check your internet connection');
       }
       
-      // ✅ Log non-critical notification errors
       if (this.isNotificationError(endpoint)) {
         console.warn('Notification request failed (non-critical):', error.message);
       }
@@ -144,7 +139,6 @@ class ApiService {
     });
   }
 
-  // ✅ Better file upload handling
   async uploadFile(endpoint, formData) {
     const headers = {};
     if (this.token) {
@@ -173,7 +167,6 @@ class ApiService {
     }
   }
 
-  // Auth
   async googleLogin(token) {
     return this.post('/api/auth/google-login', { token });
   }
@@ -190,7 +183,14 @@ class ApiService {
     return this.get('/api/auth/me');
   }
 
-  // Groups
+  async forgotPassword(email) {
+    return this.post('/api/auth/forgot-password', { email });
+  }
+
+  async resetPassword(token, password) {
+    return this.post(`/api/auth/reset-password/${token}`, { password });
+  }
+
   async createGroup(name, emoji) {
     return this.post('/api/groups', { name, emoji });
   }
@@ -223,7 +223,6 @@ class ApiService {
     return this.post(`/api/groups/${groupId}/add-friends`, { friendIds });
   }
 
-  // Expenses
   async addExpense(groupId, description, amount, splitType, splits, category, paidBy, currency) {
     return this.post('/api/expenses', { 
       groupId, 
@@ -257,7 +256,6 @@ class ApiService {
     return this.get(`/api/expenses/group/${groupId}/balances`);
   }
 
-  // Settlements
   async recordSettlement(groupId, fromUserId, toUserId, amount, note) {
     return this.post(`/api/groups/${groupId}/settlements`, { 
       from: fromUserId, 
@@ -283,7 +281,6 @@ class ApiService {
     });
   }
 
-  // Profile
   async updateProfile(formData) {
     if (formData instanceof FormData) {
       return this.uploadFile('/api/profile', formData);
@@ -295,7 +292,6 @@ class ApiService {
     return this.delete('/api/profile/image');
   }
 
-  // Friends
   async getFriends() {
     return this.get('/api/friends');
   }

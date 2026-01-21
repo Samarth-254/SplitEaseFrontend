@@ -1,35 +1,24 @@
 const SibApiV3Sdk = require("@getbrevo/brevo");
 
-/**
- * Build expense notification email HTML
- * Design: Orange Accents, Centered Branding, Clean Layout
- */
 const buildExpenseEmail = (data) => {
-  // Destructure with default for groupName to prevent "undefined"
   const { type, expense, balance, paidBy, amount, yourShare, settleLink, groupName = 'your group' } = data;
 
-  // --- Assets & Colors ---
   const logoUrl = "https://res.cloudinary.com/dsp0zmfcx/image/upload/v1768331606/icon-512_g9hfoe.png";
   
   const colors = {
-    bg: '#F3F4F6',          // Light gray page background
-    card: '#FFFFFF',        // White card background
-    textMain: '#111827',    // Deep charcoal
-    textMuted: '#6B7280',   // Muted gray
-    border: '#E5E7EB',      // Light borders
-    
-    // UPDATED: Orange Button
-    buttonBg: '#F97316',    
+    bg: '#F3F4F6',
+    card: '#FFFFFF',
+    textMain: '#111827',
+    textMuted: '#6B7280',
+    border: '#E5E7EB',
+    buttonBg: '#F97316',
     buttonText: '#FFFFFF',
-
-    // Status Colors
-    settleBg: '#ECFDF5',    // Mint background for settlements
-    settleText: '#047857',  // Emerald text
-    expenseBg: '#FFF7ED',   // Very light orange/red background for debt
-    expenseText: '#C2410C', // Dark Orange/Red text
+    settleBg: '#ECFDF5',
+    settleText: '#047857',
+    expenseBg: '#FFF7ED',
+    expenseText: '#C2410C',
   };
 
-  // --- Shared Layout Wrapper ---
   const wrapHtml = (content, previewText) => `
     <!DOCTYPE html>
     <html lang="en">
@@ -41,7 +30,6 @@ const buildExpenseEmail = (data) => {
         body { margin: 0; padding: 0; background-color: ${colors.bg}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
         .wrapper { width: 100%; table-layout: fixed; background-color: ${colors.bg}; padding-bottom: 40px; }
         .main-table { background-color: ${colors.card}; margin: 0 auto; width: 100%; max-width: 500px; border-radius: 12px; border: 1px solid ${colors.border}; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
-        /* Added !important and color explicitly to override email client defaults */
         .button { display: inline-block; background-color: ${colors.buttonBg}; color: ${colors.buttonText} !important; text-decoration: none; padding: 12px 32px; border-radius: 6px; font-weight: 600; font-size: 16px; text-align: center; box-sizing: border-box; }
         .logo-img { display: block; border: 0; outline: none; text-decoration: none; }
         @media only screen and (max-width: 600px) {
@@ -57,17 +45,14 @@ const buildExpenseEmail = (data) => {
       </div>
       <center class="wrapper">
         <table class="main-table" align="center" border="0" cellpadding="0" cellspacing="0" style="margin-top: 30px;">
-          
           <tr>
             <td style="padding: 32px 0 0; text-align: center;">
-              <!-- UPDATED: Nested table to align Logo and Text in the same row -->
               <table align="center" border="0" cellpadding="0" cellspacing="0" style="display: inline-table;">
                 <tr>
                   <td valign="middle" style="padding-right: 12px;">
                     <img src="${logoUrl}" alt="SplitEase" width="48" height="48" class="logo-img" style="border-radius: 8px;">
                   </td>
                   <td valign="middle">
-                    <!-- Increased font size to 24px -->
                     <span style="font-size: 24px; font-weight: 700; color: ${colors.textMain}; letter-spacing: -0.5px;">SplitEase</span>
                   </td>
                 </tr>
@@ -98,84 +83,76 @@ const buildExpenseEmail = (data) => {
     </html>
   `;
 
- // --- 1. Expense Added (You Owe) --- 
-if (type === 'you_owe') {
-  const content = `
-    <tr>
-      <td class="content-cell" style="padding: 32px 40px 40px;">
-        <h1 style="margin: 0 0 8px; font-size: 22px; font-weight: 700; color: ${colors.textMain}; text-align: center;">
-          New Expense
-        </h1>
-        <p style="margin: 0 0 32px; font-size: 15px; color: ${colors.textMuted}; text-align: center;">
-          Added by <strong>${paidBy.name || paidBy}</strong> in <strong>${groupName}</strong>
-        </p>
+  if (type === 'you_owe') {
+    const content = `
+      <tr>
+        <td class="content-cell" style="padding: 32px 40px 40px;">
+          <h1 style="margin: 0 0 8px; font-size: 22px; font-weight: 700; color: ${colors.textMain}; text-align: center;">
+            New Expense
+          </h1>
+          <p style="margin: 0 0 32px; font-size: 15px; color: ${colors.textMuted}; text-align: center;">
+            Added by <strong>${paidBy.name || paidBy}</strong> in <strong>${groupName}</strong>
+          </p>
 
-        <!-- FIXED: Description LEFT + Amount EXTREME RIGHT - SINGLE ROW -->
-        <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #FFFFFF; border: 1px solid ${colors.border}; border-radius: 8px; overflow: hidden; margin-bottom: 24px;">
-          <tr>
-            <td style="padding: 20px; background-color: #FAFAFA;">
-              <table width="100%" border="0" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td width="65%" valign="middle">
-                    <!-- Expense description LEFT aligned -->
-                    <div style="font-size: 15px; font-weight: 600; color: ${colors.textMain};">
-                      ${expense?.description || 'Expense'}
-                    </div>
-                  </td>
-                  <td width="35%" align="right" valign="middle">
-                    <!-- Amount EXTREME RIGHT -->
-                    <div style="font-size: 15px; font-weight: 600; color: ${colors.textMuted};">
-                      ₹${(expense?.amount || 0).toFixed(2)}
-                    </div>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 20px; background-color: ${colors.expenseBg};">
-              <table width="100%" border="0" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td>
-                    <div style="font-size: 12px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; color: ${colors.expenseText};">
-                      Your Share
-                    </div>
-                  </td>
-                  <td align="right">
-                    <span style="font-size: 20px; font-weight: 700; color: ${colors.expenseText};">
-                      ₹${yourShare.toFixed(2)}
-                    </span>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-        </table>
+          <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #FFFFFF; border: 1px solid ${colors.border}; border-radius: 8px; overflow: hidden; margin-bottom: 24px;">
+            <tr>
+              <td style="padding: 20px; background-color: #FAFAFA;">
+                <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td width="65%" valign="middle">
+                      <div style="font-size: 15px; font-weight: 600; color: ${colors.textMain};">
+                        ${expense?.description || 'Expense'}
+                      </div>
+                    </td>
+                    <td width="35%" align="right" valign="middle">
+                      <div style="font-size: 15px; font-weight: 600; color: ${colors.textMuted};">
+                        ₹${(expense?.amount || 0).toFixed(2)}
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 20px; background-color: ${colors.expenseBg};">
+                <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td>
+                      <div style="font-size: 12px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; color: ${colors.expenseText};">
+                        Your Share
+                      </div>
+                    </td>
+                    <td align="right">
+                      <span style="font-size: 20px; font-weight: 700; color: ${colors.expenseText};">
+                        ₹${yourShare.toFixed(2)}
+                      </span>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
 
-        <table width="100%" border="0" cellpadding="0" cellspacing="0">
-          <tr>
-            <td align="center">
-              <a href="${settleLink}" class="button" style="color: #FFFFFF !important;">View Details</a>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  `;
-  return {
-    subject: `New expense: ${expense?.description}`,
-    html: wrapHtml(content, `Your share is ₹${yourShare.toFixed(2)}`)
-  };
-}
+          <table width="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td align="center">
+                <a href="${settleLink}" class="button" style="color: #FFFFFF !important;">View Details</a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    `;
+    return {
+      subject: `New expense: ${expense?.description}`,
+      html: wrapHtml(content, `Your share is ₹${yourShare.toFixed(2)}`)
+    };
+  }
 
-
-
-  // --- 2. Settlement Recorded ---
   if (type === 'settlement_received') {
     const content = `
       <tr>
         <td class="content-cell" style="padding: 40px 40px 40px;">
-          
           <h1 style="margin: 0 0 16px; font-size: 24px; font-weight: 700; color: ${colors.textMain}; text-align: center;">
             Settlement Recorded
           </h1>
@@ -202,7 +179,6 @@ if (type === 'you_owe') {
           <table width="100%" border="0" cellpadding="0" cellspacing="0">
             <tr>
               <td align="center">
-                <!-- Added inline style color: #FFFFFF -->
                 <a href="${settleLink}" class="button" style="color: #FFFFFF !important;">Check Balance</a>
               </td>
             </tr>
@@ -216,7 +192,6 @@ if (type === 'you_owe') {
     };
   }
 
-  // --- 3. Batch Digest ---
   if (type === 'batched') {
     const expenseRows = data.expenses.slice(0, 5).map((exp, index) => `
       <tr>
@@ -246,7 +221,7 @@ if (type === 'you_owe') {
       <tr>
         <td class="content-cell" style="padding: 32px 40px 40px;">
           <div style="text-align: center; margin-bottom: 24px;">
-             <h1 style="margin: 0 0 4px; font-size: 22px; font-weight: 700; color: ${colors.textMain};">
+            <h1 style="margin: 0 0 4px; font-size: 22px; font-weight: 700; color: ${colors.textMain};">
               Group Activity
             </h1>
             <p style="margin: 0; font-size: 15px; color: ${colors.textMuted};">
@@ -259,22 +234,20 @@ if (type === 'you_owe') {
           </table>
 
           <div style="background-color: #FAFAFA; padding: 12px; border-radius: 6px; text-align: center; margin-bottom: 24px; border: 1px dashed ${colors.border};">
-             <span style="font-size: 14px; color: ${colors.textMuted};">
-               Net Balance: <strong style="color: ${balance > 0 ? colors.settleText : colors.expenseText}">
-                 ${balance > 0 ? '+' : ''}₹${balance.toFixed(2)}
-               </strong>
-             </span>
-           </div>
+            <span style="font-size: 14px; color: ${colors.textMuted};">
+              Net Balance: <strong style="color: ${balance > 0 ? colors.settleText : colors.expenseText}">
+                ${balance > 0 ? '+' : ''}₹${balance.toFixed(2)}
+              </strong>
+            </span>
+          </div>
 
           <table width="100%" border="0" cellpadding="0" cellspacing="0">
             <tr>
               <td align="center">
-                <!-- Added inline style color: #FFFFFF -->
                 <a href="${settleLink}" class="button" style="color: #FFFFFF !important;">View All</a>
               </td>
             </tr>
           </table>
-
         </td>
       </tr>
     `;
@@ -285,13 +258,64 @@ if (type === 'you_owe') {
     };
   }
 
+  if (type === 'password_reset') {
+    const content = `
+      <tr>
+        <td class="content-cell" style="padding: 40px 40px 40px;">
+          <h1 style="margin: 0 0 16px; font-size: 24px; font-weight: 700; color: ${colors.textMain}; text-align: center;">
+            Password Reset Request
+          </h1>
+          
+          <p style="margin: 0 0 24px; font-size: 15px; color: ${colors.textMuted}; text-align: center; line-height: 1.6;">
+            Hi <strong>${data.name}</strong>,
+          </p>
+
+          <p style="margin: 0 0 32px; font-size: 15px; color: ${colors.textMuted}; text-align: center; line-height: 1.6;">
+            You requested to reset your password. Click the button below to create a new password:
+          </p>
+
+          <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 32px;">
+            <tr>
+              <td align="center">
+                <a href="${data.resetUrl}" class="button" style="color: #FFFFFF !important;">Reset Password</a>
+              </td>
+            </tr>
+          </table>
+
+          <div style="background-color: #FFF7ED; padding: 16px; border-radius: 8px; border: 1px solid #FDBA74; margin-bottom: 24px;">
+            <p style="margin: 0; font-size: 13px; color: #C2410C; text-align: center; font-weight: 600;">
+              ⏱ This link will expire in 1 hour
+            </p>
+          </div>
+
+          <p style="margin: 0 0 16px; font-size: 13px; color: ${colors.textMuted}; text-align: center; line-height: 1.6;">
+            Or copy and paste this link into your browser:
+          </p>
+
+          <div style="background-color: #FAFAFA; padding: 12px; border-radius: 6px; border: 1px dashed ${colors.border}; margin-bottom: 24px; word-break: break-all;">
+            <p style="margin: 0; font-size: 12px; color: ${colors.textMuted}; text-align: center;">
+              ${data.resetUrl}
+            </p>
+          </div>
+
+          <p style="margin: 0; font-size: 13px; color: ${colors.textMuted}; text-align: center; line-height: 1.6;">
+            If you didn't request this password reset, please ignore this email or contact support if you have concerns.
+          </p>
+        </td>
+      </tr>
+    `;
+    return {
+      subject: 'Password Reset Request - SplitEase',
+      html: wrapHtml(content, 'Reset your SplitEase password')
+    };
+  }
+
   return {
     subject: 'SplitEase Notification',
     html: wrapHtml(`<tr><td style="padding:40px; text-align:center;">Check app for details</td></tr>`, 'New notification')
   };
 };
 
-// Rest of the functions remain exactly the same
 const sendExpenseNotification = async (email, data) => {
   try {
     if (!process.env.BREVO_API_KEY) {
@@ -306,7 +330,7 @@ const sendExpenseNotification = async (email, data) => {
 
     const emailContent = buildExpenseEmail(data);
 
-    console.log(`📧 Sending expense notification to ${email.substring(0, 3)}***@${email.split('@')[1]}`);
+    console.log(`📧 Sending notification to ${email.substring(0, 3)}***@${email.split('@')[1]}`);
 
     let apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
     apiInstance.setApiKey(SibApiV3Sdk.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY);
@@ -326,6 +350,14 @@ const sendExpenseNotification = async (email, data) => {
     console.error('❌ Email send failed:', error.response?.body || error.message || error);
     return false;
   }
+};
+
+const sendPasswordResetEmail = async (email, name, resetUrl) => {
+  return sendExpenseNotification(email, {
+    type: 'password_reset',
+    name,
+    resetUrl
+  });
 };
 
 const sendBulkEmailNotifications = async (notifications) => {
@@ -375,6 +407,7 @@ const testConnection = async () => {
 
 module.exports = {
   sendExpenseNotification,
+  sendPasswordResetEmail,
   sendBulkEmailNotifications,
   testConnection
 };
