@@ -23,7 +23,7 @@ import { InstallPrompt } from './components/InstallPrompt';
 import { usePWAInstall } from './utils/usePWAInstall';
 import pushNotificationService from './services/pushNotification';
 import { InstallInstructionsModal } from './components/InstallInstructionsModal';
-
+import { ResetPasswordScreen } from './screens/auth';
 const RouteChangeTracker = () => {
   const location = useLocation();
 
@@ -240,6 +240,14 @@ function App() {
               </PublicRoute>
             } 
           />
+          <Route 
+  path="/reset-password/:token" 
+  element={
+    <PublicRoute>
+      <ResetPasswordScreen />
+    </PublicRoute>
+  } 
+/>
           
           <Route 
             path="/dashboard" 
