@@ -62,36 +62,86 @@ initializeAuth: async () => {
   if (token) {
     try {
       apiService.setToken(token);
+      
+      // ✅ Show loading state immediately
+      set({ 
+        isInitialLoadComplete: false,
+        isLoadingGroups: true,
+        isLoadingExpenses: true,
+      });
+      
+      // 1. Fetch user first
       const { user } = await apiService.getMe();
       
-      // ✅ CLEAR OLD DATA FIRST
-      set({ 
-        currentUser: null,
-        isAuthenticated: false,
-        users: [],
-        groups: [],
-        expenses: [],
-        settlements: [],
-        friends: [],
-        hasLoadedFriends: false,
-      });
+      // 2. Fetch groups
+      const groups = await apiService.getGroups();
       
-      // ✅ Load ALL data in parallel
-      await Promise.all([
-        get().loadGroups(),
-        get().loadAllExpenses(),
-        get().loadAllSettlements(),
+      // 3. Fetch all expenses and settlements in parallel
+      const expensesPromises = groups.map(g => 
+        apiService.getGroupExpenses(g._id || g.id).catch(err => {
+          console.error(`Failed to load expenses for group ${g._id || g.id}:`, err);
+          return [];
+        })
+      );
+      
+      const settlementsPromises = groups.map(g => 
+        apiService.getGroupSettlements(g._id || g.id).catch(err => {
+          console.error(`Failed to load settlements for group ${g._id || g.id}:`, err);
+          return [];
+        })
+      );
+      
+      const [expensesArrays, settlementsArrays] = await Promise.all([
+        Promise.all(expensesPromises),
+        Promise.all(settlementsPromises),
       ]);
-      get().loadFriends();
       
-      // ✅ Set user ONLY after data is loaded
-      set({ 
-        currentUser: user, 
-        isAuthenticated: true,
-        isInitialLoadComplete: true 
+      const allExpenses = expensesArrays.flat();
+      const allSettlements = settlementsArrays.flat();
+      
+      // 4. Calculate friends from groups
+      const friendsMap = new Map();
+      const currentUserId = String(user._id || user.id);
+      
+      groups.forEach(group => {
+        if (!group.members || !Array.isArray(group.members)) return;
+        
+        group.members.forEach(member => {
+          if (!member) return;
+          const memberId = member._id || member.id;
+          const memberIdStr = String(memberId);
+          
+          if (memberIdStr !== currentUserId && !friendsMap.has(memberIdStr)) {
+            friendsMap.set(memberIdStr, {
+              _id: member._id || member.id,
+              id: member.id || member._id,
+              name: member.name,
+              email: member.email,
+              profileImage: member.profileImage,
+              mobile: member.mobile,
+              gender: member.gender
+            });
+          }
+        });
       });
       
-      // Initialize socket after everything is ready
+      const friends = Array.from(friendsMap.values());
+      
+      // ✅ ATOMIC UPDATE - Set everything at once
+      set({ 
+        currentUser: user,
+        isAuthenticated: true,
+        groups,
+        expenses: allExpenses,
+        settlements: allSettlements,
+        friends,
+        hasLoadedFriends: true,
+        isInitialLoadComplete: true,
+        isLoadingGroups: false,
+        isLoadingExpenses: false,
+      });
+      
+      // Initialize socket AFTER data is ready
       get().initializeSocket();
       await pushNotificationService.initialize();
       
@@ -101,7 +151,9 @@ initializeAuth: async () => {
       set({ 
         currentUser: null, 
         isAuthenticated: false,
-        isInitialLoadComplete: true
+        isInitialLoadComplete: true,
+        isLoadingGroups: false,
+        isLoadingExpenses: false,
       });
     }
   } else {
@@ -111,38 +163,88 @@ initializeAuth: async () => {
 
 
 
-setUser: (user) => {
-  set({ 
-    currentUser: user, 
-    isAuthenticated: true,
-    isLoadingGroups: true,
-    isLoadingExpenses: true,
-    isInitialLoadComplete: true,  // ✅ SET THIS IMMEDIATELY
-  });
-  
-  get().loadGroups()
-    .then(() => {
-      get().initializeSocket();
-      return Promise.all([
-        get().loadAllExpenses(),
-        get().loadAllSettlements(),
-      ]);
-    })
-    .then(() => {
-      get().loadFriends();
-      set({ 
-        isLoadingGroups: false,
-        isLoadingExpenses: false,
-      });
-    })
-    .catch((err) => {
-      console.error('Failed to load data after login:', err);
-      set({ 
-        isLoadingGroups: false,
-        isLoadingExpenses: false,
+
+setUser: async (user) => {
+  try {
+    // ✅ Show loading immediately
+    set({ 
+      isInitialLoadComplete: false,
+      isLoadingGroups: true,
+      isLoadingExpenses: true,
+    });
+    
+    // 1. Load groups
+    const groups = await apiService.getGroups();
+    
+    // 2. Load all expenses and settlements
+    const expensesPromises = groups.map(g => 
+      apiService.getGroupExpenses(g._id || g.id).catch(() => [])
+    );
+    const settlementsPromises = groups.map(g => 
+      apiService.getGroupSettlements(g._id || g.id).catch(() => [])
+    );
+    
+    const [expensesArrays, settlementsArrays] = await Promise.all([
+      Promise.all(expensesPromises),
+      Promise.all(settlementsPromises),
+    ]);
+    
+    const allExpenses = expensesArrays.flat();
+    const allSettlements = settlementsArrays.flat();
+    
+    // 3. Calculate friends
+    const friendsMap = new Map();
+    const currentUserId = String(user._id || user.id);
+    
+    groups.forEach(group => {
+      (group.members || []).forEach(member => {
+        if (!member) return;
+        const memberId = String(member._id || member.id);
+        
+        if (memberId !== currentUserId && !friendsMap.has(memberId)) {
+          friendsMap.set(memberId, {
+            _id: member._id || member.id,
+            id: member.id || member._id,
+            name: member.name,
+            email: member.email,
+            profileImage: member.profileImage,
+            mobile: member.mobile,
+            gender: member.gender
+          });
+        }
       });
     });
+    
+    const friends = Array.from(friendsMap.values());
+    
+    // ✅ Set everything atomically
+    set({ 
+      currentUser: user,
+      isAuthenticated: true,
+      groups,
+      expenses: allExpenses,
+      settlements: allSettlements,
+      friends,
+      hasLoadedFriends: true,
+      isInitialLoadComplete: true,
+      isLoadingGroups: false,
+      isLoadingExpenses: false,
+    });
+    
+    // Initialize socket after data is ready
+    get().initializeSocket();
+    await pushNotificationService.initialize();
+    
+  } catch (err) {
+    console.error('Failed to load data after login:', err);
+    set({ 
+      isInitialLoadComplete: true,
+      isLoadingGroups: false,
+      isLoadingExpenses: false,
+    });
+  }
 },
+
 
 
 

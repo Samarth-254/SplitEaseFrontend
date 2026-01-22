@@ -86,7 +86,6 @@ export const DashboardScreen = () => {
     }, 0);
   }, [thisMonthExpenses, currentUser]);
 
-  // ✅ Define functions with useCallback
   const calculateMemberBalance = useCallback((memberId) => {
     try {
       let youOwe = 0;
@@ -300,14 +299,14 @@ export const DashboardScreen = () => {
       .sort((a, b) => b.totalAmount - a.totalAmount);
   }, [allMembers, calculateMemberBalance, getGroupWiseBreakdown]);
 
-  // ✅ 3. NOW CHECK LOADING - AFTER ALL HOOKS
-  if (isLoadingGroups || isLoadingExpenses) {
+  // ✅ 3. CRITICAL FIX: Check loading state BEFORE rendering content
+  const isLoading = !isInitialLoadComplete || isLoadingGroups || isLoadingExpenses;
+  
+  if (isLoading) {
     return <DashboardSkeleton />;
   }
 
-  // ✅ 4. REGULAR VARIABLES AND FUNCTIONS (NON-HOOKS)
-  const isDataLoading = !isInitialLoadComplete;
-
+  // ✅ 4. REGULAR FUNCTIONS (NON-HOOKS)
   const showToast = (message) => {
     setSuccessMessage(message);
     setShowSuccessToast(true);
@@ -498,7 +497,7 @@ export const DashboardScreen = () => {
           </div>
         </motion.div>
 
-        {/* Stats Grid */}
+        {/* ✅ Stats Grid - NO MORE CONDITIONAL SKELETON RENDERING */}
         <motion.div variants={itemVariants} className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {/* Net Balance */}
           <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-3 sm:p-6 hover:border-neutral-700 transition-all duration-300">
@@ -509,19 +508,10 @@ export const DashboardScreen = () => {
               <span className="text-[10px] sm:text-xs text-neutral-500 font-medium">NET</span>
             </div>
             <div>
-              {isDataLoading ? (
-                <>
-                  <div className="h-8 sm:h-10 bg-neutral-800 rounded-lg mb-2 animate-pulse"></div>
-                  <div className="h-3 sm:h-4 w-20 bg-neutral-800 rounded animate-pulse"></div>
-                </>
-              ) : (
-                <>
-                  <p className={`text-xl sm:text-3xl font-bold mb-0.5 sm:mb-1 ${balance.netBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {balance.netBalance >= 0 ? '+' : ''}{getCurrencySymbol('INR')}{balance.netBalance.toFixed(0)}
-                  </p>
-                  <p className="text-neutral-400 text-xs sm:text-sm">Net Balance</p>
-                </>
-              )}
+              <p className={`text-xl sm:text-3xl font-bold mb-0.5 sm:mb-1 ${balance.netBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {balance.netBalance >= 0 ? '+' : ''}{getCurrencySymbol('INR')}{balance.netBalance.toFixed(0)}
+              </p>
+              <p className="text-neutral-400 text-xs sm:text-sm">Net Balance</p>
             </div>
           </div>
           
@@ -534,19 +524,10 @@ export const DashboardScreen = () => {
               <span className="text-[10px] sm:text-xs text-neutral-500 font-medium">YOU GET</span>
             </div>
             <div>
-              {isDataLoading ? (
-                <>
-                  <div className="h-8 sm:h-10 bg-neutral-800 rounded-lg mb-2 animate-pulse"></div>
-                  <div className="h-3 sm:h-4 w-20 bg-neutral-800 rounded animate-pulse"></div>
-                </>
-              ) : (
-                <>
-                  <p className="text-xl sm:text-3xl font-bold text-green-400 mb-0.5 sm:mb-1">
-                    {getCurrencySymbol('INR')}{balance.totalOwed.toFixed(0)}
-                  </p>
-                  <p className="text-neutral-400 text-xs sm:text-sm">Total Owed</p>
-                </>
-              )}
+              <p className="text-xl sm:text-3xl font-bold text-green-400 mb-0.5 sm:mb-1">
+                {getCurrencySymbol('INR')}{balance.totalOwed.toFixed(0)}
+              </p>
+              <p className="text-neutral-400 text-xs sm:text-sm">Total Owed</p>
             </div>
           </div>
           
@@ -559,19 +540,10 @@ export const DashboardScreen = () => {
               <span className="text-[10px] sm:text-xs text-neutral-500 font-medium">YOU OWE</span>
             </div>
             <div>
-              {isDataLoading ? (
-                <>
-                  <div className="h-8 sm:h-10 bg-neutral-800 rounded-lg mb-2 animate-pulse"></div>
-                  <div className="h-3 sm:h-4 w-20 bg-neutral-800 rounded animate-pulse"></div>
-                </>
-              ) : (
-                <>
-                  <p className="text-xl sm:text-3xl font-bold text-red-400 mb-0.5 sm:mb-1">
-                    {getCurrencySymbol('INR')}{balance.totalOwing.toFixed(0)}
-                  </p>
-                  <p className="text-neutral-400 text-xs sm:text-sm">Total Owing</p>
-                </>
-              )}
+              <p className="text-xl sm:text-3xl font-bold text-red-400 mb-0.5 sm:mb-1">
+                {getCurrencySymbol('INR')}{balance.totalOwing.toFixed(0)}
+              </p>
+              <p className="text-neutral-400 text-xs sm:text-sm">Total Owing</p>
             </div>
           </div>
           
@@ -584,19 +556,10 @@ export const DashboardScreen = () => {
               <span className="text-[10px] sm:text-xs text-neutral-500 font-medium">MONTH</span>
             </div>
             <div>
-              {isDataLoading ? (
-                <>
-                  <div className="h-8 sm:h-10 bg-neutral-800 rounded-lg mb-2 animate-pulse"></div>
-                  <div className="h-3 sm:h-4 w-20 bg-neutral-800 rounded animate-pulse"></div>
-                </>
-              ) : (
-                <>
-                  <p className="text-xl sm:text-3xl font-bold text-neutral-100 mb-0.5 sm:mb-1">
-                    {getCurrencySymbol('INR')}{Math.abs(thisMonthTotal).toFixed(0)}
-                  </p>
-                  <p className="text-neutral-400 text-xs sm:text-sm">Net This Month</p>
-                </>
-              )}
+              <p className="text-xl sm:text-3xl font-bold text-neutral-100 mb-0.5 sm:mb-1">
+                {getCurrencySymbol('INR')}{Math.abs(thisMonthTotal).toFixed(0)}
+              </p>
+              <p className="text-neutral-400 text-xs sm:text-sm">Net This Month</p>
             </div>
           </div>
         </motion.div>
@@ -760,7 +723,7 @@ export const DashboardScreen = () => {
         </motion.div>
       </motion.div>
 
-      {/* Modals... rest remains the same */}
+      {/* Modals */}
       {selectedDebtBreakdown && (
         <Modal
           isOpen={showGroupBreakdownModal}
@@ -976,12 +939,10 @@ export const DashboardScreen = () => {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
-            className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50"
+            className="fixed bottom-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 z-50"
           >
-            <div className="bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3">
-              <Check size={20} />
-              <span className="font-medium">{successMessage}</span>
-            </div>
+            <Check size={20} />
+            <span>{successMessage}</span>
           </motion.div>
         )}
       </AnimatePresence>
