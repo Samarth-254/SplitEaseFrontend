@@ -21,9 +21,85 @@ import { Button, Card, Avatar, Modal } from '../../components/ui';
 import { useStore } from '../../store/useStore';
 import pushNotificationService from '../../services/pushNotification';
 
+/**
+ * Profile Screen - Complete with Skeleton Loading
+ */
+
+// ✅ SKELETON LOADER COMPONENT
+const ProfileSkeletonLoader = () => {
+  return (
+    <Screen>
+      <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+        {/* Profile Header Skeleton */}
+        <div className="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden">
+          <div className="pt-8 pb-6 text-center">
+            <div className="w-28 h-28 rounded-full bg-neutral-800 animate-pulse mx-auto mb-4 border-4 border-primary-800"></div>
+            <div className="h-7 w-40 bg-neutral-800 rounded-lg animate-pulse mx-auto mb-2"></div>
+            <div className="h-4 w-48 bg-neutral-800 rounded animate-pulse mx-auto"></div>
+          </div>
+        </div>
+
+        {/* Personal Information Section Skeleton */}
+        <div>
+          <div className="h-4 w-40 bg-neutral-800 rounded animate-pulse mb-3"></div>
+          <div className="bg-neutral-900 border border-neutral-800 rounded-xl divide-y divide-neutral-800">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="p-4">
+                <div className="h-3 w-24 bg-neutral-800 rounded animate-pulse mb-3"></div>
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 bg-neutral-800 rounded animate-pulse"></div>
+                  <div className="h-5 w-32 bg-neutral-800 rounded animate-pulse"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Notifications Section Skeleton */}
+        <div>
+          <div className="h-4 w-32 bg-neutral-800 rounded animate-pulse mb-3"></div>
+          <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-neutral-800 rounded-lg animate-pulse"></div>
+                <div className="space-y-2">
+                  <div className="h-4 w-32 bg-neutral-800 rounded animate-pulse"></div>
+                  <div className="h-3 w-40 bg-neutral-800 rounded animate-pulse"></div>
+                </div>
+              </div>
+              <div className="w-12 h-7 bg-neutral-800 rounded-full animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Account Actions Skeleton */}
+        <div>
+          <div className="h-4 w-24 bg-neutral-800 rounded animate-pulse mb-3"></div>
+          <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-neutral-800 rounded-lg animate-pulse"></div>
+                <div className="h-5 w-24 bg-neutral-800 rounded animate-pulse"></div>
+              </div>
+              <div className="w-5 h-5 bg-neutral-800 rounded animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Screen>
+  );
+};
+
 export const ProfileScreen = () => {
   const navigate = useNavigate();
-  const { currentUser, logout, updateProfile, deleteProfileImage } = useStore();
+  const { 
+    currentUser, 
+    logout, 
+    updateProfile, 
+    deleteProfileImage,
+    isInitialLoadComplete 
+  } = useStore();
+
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [editingField, setEditingField] = useState(null);
   const [editName, setEditName] = useState(currentUser?.name || '');
@@ -35,6 +111,9 @@ export const ProfileScreen = () => {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [togglingNotifications, setTogglingNotifications] = useState(false);
 
+  // ✅ ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURN
+
+  // ✅ Predefined avatars array (not a hook)
   const predefinedAvatars = [
     '/avatars/female-brown-box.png',
     '/avatars/female-brown-cap.png',
@@ -58,6 +137,16 @@ export const ProfileScreen = () => {
     '/avatars/male-white-phone.png',
   ];
 
+  // ✅ useEffect #1: Sync local state with currentUser
+  useEffect(() => {
+    if (currentUser) {
+      setEditName(currentUser.name || '');
+      setMobile(currentUser.mobile || '');
+      setGender(currentUser.gender || '');
+    }
+  }, [currentUser]);
+
+  // ✅ useEffect #2: Notification status check
   useEffect(() => {
     const checkNotificationStatus = () => {
       setNotificationsEnabled(pushNotificationService.isSubscribed());
@@ -78,8 +167,15 @@ export const ProfileScreen = () => {
     };
   }, []);
 
+  // ✅ NOW CHECK LOADING STATE - AFTER ALL HOOKS
+  const isLoading = !isInitialLoadComplete;
+  
+  if (isLoading) {
+    return <ProfileSkeletonLoader />;
+  }
+
+  // ✅ Handler functions (after early return is safe - these are not hooks)
   const handleLogout = () => {
-    // Track logout
     ReactGA.event({
       category: 'User',
       action: 'Logged Out'
@@ -93,7 +189,6 @@ export const ProfileScreen = () => {
     if (editName.trim() && editName !== currentUser?.name) {
       await updateProfile({ name: editName });
       
-      // Track profile update
       ReactGA.event({
         category: 'Profile',
         action: 'Updated Name'
@@ -117,7 +212,6 @@ export const ProfileScreen = () => {
     if (mobile !== currentUser?.mobile) {
       await updateProfile({ mobile });
       
-      // Track mobile update
       ReactGA.event({
         category: 'Profile',
         action: 'Updated Mobile'
@@ -134,7 +228,6 @@ export const ProfileScreen = () => {
     setGender(newGender);
     await updateProfile({ gender: newGender });
     
-    // Track gender update
     ReactGA.event({
       category: 'Profile',
       action: 'Updated Gender',
@@ -154,7 +247,6 @@ export const ProfileScreen = () => {
       formData.append('profileImage', file);
       await updateProfile(formData);
       
-      // Track custom image upload
       ReactGA.event({
         category: 'Profile',
         action: 'Uploaded Custom Avatar'
@@ -169,7 +261,6 @@ export const ProfileScreen = () => {
     setUploading(true);
     await updateProfile({ profileImage: avatarUrl });
     
-    // Track predefined avatar selection
     ReactGA.event({
       category: 'Profile',
       action: 'Selected Predefined Avatar'
@@ -182,7 +273,6 @@ export const ProfileScreen = () => {
   const handleDeleteImage = async () => {
     await deleteProfileImage();
     
-    // Track avatar deletion
     ReactGA.event({
       category: 'Profile',
       action: 'Deleted Avatar'
@@ -197,28 +287,23 @@ export const ProfileScreen = () => {
     setTogglingNotifications(true);
     
     if (notificationsEnabled) {
-      // Disable
       await pushNotificationService.unsubscribe();
       setNotificationsEnabled(false);
       
-      // Track notification disabled
       ReactGA.event({
         category: 'Notification',
         action: 'Disabled from Profile'
       });
     } else {
-      // Enable
       const granted = await pushNotificationService.requestPermission();
       setNotificationsEnabled(granted);
       
       if (granted) {
-        // Track notification enabled
         ReactGA.event({
           category: 'Notification',
           action: 'Enabled from Profile'
         });
       } else {
-        // Track notification denied
         ReactGA.event({
           category: 'Notification',
           action: 'Denied from Profile'
@@ -234,11 +319,9 @@ export const ProfileScreen = () => {
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
         {/* Profile Header */}
         <Card className="relative overflow-hidden">
-          {/* Background Gradient */}
           <div className="absolute inset-0 bg-gradient-to-br from-secondary-500/10 via-transparent to-primary-900 pointer-events-none" />
           
           <div className="relative pt-8 pb-6 text-center">
-            {/* Avatar with actions */}
             <div className="relative inline-block mb-4">
               {currentUser?.profileImage ? (
                 <img 
@@ -252,12 +335,9 @@ export const ProfileScreen = () => {
                 </div>
               )}
               
-              {/* Edit button */}
               <button
                 onClick={() => {
                   setShowAvatarPicker(true);
-                  
-                  // Track avatar picker opened
                   ReactGA.event({
                     category: 'Profile',
                     action: 'Opened Avatar Picker'
@@ -273,7 +353,6 @@ export const ProfileScreen = () => {
                 )}
               </button>
 
-              {/* Delete button */}
               {currentUser?.profileImage && (
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
@@ -284,7 +363,6 @@ export const ProfileScreen = () => {
               )}
             </div>
 
-            {/* Name */}
             <h2 className="text-2xl font-bold text-white mb-1">
               {currentUser?.name || 'User'}
             </h2>
@@ -502,7 +580,6 @@ export const ProfileScreen = () => {
                     </div>
                   </div>
 
-                  {/* Toggle Switch */}
                   <button
                     onClick={handleToggleNotifications}
                     disabled={togglingNotifications || pushNotificationService.isPermissionDenied()}
@@ -598,7 +675,6 @@ export const ProfileScreen = () => {
         size="md"
       >
         <div className="space-y-4">
-          {/* Upload Custom */}
           <div>
             <label className="block w-full">
               <input
@@ -631,7 +707,6 @@ export const ProfileScreen = () => {
             </p>
           </div>
 
-          {/* Divider */}
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-neutral-700"></div>
@@ -641,7 +716,6 @@ export const ProfileScreen = () => {
             </div>
           </div>
 
-          {/* Predefined Avatars */}
           <div className="grid grid-cols-4 gap-3 max-h-96 overflow-y-auto p-1">
             {predefinedAvatars.map((avatar, index) => (
               <button

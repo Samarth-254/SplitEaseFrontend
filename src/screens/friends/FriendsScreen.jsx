@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Loader2, Search, X, Check, UserPlus } from 'lucide-react';
+import { Users, Search, X, Check } from 'lucide-react';
 import { Screen } from '../../components/layout';
 import { Card, Avatar, EmptyState, Input, Modal, Button } from '../../components/ui';
 import { useStore } from '../../store/useStore';
@@ -9,10 +9,74 @@ import socketService from '../../services/socket';
 import { getCurrencySymbol } from '../../utils/currency';
 import ReactGA from 'react-ga4';
 
+/**
+ * Friends Screen - Complete with Skeleton Loading
+ */
 
+// ✅ SKELETON LOADER COMPONENT
+const FriendsSkeletonLoader = () => {
+  return (
+    <Screen>
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="h-8 w-40 bg-neutral-800 rounded-lg animate-pulse"></div>
+          <div className="w-[160px] sm:w-[180px] md:w-[240px] h-12 bg-neutral-800 rounded-lg animate-pulse"></div>
+        </div>
+
+        {/* Overall Balance Card Skeleton */}
+        <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <div className="h-4 w-32 bg-neutral-800 rounded animate-pulse"></div>
+              <div className="h-8 w-24 bg-neutral-800 rounded animate-pulse"></div>
+            </div>
+            <div className="w-12 h-12 rounded-full bg-neutral-800 animate-pulse"></div>
+          </div>
+        </div>
+
+        {/* Friend Cards Skeleton */}
+        <div className="space-y-2">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-neutral-800 animate-pulse flex-shrink-0"></div>
+                <div className="flex-1 space-y-2">
+                  <div className="h-5 w-32 bg-neutral-800 rounded animate-pulse"></div>
+                  <div className="h-3 w-20 bg-neutral-800 rounded animate-pulse"></div>
+                </div>
+                <div className="space-y-2 text-right">
+                  <div className="h-3 w-16 bg-neutral-800 rounded animate-pulse ml-auto"></div>
+                  <div className="h-6 w-20 bg-neutral-800 rounded animate-pulse"></div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Screen>
+  );
+};
 
 export const FriendsScreen = () => {
-  const [loading, setLoading] = useState(false);
+  const { 
+    currentUser, 
+    expenses, 
+    settlements, 
+    groups, 
+    friends, 
+    hasLoadedFriends, 
+    loadFriends, 
+    refreshFriends, 
+    sendReminder, 
+    loadGroups, 
+    loadGroupExpenses, 
+    loadGroupSettlements, 
+    isInitialLoadComplete,
+    isLoadingGroups,
+    isLoadingExpenses 
+  } = useStore();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFriend, setSelectedFriend] = useState(null);
   const [showSettleModal, setShowSettleModal] = useState(false);
@@ -24,19 +88,9 @@ export const FriendsScreen = () => {
   const [isSettling, setIsSettling] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  const { currentUser, expenses, settlements, groups, friends, hasLoadedFriends, loadFriends, refreshFriends, sendReminder, loadGroups, loadGroupExpenses, loadGroupSettlements, isInitialLoadComplete } = useStore();
 
-
-
-  useEffect(() => {
-    if (!isInitialLoadComplete || hasLoadedFriends) return;
-    setLoading(true);
-    loadFriends();
-    setLoading(false);
-  }, [isInitialLoadComplete, hasLoadedFriends, loadFriends]);
-
-
-
+  // ✅ ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURN
+  
   // Set up socket listeners for real-time updates
   useEffect(() => {
     const handleMembersAdded = () => refreshFriends();
@@ -44,14 +98,10 @@ export const FriendsScreen = () => {
     const handleSettlementCreated = () => refreshFriends();
     const handleExpenseCreated = () => refreshFriends();
 
-
-
     socketService.onMembersAdded(handleMembersAdded);
     socketService.onMemberJoined(handleMemberJoined);
     socketService.onSettlementCreated(handleSettlementCreated);
     socketService.onExpenseCreated(handleExpenseCreated);
-
-
 
     return () => {
       socketService.offMembersAdded(handleMembersAdded);
@@ -59,38 +109,16 @@ export const FriendsScreen = () => {
       socketService.offSettlementCreated(handleSettlementCreated);
       socketService.offExpenseCreated(handleExpenseCreated);
     };
-  }, []);
+  }, [refreshFriends]);
 
-
-
-  useEffect(() => {
-    if (!isInitialLoadComplete) return;
-    if (expenses.length > 0 || settlements.length > 0) {
-      refreshFriends();
-    }
-  }, [expenses, settlements, isInitialLoadComplete, refreshFriends]);
-
-
-
-  const showToast = (message) => {
-    setSuccessMessage(message);
-    setShowSuccessToast(true);
-    setTimeout(() => setShowSuccessToast(false), 3000);
-  };
-
-
-
+  // ✅ Calculate functions
   const calculateFriendBalance = (friendId) => {
     try {
       let youOwe = 0;
       let theyOwe = 0;
 
-
-
       const currentUserId = currentUser?._id || currentUser?.id;
       if (!currentUserId || !friendId) return 0;
-
-
 
       if (Array.isArray(expenses)) {
         expenses.forEach(expense => {
@@ -127,8 +155,6 @@ export const FriendsScreen = () => {
         });
       }
 
-
-
       if (Array.isArray(settlements)) {
         settlements.forEach(settlement => {
           try {
@@ -156,16 +182,12 @@ export const FriendsScreen = () => {
         });
       }
 
-
-
       const netBalance = theyOwe - youOwe;
       return netBalance;
     } catch (error) {
       return 0;
     }
   };
-
-
 
   const calculateOverallBalance = () => {
     let totalBalance = 0;
@@ -174,8 +196,6 @@ export const FriendsScreen = () => {
     });
     return totalBalance;
   };
-
-
 
   const getGroupWiseBreakdown = (friendId) => {
     const currentUserId = currentUser?.id || currentUser?._id;
@@ -186,7 +206,6 @@ export const FriendsScreen = () => {
     const currentUserIdStr = String(currentUserId);
     const friendIdStr = String(friendId);
     
-    // Process expenses
     if (Array.isArray(expenses)) {
       expenses.forEach(expense => {
         if (!expense?.splits || !Array.isArray(expense.splits)) return;
@@ -205,14 +224,12 @@ export const FriendsScreen = () => {
           const splitUserIdStr = String(splitUserId);
           const amount = Number(split.amount) || 0;
           
-          // Friend paid and YOU have a split = you owe them (negative balance)
           if (paidByStr === friendIdStr && splitUserIdStr === currentUserIdStr) {
             const current = groupMap.get(groupId) || { balance: 0 };
             current.balance -= amount;
             groupMap.set(groupId, current);
           }
           
-          // YOU paid and FRIEND has a split = they owe you (positive balance)
           if (paidByStr === currentUserIdStr && splitUserIdStr === friendIdStr) {
             const current = groupMap.get(groupId) || { balance: 0 };
             current.balance += amount;
@@ -222,7 +239,6 @@ export const FriendsScreen = () => {
       });
     }
     
-    // Process settlements
     if (Array.isArray(settlements)) {
       settlements.forEach(settlement => {
         if (!settlement?.from || !settlement?.to) return;
@@ -233,14 +249,12 @@ export const FriendsScreen = () => {
         const toId = String(settlement.to?._id || settlement.to?.id || settlement.to);
         const amount = Number(settlement.amount) || 0;
         
-        // You paid the friend (from=you, to=friend)
         if (fromId === currentUserIdStr && toId === friendIdStr) {
           const current = groupMap.get(groupId) || { balance: 0 };
           current.balance += amount;
           groupMap.set(groupId, current);
         }
         
-        // Friend paid you (from=friend, to=you)
         if (fromId === friendIdStr && toId === currentUserIdStr) {
           const current = groupMap.get(groupId) || { balance: 0 };
           current.balance -= amount;
@@ -251,7 +265,7 @@ export const FriendsScreen = () => {
     
     const result = [];
     groupMap.forEach((data, groupId) => {
-      if (Math.abs(data.balance) < 0.01) return; // Skip settled groups
+      if (Math.abs(data.balance) < 0.01) return;
       
       const group = groups.find(g => String(g._id || g.id) === groupId);
       if (!group) return;
@@ -269,175 +283,207 @@ export const FriendsScreen = () => {
     return result;
   };
 
-
-
-const handleFriendClick = (friend) => {
-  setSelectedFriend(friend);
-  setShowSettleModal(true);
-  
-  // Track friend details viewed
-  ReactGA.event({
-    category: 'Friends',
-    action: 'Viewed Friend Details',
-    label: friend.name
-  });
-};
-
-
-
-const handleSendReminder = (friendId, amount, friendName) => {
-  setRemindData({ friendId, amount, friendName });
-  setReminderSent(false);
-  setShowRemindModal(true);
-  
-  // Track reminder modal opened
-  ReactGA.event({
-    category: 'Reminder',
-    action: 'Opened Reminder Modal',
-    label: friendName
-  });
-};
-
-
-  const confirmSendReminder = async () => {
-  if (!remindData) return;
-  
-  setIsSendingReminder(true);
-  try {
-    const groupBreakdown = getGroupWiseBreakdown(remindData.friendId);
-    
-    if (groupBreakdown.length === 0) {
-      showToast('No balances found');
-      setIsSendingReminder(false);
-      setReminderSent(false);
-      return;
-    }
-    
-    const groupsTheyOwe = groupBreakdown.filter(g => g.balance > 0);
-    
-    if (groupsTheyOwe.length === 0) {
-      showToast('No balances to remind about');
-      setIsSendingReminder(false);
-      setReminderSent(false);
-      return;
-    }
-    
-    const emailBreakdown = groupsTheyOwe.map(g => ({
-      groupId: g.groupId,
-      groupName: g.groupName,
-      groupEmoji: g.groupEmoji,
-      amount: g.balance
-    }));
-    
-    const totalAmount = groupsTheyOwe.reduce((sum, g) => sum + g.balance, 0);
-    
-    const { sendCombinedReminder } = useStore.getState();
-    await sendCombinedReminder(
-      remindData.friendId,
-      totalAmount,
-      emailBreakdown
+  // ✅ Computed values with useMemo
+  const filteredFriends = useMemo(() => {
+    return friends.filter(friend =>
+      friend.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
+  }, [friends, searchQuery]);
+
+  const friendsYouOwe = useMemo(() => {
+    return filteredFriends.filter(friend => {
+      const balance = calculateFriendBalance(friend._id);
+      return balance < -0.01;
+    });
+  }, [filteredFriends]);
+
+  const friendsWhoOweYou = useMemo(() => {
+    return filteredFriends.filter(friend => {
+      const balance = calculateFriendBalance(friend._id);
+      return balance > 0.01;
+    });
+  }, [filteredFriends]);
+
+  const settledFriends = useMemo(() => {
+    return filteredFriends.filter(friend => {
+      const balance = calculateFriendBalance(friend._id);
+      return Math.abs(balance) < 0.01;
+    });
+  }, [filteredFriends]);
+
+  const overallBalance = useMemo(() => calculateOverallBalance(), [friends, expenses, settlements]);
+  const currencySymbol = getCurrencySymbol();
+
+  // ✅ NOW CHECK LOADING STATE - AFTER ALL HOOKS
+  const isLoading = !isInitialLoadComplete || isLoadingGroups || isLoadingExpenses;
+  
+  if (isLoading) {
+    return <FriendsSkeletonLoader />;
+  }
+
+  // ✅ Handler functions
+  const showToast = (message) => {
+    setSuccessMessage(message);
+    setShowSuccessToast(true);
+    setTimeout(() => setShowSuccessToast(false), 3000);
+  };
+
+  const handleFriendClick = (friend) => {
+    setSelectedFriend(friend);
+    setShowSettleModal(true);
     
-    // ✅ Track reminder sent
+    ReactGA.event({
+      category: 'Friends',
+      action: 'Viewed Friend Details',
+      label: friend.name
+    });
+  };
+
+  const handleSendReminder = (friendId, amount, friendName) => {
+    setRemindData({ friendId, amount, friendName });
+    setReminderSent(false);
+    setShowRemindModal(true);
+    
     ReactGA.event({
       category: 'Reminder',
-      action: 'Sent Payment Reminder',
-      label: remindData.friendName,
-      value: Math.round(totalAmount)
+      action: 'Opened Reminder Modal',
+      label: friendName
     });
+  };
+
+  const confirmSendReminder = async () => {
+    if (!remindData) return;
     
-    setIsSendingReminder(false);
-    setReminderSent(true);
-  } catch (err) {
-    console.error('Failed to send reminder:', err);
-    setIsSendingReminder(false);
-    setReminderSent(false);
-    showToast('Failed to send reminder');
-  }
-};
-
-
-
- const handleSettleUp = async () => {
-  if (!selectedFriend) return;
-
-  setIsSettling(true);
-  try {
-    const groupBreakdown = getGroupWiseBreakdown(selectedFriend._id);
-    
-    if (groupBreakdown.length === 0) {
-      showToast('No balances to settle');
-      setIsSettling(false);
-      return;
-    }
-
-    const friendId = String(selectedFriend._id || selectedFriend.id);
-    const myId = String(currentUser._id || currentUser.id);
-
-    const promises = [];
-    
-    for (const group of groupBreakdown) {
-      const groupBalance = group.balance;
-      const amount = Math.abs(groupBalance);
+    setIsSendingReminder(true);
+    try {
+      const groupBreakdown = getGroupWiseBreakdown(remindData.friendId);
       
-      if (amount < 0.01) continue;
-      
-      let fromUserId, toUserId;
-      
-      if (groupBalance < 0) {
-        fromUserId = myId;
-        toUserId = friendId;
-      } else {
-        fromUserId = friendId;
-        toUserId = myId;
+      if (groupBreakdown.length === 0) {
+        showToast('No balances found');
+        setIsSendingReminder(false);
+        setReminderSent(false);
+        return;
       }
       
-      const note = groupBreakdown.length > 1 
-        ? `Net Settlement (${groupBreakdown.length} groups)` 
-        : 'Payment';
+      const groupsTheyOwe = groupBreakdown.filter(g => g.balance > 0);
       
-      promises.push(
-        apiService.recordSettlement(group.groupId, fromUserId, toUserId, amount, note)
+      if (groupsTheyOwe.length === 0) {
+        showToast('No balances to remind about');
+        setIsSendingReminder(false);
+        setReminderSent(false);
+        return;
+      }
+      
+      const emailBreakdown = groupsTheyOwe.map(g => ({
+        groupId: g.groupId,
+        groupName: g.groupName,
+        groupEmoji: g.groupEmoji,
+        amount: g.balance
+      }));
+      
+      const totalAmount = groupsTheyOwe.reduce((sum, g) => sum + g.balance, 0);
+      
+      const { sendCombinedReminder } = useStore.getState();
+      await sendCombinedReminder(
+        remindData.friendId,
+        totalAmount,
+        emailBreakdown
       );
+      
+      ReactGA.event({
+        category: 'Reminder',
+        action: 'Sent Payment Reminder',
+        label: remindData.friendName,
+        value: Math.round(totalAmount)
+      });
+      
+      setIsSendingReminder(false);
+      setReminderSent(true);
+    } catch (err) {
+      console.error('Failed to send reminder:', err);
+      setIsSendingReminder(false);
+      setReminderSent(false);
+      showToast('Failed to send reminder');
     }
+  };
 
-    await Promise.all(promises);
-    await new Promise(resolve => setTimeout(resolve, 1000));
+  const handleSettleUp = async () => {
+    if (!selectedFriend) return;
 
-    await loadGroups();
-    
-    for (const group of groupBreakdown) {
-      await loadGroupExpenses(group.groupId);
-      await loadGroupSettlements(group.groupId);
+    setIsSettling(true);
+    try {
+      const groupBreakdown = getGroupWiseBreakdown(selectedFriend._id);
+      
+      if (groupBreakdown.length === 0) {
+        showToast('No balances to settle');
+        setIsSettling(false);
+        return;
+      }
+
+      const friendId = String(selectedFriend._id || selectedFriend.id);
+      const myId = String(currentUser._id || currentUser.id);
+
+      const promises = [];
+      
+      for (const group of groupBreakdown) {
+        const groupBalance = group.balance;
+        const amount = Math.abs(groupBalance);
+        
+        if (amount < 0.01) continue;
+        
+        let fromUserId, toUserId;
+        
+        if (groupBalance < 0) {
+          fromUserId = myId;
+          toUserId = friendId;
+        } else {
+          fromUserId = friendId;
+          toUserId = myId;
+        }
+        
+        const note = groupBreakdown.length > 1 
+          ? `Net Settlement (${groupBreakdown.length} groups)` 
+          : 'Payment';
+        
+        promises.push(
+          apiService.recordSettlement(group.groupId, fromUserId, toUserId, amount, note)
+        );
+      }
+
+      await Promise.all(promises);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      await loadGroups();
+      
+      for (const group of groupBreakdown) {
+        await loadGroupExpenses(group.groupId);
+        await loadGroupSettlements(group.groupId);
+      }
+      
+      refreshFriends();
+
+      const totalAmount = groupBreakdown.reduce((sum, g) => sum + Math.abs(g.balance), 0);
+      
+      ReactGA.event({
+        category: 'Settlement',
+        action: 'Settled with Friend',
+        label: selectedFriend.name,
+        value: Math.round(totalAmount)
+      });
+
+      setShowSettleUpModal(false);
+      setShowSettleModal(false);
+      setSelectedFriend(null);
+      
+      showToast(`Successfully settled with ${selectedFriend.name}!`);
+      
+    } catch (err) {
+      console.error('Settlement failed:', err);
+      showToast(err.response?.data?.message || 'Settlement failed');
+    } finally {
+      setIsSettling(false);
     }
-    
-    refreshFriends();
-
-    const totalAmount = groupBreakdown.reduce((sum, g) => sum + Math.abs(g.balance), 0);
-    
-    // ✅ Track settlement with friend
-    ReactGA.event({
-      category: 'Settlement',
-      action: 'Settled with Friend',
-      label: selectedFriend.name,
-      value: Math.round(totalAmount)
-    });
-
-    setShowSettleUpModal(false);
-    setShowSettleModal(false);
-    setSelectedFriend(null);
-    
-    showToast(`Successfully settled with ${selectedFriend.name}!`);
-    
-  } catch (err) {
-    console.error('Settlement failed:', err);
-    showToast(err.response?.data?.message || 'Settlement failed');
-  } finally {
-    setIsSettling(false);
-  }
-};
-
-
+  };
 
   const closeRemindModal = () => {
     setShowRemindModal(false);
@@ -445,48 +491,6 @@ const handleSendReminder = (friendId, amount, friendName) => {
     setIsSendingReminder(false);
     setReminderSent(false);
   };
-
-
-
-  const filteredFriends = friends.filter(friend =>
-    friend.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-
-
-  const friendsYouOwe = filteredFriends.filter(friend => {
-    const balance = calculateFriendBalance(friend._id);
-    return balance < -0.01; // More than 1 cent
-  });
-
-  const friendsWhoOweYou = filteredFriends.filter(friend => {
-    const balance = calculateFriendBalance(friend._id);
-    return balance > 0.01; // More than 1 cent
-  });
-
-  const settledFriends = filteredFriends.filter(friend => {
-    const balance = calculateFriendBalance(friend._id);
-    return Math.abs(balance) < 0.01; // Less than 1 cent (essentially 0)
-  });
-
-
-
-  const overallBalance = calculateOverallBalance();
-  const currencySymbol = getCurrencySymbol();
-
-
-
-  if (!isInitialLoadComplete || (loading && !hasLoadedFriends)) {
-    return (
-      <Screen title="Friends">
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 text-secondary-500 animate-spin" />
-        </div>
-      </Screen>
-    );
-  }
-
-
 
   return (
     <Screen>
@@ -504,8 +508,6 @@ const handleSendReminder = (friendId, amount, friendName) => {
             />
           </div>
         </div>
-
-
 
         {friends.length === 0 ? (
           <EmptyState
@@ -529,8 +531,6 @@ const handleSendReminder = (friendId, amount, friendName) => {
                 </div>
               </div>
             </Card>
-
-
 
             {/* Friends You Owe */}
             {friendsYouOwe.length > 0 && (
@@ -575,8 +575,6 @@ const handleSendReminder = (friendId, amount, friendName) => {
               </div>
             )}
 
-
-
             {/* Friends Who Owe You */}
             {friendsWhoOweYou.length > 0 && (
               <div className="space-y-2">
@@ -619,8 +617,6 @@ const handleSendReminder = (friendId, amount, friendName) => {
                 })}
               </div>
             )}
-
-
 
             {/* Settled Friends */}
             {settledFriends.length > 0 && (
@@ -665,8 +661,6 @@ const handleSendReminder = (friendId, amount, friendName) => {
         )}
       </div>
 
-
-
       {/* Friend Details Modal */}
       {selectedFriend && (
         <Modal
@@ -679,7 +673,6 @@ const handleSendReminder = (friendId, amount, friendName) => {
           showClose={false}
         >
           <div className="p-5 sm:p-6">
-            {/* Header with Name and Close */}
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <Avatar
@@ -702,9 +695,6 @@ const handleSendReminder = (friendId, amount, friendName) => {
               </button>
             </div>
 
-
-
-            {/* Content */}
             <div className="space-y-4">
               {(() => {
                 const netBalance = calculateFriendBalance(selectedFriend._id);
@@ -764,9 +754,6 @@ const handleSendReminder = (friendId, amount, friendName) => {
                       ))}
                     </div>
 
-
-
-                    {/* Action Button */}
                     <div className="space-y-2 pt-4 mt-4 border-t border-neutral-700">
                       {netBalance < 0 ? (
                         <Button
@@ -802,8 +789,6 @@ const handleSendReminder = (friendId, amount, friendName) => {
           </div>
         </Modal>
       )}
-
-
 
       {/* Settle Up Confirmation Modal */}
       {selectedFriend && (
@@ -898,8 +883,6 @@ const handleSendReminder = (friendId, amount, friendName) => {
         </Modal>
       )}
 
-
-
       {/* Remind Confirmation Modal */}
       <Modal
         isOpen={showRemindModal}
@@ -968,8 +951,6 @@ const handleSendReminder = (friendId, amount, friendName) => {
           </div>
         )}
       </Modal>
-
-
 
       {/* Success Toast */}
       <AnimatePresence>

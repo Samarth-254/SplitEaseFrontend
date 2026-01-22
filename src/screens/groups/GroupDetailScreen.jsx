@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -34,9 +34,98 @@ import { getCurrencySymbol } from '../../utils/currency';
 import ReactGA from 'react-ga4';
 import apiService from '../../services/api';
 
+/**
+ * Group Detail Screen - Complete with Skeleton Loading
+ */
+
+// ✅ SKELETON LOADER COMPONENT
+const GroupDetailSkeletonLoader = () => {
+  return (
+    <Screen padded={false}>
+      {/* Header Skeleton */}
+      <div className="border-b border-neutral-800 px-4 lg:px-8 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-neutral-800 rounded-lg animate-pulse"></div>
+            <div className="h-6 w-40 bg-neutral-800 rounded-lg animate-pulse"></div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-10 h-10 bg-neutral-800 rounded-lg animate-pulse"></div>
+            <div className="w-10 h-10 bg-neutral-800 rounded-lg animate-pulse"></div>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-4 lg:px-8">
+        {/* Balance Card Skeleton */}
+        <div className="py-5">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <div className="h-4 w-24 bg-neutral-800 rounded animate-pulse mb-2"></div>
+                <div className="h-8 w-32 bg-neutral-800 rounded-lg animate-pulse"></div>
+              </div>
+              <div className="h-4 w-20 bg-neutral-800 rounded animate-pulse"></div>
+            </div>
+            
+            <div className="pt-3 border-t border-neutral-800 space-y-2">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-neutral-800 animate-pulse"></div>
+                    <div className="h-4 w-40 bg-neutral-800 rounded animate-pulse"></div>
+                  </div>
+                  <div className="h-4 w-16 bg-neutral-800 rounded animate-pulse"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs Skeleton */}
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <div className="flex gap-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-10 w-28 bg-neutral-800 rounded-xl animate-pulse"></div>
+            ))}
+          </div>
+          <div className="h-10 w-32 bg-neutral-800 rounded-xl animate-pulse hidden sm:block"></div>
+        </div>
+
+        {/* Content Skeleton */}
+        <div className="space-y-5 pb-24">
+          <div>
+            <div className="h-4 w-20 bg-neutral-800 rounded animate-pulse mb-3"></div>
+            <div className="space-y-2">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-neutral-800 animate-pulse"></div>
+                    <div className="flex-1 space-y-2">
+                      <div className="h-5 w-48 bg-neutral-800 rounded animate-pulse"></div>
+                      <div className="h-4 w-32 bg-neutral-800 rounded animate-pulse"></div>
+                      <div className="h-3 w-20 bg-neutral-800 rounded animate-pulse"></div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="h-3 w-16 bg-neutral-800 rounded animate-pulse ml-auto"></div>
+                      <div className="h-5 w-20 bg-neutral-800 rounded animate-pulse"></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </Screen>
+  );
+};
+
 export const GroupDetailScreen = () => {
   const { groupId } = useParams();
   const navigate = useNavigate();
+  
+  // ✅ ALL STATE HOOKS
   const [activeTab, setActiveTab] = useState('expenses');
   const [showSettleUp, setShowSettleUp] = useState(false);
   const [selectedDebt, setSelectedDebt] = useState(null);
@@ -49,7 +138,6 @@ export const GroupDetailScreen = () => {
   const [remindData, setRemindData] = useState(null);
   const [isSendingReminder, setIsSendingReminder] = useState(false);
   const [reminderSent, setReminderSent] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [showUpdateGroupModal, setShowUpdateGroupModal] = useState(false);
   
   const { 
@@ -68,121 +156,13 @@ export const GroupDetailScreen = () => {
     sendReminder,
     updateGroup,
     expenses: allExpenses,
-    settlements: allSettlements
+    settlements: allSettlements,
+    isInitialLoadComplete,
+    isLoadingGroups,
+    isLoadingExpenses
   } = useStore();
-  
-  // Always fetch fresh data on mount
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        await loadGroups();
-        if (groupId) {
-          await loadGroupExpenses(groupId);
-          await loadGroupSettlements(groupId);
-        }
-      } catch (err) {
-        console.error('Failed to load group data:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
-  }, [groupId]);
-  
-  const group = getGroupById(groupId);
-  const members = getGroupMembers(groupId);
-  const expenses = getGroupExpenses(groupId);
-  const balances = getGroupBalances(groupId);
-  const summary = getGroupSummary(groupId);
-    if (isLoading) {
-    return (
-      <Screen>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin h-12 w-12 border-4 border-orange-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-neutral-400">Loading group...</p>
-          </div>
-        </div>
-      </Screen>
-    );
-  }
-    if (!group) {
-    return (
-      <Screen>
-        <EmptyState
-          title="Group not found"
-          description="This group doesn't exist or you don't have access"
-          actionLabel="Go back"
-          onAction={() => navigate('/groups')}
-        />
-      </Screen>
-    );
-  }
 
- const handleSettleUp = async () => {
-  if (!selectedDebt) return;
-  
-  setIsSettling(true);
-  try {
-    await settleUp(selectedDebt.user._id || selectedDebt.user.id, selectedDebt.amount, groupId, `Settlement in ${group.emoji} ${group.name}`);
-    
-    // Track settlement
-    ReactGA.event({
-      category: 'Settlement',
-      action: 'Settled Payment',
-      label: group.name,
-      value: Math.round(selectedDebt.amount)
-    });
-    
-    setShowSettleUp(false);
-    setSelectedDebt(null);
-  } catch (err) {
-    alert(err.message || 'Failed to record settlement');
-  } finally {
-    setIsSettling(false);
-  }
-};
-
-
-  const handleSendReminder = async (memberId, amount, memberName) => {
-    setRemindData({ memberId, amount, memberName });
-    setReminderSent(false);
-    setShowRemindModal(true);
-  };
-
- const confirmSendReminder = async () => {
-  if (!remindData) return;
-  
-  setIsSendingReminder(true);
-  try {
-    await sendReminder(groupId, remindData.memberId, remindData.amount);
-    
-    // Track reminder sent
-    ReactGA.event({
-      category: 'Reminder',
-      action: 'Sent Payment Reminder',
-      label: group.name,
-      value: Math.round(remindData.amount)
-    });
-    
-    setIsSendingReminder(false);
-    setReminderSent(true);
-  } catch (err) {
-    console.error('Failed to send reminder:', err);
-    setIsSendingReminder(false);
-    setReminderSent(false);
-  }
-};
-
-
-  const closeRemindModal = () => {
-    setShowRemindModal(false);
-    setRemindData(null);
-    setIsSendingReminder(false);
-    setReminderSent(false);
-  };
-
+  // ✅ Helper functions (not hooks)
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     const today = new Date();
@@ -208,56 +188,143 @@ export const GroupDetailScreen = () => {
     });
   };
 
-  // Group expenses by date
-  const expensesByDate = expenses.reduce((acc, expense) => {
-    const date = formatDate(expense.createdAt || expense.date);
-    if (!acc[date]) acc[date] = [];
-    acc[date].push(expense);
-    return acc;
-  }, {});
-
+  // ✅ Tabs array (not a hook)
   const tabs = [
     { id: 'expenses', label: 'Expenses', icon: Receipt },
     { id: 'activity', label: 'Activity', icon: ActivityIcon },
     { id: 'members', label: 'Members', icon: UsersIcon },
   ];
 
+  // ✅ Get data BEFORE early returns (safe with loading state)
+  const isLoading = !isInitialLoadComplete || isLoadingGroups || isLoadingExpenses;
+  const group = getGroupById(groupId);
+  const members = group ? getGroupMembers(groupId) : [];
+  const expenses = group ? getGroupExpenses(groupId) : [];
+  const balances = group ? getGroupBalances(groupId) : [];
+  const summary = group ? getGroupSummary(groupId) : { net: 0, youOwe: 0, youGet: 0, totalSpent: 0, expenseCount: 0 };
+
+  // ✅ useMemo BEFORE early returns - using safe defaults
+  const expensesByDate = useMemo(() => {
+    return expenses.reduce((acc, expense) => {
+      const date = formatDate(expense.createdAt || expense.date);
+      if (!acc[date]) acc[date] = [];
+      acc[date].push(expense);
+      return acc;
+    }, {});
+  }, [expenses]);
+
+  // ✅ NOW CHECK LOADING STATE - AFTER ALL HOOKS
+  if (isLoading) {
+    return <GroupDetailSkeletonLoader />;
+  }
+  
+  // ✅ Group not found check (after loading)
+  if (!group) {
+    return (
+      <Screen>
+        <EmptyState
+          title="Group not found"
+          description="This group doesn't exist or you don't have access"
+          actionLabel="Go back"
+          onAction={() => navigate('/groups')}
+        />
+      </Screen>
+    );
+  }
+
+  // ✅ Handler functions (after early returns is safe - these are NOT hooks)
+  const handleSettleUp = async () => {
+    if (!selectedDebt) return;
+    
+    setIsSettling(true);
+    try {
+      await settleUp(selectedDebt.user._id || selectedDebt.user.id, selectedDebt.amount, groupId, `Settlement in ${group.emoji} ${group.name}`);
+      
+      ReactGA.event({
+        category: 'Settlement',
+        action: 'Settled Payment',
+        label: group.name,
+        value: Math.round(selectedDebt.amount)
+      });
+      
+      setShowSettleUp(false);
+      setSelectedDebt(null);
+    } catch (err) {
+      alert(err.message || 'Failed to record settlement');
+    } finally {
+      setIsSettling(false);
+    }
+  };
+
+  const handleSendReminder = async (memberId, amount, memberName) => {
+    setRemindData({ memberId, amount, memberName });
+    setReminderSent(false);
+    setShowRemindModal(true);
+  };
+
+  const confirmSendReminder = async () => {
+    if (!remindData) return;
+    
+    setIsSendingReminder(true);
+    try {
+      await sendReminder(groupId, remindData.memberId, remindData.amount);
+      
+      ReactGA.event({
+        category: 'Reminder',
+        action: 'Sent Payment Reminder',
+        label: group.name,
+        value: Math.round(remindData.amount)
+      });
+      
+      setIsSendingReminder(false);
+      setReminderSent(true);
+    } catch (err) {
+      console.error('Failed to send reminder:', err);
+      setIsSendingReminder(false);
+      setReminderSent(false);
+    }
+  };
+
+  const closeRemindModal = () => {
+    setShowRemindModal(false);
+    setRemindData(null);
+    setIsSendingReminder(false);
+    setReminderSent(false);
+  };
+
   return (
     <Screen padded={false}>
-     <Header 
-  title={`${group.emoji} ${group.name}`} 
-  showBack 
-  rightActions={[
-    {
-      icon: <UserPlus size={20} />,
-      onClick: () => {
-        setShowInviteModal(true);
-        
-        // Track invite modal opened
-        ReactGA.event({
-          category: 'Group',
-          action: 'Opened Invite Modal',
-          label: group.name
-        });
-      }
-    },
-    {
-      icon: <Settings size={20} />,
-      onClick: () => {
-        setShowUpdateGroupModal(true);
-        
-        // Track update modal opened
-        ReactGA.event({
-          category: 'Group',
-          action: 'Opened Update Group Modal',
-          label: group.name
-        });
-      }
-    }
-  ]}
-/>
+      <Header 
+        title={`${group.emoji} ${group.name}`} 
+        showBack 
+        rightActions={[
+          {
+            icon: <UserPlus size={20} />,
+            onClick: () => {
+              setShowInviteModal(true);
+              
+              ReactGA.event({
+                category: 'Group',
+                action: 'Opened Invite Modal',
+                label: group.name
+              });
+            }
+          },
+          {
+            icon: <Settings size={20} />,
+            onClick: () => {
+              setShowUpdateGroupModal(true);
+              
+              ReactGA.event({
+                category: 'Group',
+                action: 'Opened Update Group Modal',
+                label: group.name
+              });
+            }
+          }
+        ]}
+      />
 
-      
       <div className="px-4 lg:px-8">
         {/* Balance Summary */}
         <motion.div
@@ -337,7 +404,7 @@ export const GroupDetailScreen = () => {
           </Card>
         </motion.div>
 
-        {/* Tabs + Add Button (hidden on mobile) */}
+        {/* Tabs + Add Button */}
         <div className="flex items-center justify-between gap-3 mb-4">
           <div className="flex gap-2 overflow-x-auto scrollbar-hide">
             {tabs.map(({ id, label, icon: Icon }) => (
@@ -405,7 +472,6 @@ export const GroupDetailScreen = () => {
                           const isCurrentUserPayer = payerId === currentUserId;
                           const splitMembers = expense.splits || expense.splitBetween || [];
                           
-                          // Calculate current user's share - use actual split amount if available
                           let share = 0;
                           if (expense.splits && Array.isArray(expense.splits)) {
                             const userSplit = expense.splits.find(s => {
@@ -414,7 +480,6 @@ export const GroupDetailScreen = () => {
                             });
                             share = userSplit?.amount || 0;
                           } else {
-                            // Fallback to equal split if no splits array
                             const shareCount = expense.splitBetween?.length || 1;
                             share = expense.amount / shareCount;
                           }
@@ -513,52 +578,47 @@ export const GroupDetailScreen = () => {
                       {date}
                     </h3>
                     <div className="space-y-2">
-{dateSettlements.map((settlement) => {
-  const from = settlement.from?._id ? settlement.from : getUserById(settlement.from);
-  const to = settlement.to?._id ? settlement.to : getUserById(settlement.to);
-  const currentUserId = currentUser?._id || currentUser?.id;
-  const isCurrentUserFrom = (settlement.from?._id || settlement.from) === currentUserId;
-  const isCurrentUserTo = (settlement.to?._id || settlement.to) === currentUserId;
+                      {dateSettlements.map((settlement) => {
+                        const from = settlement.from?._id ? settlement.from : getUserById(settlement.from);
+                        const to = settlement.to?._id ? settlement.to : getUserById(settlement.to);
+                        const currentUserId = currentUser?._id || currentUser?.id;
+                        const isCurrentUserFrom = (settlement.from?._id || settlement.from) === currentUserId;
+                        const isCurrentUserTo = (settlement.to?._id || settlement.to) === currentUserId;
 
-  // ✅ Truncate names intelligently
-  const truncateName = (name, maxLength = 12) => {
-    if (!name || name.length <= maxLength) return name;
-    return name.substring(0, maxLength) + '...';
-  };
+                        const truncateName = (name, maxLength = 12) => {
+                          if (!name || name.length <= maxLength) return name;
+                          return name.substring(0, maxLength) + '...';
+                        };
 
-  const fromName = isCurrentUserFrom ? 'You' : truncateName(from?.name);
-  const toName = isCurrentUserTo ? 'you' : truncateName(to?.name);
+                        const fromName = isCurrentUserFrom ? 'You' : truncateName(from?.name);
+                        const toName = isCurrentUserTo ? 'you' : truncateName(to?.name);
 
-  return (
-    <Card key={settlement._id || settlement.id} padding="md" className="border-green-900/30">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-green-900/30 flex items-center justify-center flex-shrink-0">
-          <TrendingUp size={20} className="text-green-400" />
-        </div>
-        
-        <div className="flex-1 min-w-0">
-          {/* ✅ Single row with truncation */}
-          <div className="flex items-center justify-between gap-2">
-            <h4 className="font-medium text-neutral-100 text-sm truncate">
-              <span className="text-neutral-300">{fromName}</span>
-              <span className="text-neutral-500"> paid </span>
-              <span className="text-neutral-300">{toName}</span>
-            </h4>
-            <p className="text-base font-bold text-green-400 flex-shrink-0 whitespace-nowrap">
-              ₹{settlement.amount.toFixed(2)}
-            </p>
-          </div>
-          <p className="text-xs text-neutral-500 mt-1">
-            {formatTime(settlement.settledAt || settlement.createdAt)}
-          </p>
-        </div>
-      </div>
-    </Card>
-  );
-})}
-
-
-
+                        return (
+                          <Card key={settlement._id || settlement.id} padding="md" className="border-green-900/30">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-green-900/30 flex items-center justify-center flex-shrink-0">
+                                <TrendingUp size={20} className="text-green-400" />
+                              </div>
+                              
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-2">
+                                  <h4 className="font-medium text-neutral-100 text-sm truncate">
+                                    <span className="text-neutral-300">{fromName}</span>
+                                    <span className="text-neutral-500"> paid </span>
+                                    <span className="text-neutral-300">{toName}</span>
+                                  </h4>
+                                  <p className="text-base font-bold text-green-400 flex-shrink-0 whitespace-nowrap">
+                                    ₹{settlement.amount.toFixed(2)}
+                                  </p>
+                                </div>
+                                <p className="text-xs text-neutral-500 mt-1">
+                                  {formatTime(settlement.settledAt || settlement.createdAt)}
+                                </p>
+                              </div>
+                            </div>
+                          </Card>
+                        );
+                      })}
                     </div>
                   </div>
                 ));
@@ -775,8 +835,3 @@ export const GroupDetailScreen = () => {
     </Screen>
   );
 };
-
-
-
-
-

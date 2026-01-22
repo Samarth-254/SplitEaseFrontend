@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Plus, ChevronRight, Users, Search } from 'lucide-react';
@@ -9,20 +9,54 @@ import { useStore } from '../../store/useStore';
 import { getCurrencySymbol } from '../../utils/currency';
 
 /**
- * Groups List Screen
- * 
- * UX Decisions:
- * - Card-based list for touch-friendly interaction
- * - Clear balance indicator per group
- * - Floating action button for new group (mobile)
- * - Empty state with clear CTA
+ * Groups List Screen - Complete with Skeleton Loading
  */
 
+// ✅ Skeleton Component
+const GroupsSkeletonLoader = () => {
+  return (
+    <Screen>
+      <div className="mb-6">
+        <div className="h-8 w-32 bg-neutral-800 rounded-lg animate-pulse mb-2"></div>
+        <div className="h-4 w-20 bg-neutral-800 rounded animate-pulse"></div>
+      </div>
+      
+      <div className="space-y-3">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="bg-neutral-900 border border-neutral-800 rounded-xl p-4 flex items-center gap-3">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-neutral-800 animate-pulse flex-shrink-0"></div>
+            <div className="flex-1 space-y-2">
+              <div className="h-5 w-32 bg-neutral-800 rounded animate-pulse"></div>
+              <div className="h-4 w-24 bg-neutral-800 rounded animate-pulse"></div>
+            </div>
+            <div className="w-20 h-10 bg-neutral-800 rounded animate-pulse"></div>
+          </div>
+        ))}
+      </div>
+    </Screen>
+  );
+};
+
 export const GroupsScreen = () => {
-  const { groups, getGroupSummary, getGroupMembers, expenses, settlements } = useStore();
+  const { 
+    groups, 
+    getGroupSummary, 
+    getGroupMembers, 
+    isLoadingGroups,
+    isInitialLoadComplete 
+  } = useStore();
+  
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // ✅ ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURN
+  const filteredGroups = useMemo(() => {
+    return groups.filter(group => 
+      group.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [groups, searchQuery]);
+
+  // ✅ ANIMATION VARIANTS (Not hooks, but defined before early return)
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -36,6 +70,13 @@ export const GroupsScreen = () => {
     visible: { opacity: 1, y: 0 }
   };
 
+  // ✅ NOW CHECK LOADING STATE - AFTER ALL HOOKS
+  const isLoading = !isInitialLoadComplete || isLoadingGroups;
+  
+  if (isLoading) {
+    return <GroupsSkeletonLoader />;
+  }
+
   return (
     <Screen>
       <PageTitle 
@@ -48,17 +89,17 @@ export const GroupsScreen = () => {
         }
       />
 
-      {/* {groups.length > 0 && (
+      {groups.length > 3 && (
         <div className="mb-4">
           <Input
-            placeholder="Search..."
+            placeholder="Search groups..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             icon={<Search size={16} />}
-            className="text-xs sm:text-sm py-0.5 h-7"
+            className="text-xs sm:text-sm"
           />
         </div>
-      )} */}
+      )}
 
       {groups.length === 0 ? (
         <EmptyState
@@ -75,9 +116,7 @@ export const GroupsScreen = () => {
           animate="visible"
           className="space-y-3"
         >
-          {groups
-            .filter(group => group.name.toLowerCase().includes(searchQuery.toLowerCase()))
-            .map((group, index) => {
+          {filteredGroups.map((group, index) => {
             const groupId = group._id || group.id;
             const summary = getGroupSummary(groupId);
             const members = getGroupMembers(groupId);
@@ -98,9 +137,6 @@ export const GroupsScreen = () => {
                       </h3>
                       <div className="flex items-center gap-2 mt-1">
                         <AvatarGroup users={members} size="xs" max={3} />
-                        {/* <span className="text-xs sm:text-sm text-neutral-500">
-                          {members.length} members
-                        </span> */}
                       </div>
                       <p className="text-xs text-neutral-600 mt-0.5 hidden sm:block">
                         {getCurrencySymbol('INR')}{summary.totalSpent.toFixed(2)} total • {summary.expenseCount} expenses
@@ -144,7 +180,3 @@ export const GroupsScreen = () => {
     </Screen>
   );
 };
-
-
-
-

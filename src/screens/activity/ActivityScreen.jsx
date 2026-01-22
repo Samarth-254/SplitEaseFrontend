@@ -1,6 +1,6 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Receipt, Calendar, DollarSign } from 'lucide-react';
+import { Receipt, Calendar } from 'lucide-react';
 import { Screen, PageTitle } from '../../components/layout';
 import { Card, Avatar, Badge, EmptyState } from '../../components/ui';
 import { useStore } from '../../store/useStore';
@@ -8,30 +8,76 @@ import { getCategoryIcon } from '../../utils/categoryDetection';
 import { getCurrencySymbol } from '../../utils/currency';
 
 /**
- * Activity Screen
+ * Activity Screen - Complete with Skeleton Loading
  * 
  * Shows recent expense activity across all groups
  * Timeline view of expenses and settlements
  */
 
+// ✅ SKELETON LOADER COMPONENT
+const ActivitySkeletonLoader = () => {
+  return (
+    <Screen>
+      {/* Header Skeleton */}
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <div className="h-8 w-32 bg-neutral-800 rounded-lg animate-pulse mb-2"></div>
+          <div className="h-4 w-24 bg-neutral-800 rounded animate-pulse"></div>
+        </div>
+        <div className="h-10 w-40 bg-neutral-800 rounded-xl animate-pulse"></div>
+      </div>
+
+      {/* Date Group Skeletons */}
+      <div className="space-y-6">
+        {[1, 2].map((group) => (
+          <div key={group}>
+            <div className="h-4 w-20 bg-neutral-800 rounded animate-pulse mb-3"></div>
+            
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-neutral-800 animate-pulse flex-shrink-0"></div>
+                    
+                    <div className="flex-1 space-y-2">
+                      <div className="h-5 w-48 bg-neutral-800 rounded animate-pulse"></div>
+                      <div className="h-3 w-32 bg-neutral-800 rounded animate-pulse"></div>
+                      <div className="h-3 w-20 bg-neutral-800 rounded animate-pulse"></div>
+                    </div>
+                    
+                    <div className="space-y-2 text-right">
+                      <div className="h-6 w-24 bg-neutral-800 rounded animate-pulse ml-auto"></div>
+                      <div className="h-4 w-16 bg-neutral-800 rounded animate-pulse ml-auto"></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </Screen>
+  );
+};
+
 export const ActivityScreen = () => {
-  const { expenses, settlements, getUserById, getGroupById, currentUser, groups } = useStore();
+  const { 
+    expenses, 
+    settlements, 
+    getUserById, 
+    getGroupById, 
+    currentUser, 
+    groups,
+    isInitialLoadComplete,
+    isLoadingExpenses,
+    isLoadingGroups
+  } = useStore();
+  
   const [selectedGroupId, setSelectedGroupId] = useState('all');
 
-  const activities = useMemo(() => {
-    const all = [
-      ...expenses.map(e => ({ ...e, type: 'expense' })),
-      ...settlements.map(s => ({ ...s, type: 'settlement' })),
-    ].sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
-
-    if (selectedGroupId === 'all') return all;
-
-    return all.filter((activity) => {
-      const gid = activity.groupId?._id || activity.groupId;
-      return String(gid) === String(selectedGroupId);
-    });
-  }, [expenses, settlements, selectedGroupId]);
-
+  // ✅ ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURN
+  
+  // Helper functions (not hooks, but used in useMemo)
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     const today = new Date();
@@ -69,14 +115,32 @@ export const ActivityScreen = () => {
     });
   };
 
-  // Group activities by date
-  const activitiesByDate = activities.reduce((acc, activity) => {
-    const date = formatDate(activity.createdAt || activity.date);
-    if (!acc[date]) acc[date] = [];
-    acc[date].push(activity);
-    return acc;
-  }, {});
+  // ✅ Compute activities with useMemo
+  const activities = useMemo(() => {
+    const all = [
+      ...expenses.map(e => ({ ...e, type: 'expense' })),
+      ...settlements.map(s => ({ ...s, type: 'settlement' })),
+    ].sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
 
+    if (selectedGroupId === 'all') return all;
+
+    return all.filter((activity) => {
+      const gid = activity.groupId?._id || activity.groupId;
+      return String(gid) === String(selectedGroupId);
+    });
+  }, [expenses, settlements, selectedGroupId]);
+
+  // ✅ Group activities by date with useMemo
+  const activitiesByDate = useMemo(() => {
+    return activities.reduce((acc, activity) => {
+      const date = formatDate(activity.createdAt || activity.date);
+      if (!acc[date]) acc[date] = [];
+      acc[date].push(activity);
+      return acc;
+    }, {});
+  }, [activities]);
+
+  // ✅ Animation variants (not hooks)
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -89,6 +153,13 @@ export const ActivityScreen = () => {
     hidden: { opacity: 0, x: -20 },
     visible: { opacity: 1, x: 0 }
   };
+
+  // ✅ NOW CHECK LOADING STATE - AFTER ALL HOOKS
+  const isLoading = !isInitialLoadComplete || isLoadingExpenses || isLoadingGroups;
+  
+  if (isLoading) {
+    return <ActivitySkeletonLoader />;
+  }
 
   return (
     <Screen>
@@ -254,8 +325,3 @@ export const ActivityScreen = () => {
     </Screen>
   );
 };
-
-
-
-
-
