@@ -24,6 +24,8 @@ import { usePWAInstall } from './utils/usePWAInstall';
 import pushNotificationService from './services/pushNotification';
 import { InstallInstructionsModal } from './components/InstallInstructionsModal';
 import { ResetPasswordScreen } from './screens/auth';
+import { DashboardSkeleton } from './screens/dashboard/DashboardSkeleton'; // ✅ ADDED
+
 const RouteChangeTracker = () => {
   const location = useLocation();
 
@@ -41,14 +43,7 @@ const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, isInitialLoadComplete } = useStore();
   
   if (!isInitialLoadComplete) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-primary-pure">
-        <div className="text-center">
-          <div className="animate-spin h-12 w-12 border-4 border-orange-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-neutral-400">Loading...</p>
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton />; // ✅ UPDATED: Show skeleton instead of spinner
   }
   
   if (!isAuthenticated) {
@@ -58,13 +53,21 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
+// ✅ FIXED: Now shows DashboardSkeleton while checking auth
 const PublicRoute = ({ children }) => {
   const { isAuthenticated, isInitialLoadComplete } = useStore();
   
+  // ✅ CRITICAL FIX: Show DashboardSkeleton instead of login while auth is loading
+  if (!isInitialLoadComplete) {
+    return <DashboardSkeleton />;
+  }
+  
+  // Redirect to dashboard if already authenticated
   if (isInitialLoadComplete && isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
   
+  // Show login screen only when auth check is complete and user is NOT logged in
   return children;
 };
 
@@ -212,16 +215,15 @@ function App() {
       <Router>
         <RouteChangeTracker />
         
-      <Toaster
-  position="top-right"
-  toastOptions={{
-    style: {
-      background: '#333',
-      color: '#fff',
-    },
-  }}
-/>
-
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            style: {
+              background: '#333',
+              color: '#fff',
+            },
+          }}
+        />
         
         <Routes>
           <Route 
@@ -241,13 +243,13 @@ function App() {
             } 
           />
           <Route 
-  path="/reset-password/:token" 
-  element={
-    <PublicRoute>
-      <ResetPasswordScreen />
-    </PublicRoute>
-  } 
-/>
+            path="/reset-password/:token" 
+            element={
+              <PublicRoute>
+                <ResetPasswordScreen />
+              </PublicRoute>
+            } 
+          />
           
           <Route 
             path="/dashboard" 
