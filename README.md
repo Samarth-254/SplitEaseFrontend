@@ -1,4 +1,6 @@
-<h1 align="center">SplitEase</h1>
+<h1 align="center">
+  <img src="public/favicon.svg" alt="SplitEase Logo" width="38" height="38" style="vertical-align: middle; margin-right: 10px; padding-bottom: 4px;" />SplitEase
+</h1>
 
 <p align="center">
   <strong>Smart Expense Sharing, Simplified.</strong> A high-performance, real-time Progressive Web App (PWA) built to split bills, track shared group expenses, and settle balances seamlessly with friends.
@@ -18,11 +20,28 @@
 
 Here is a visual walkthrough of the client application interfaces:
 
+### 📊 Main Dashboard
+Real-time dashboard summarizing total balances, monthly spending, active groups, and quick actions.
 <p align="center">
-  <img src="screenshots/Splitease1.png" alt="SplitEase Dashboard Screen" width="23%" style="border-radius: 8px; border: 1px solid #262626; margin: 4px;" />
-  <img src="screenshots/Splitease2.png" alt="SplitEase Group Details Screen" width="23%" style="border-radius: 8px; border: 1px solid #262626; margin: 4px;" />
-  <img src="screenshots/Splitease3.png" alt="SplitEase Settle Screen" width="23%" style="border-radius: 8px; border: 1px solid #262626; margin: 4px;" />
-  <img src="screenshots/Splitease4.png" alt="SplitEase Notifications Screen" width="23%" style="border-radius: 8px; border: 1px solid #262626; margin: 4px;" />
+  <img src="screenshots/Splitease1.png" alt="SplitEase Dashboard Screen" width="100%" style="border-radius: 8px; border: 1px solid #262626; margin-top: 10px; margin-bottom: 30px;" />
+</p>
+
+### 👥 Group Details & Bill Split
+Detailed group breakdowns, itemized bill-splits, transaction feeds, and settlement options.
+<p align="center">
+  <img src="screenshots/Splitease2.png" alt="SplitEase Group Details Screen" width="100%" style="border-radius: 8px; border: 1px solid #262626; margin-top: 10px; margin-bottom: 30px;" />
+</p>
+
+### 🤝 Friends Directory & Web Notifications
+Dedicated view to manage individual friend connections and receive real-time web push notification alerts.
+<p align="center">
+  <img src="screenshots/Splitease3.png" alt="SplitEase Friends and Web Notifications" width="100%" style="border-radius: 8px; border: 1px solid #262626; margin-top: 10px; margin-bottom: 30px;" />
+</p>
+
+### 📧 Email Notification Service
+Configuration dashboard and logs for system transaction emails and reminder updates.
+<p align="center">
+  <img src="screenshots/Splitease4.png" alt="SplitEase Email Notifications" width="100%" style="border-radius: 8px; border: 1px solid #262626; margin-top: 10px; margin-bottom: 30px;" />
 </p>
 
 ---
