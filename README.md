@@ -7,6 +7,10 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/Samarth-254/SplitEaseBackend"><strong>SplitEase Backend Repository ➔</strong></a>
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/React-19.2.0-blue?style=for-the-badge&logo=react" alt="React 19" />
   <img src="https://img.shields.io/badge/Vite-7.2.4-646CFF?style=for-the-badge&logo=vite" alt="Vite 7" />
   <img src="https://img.shields.io/badge/Tailwind_CSS-CDN-38B2AC?style=for-the-badge&logo=tailwind-css" alt="Tailwind CSS" />
