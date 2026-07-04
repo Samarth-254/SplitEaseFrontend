@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img src="public/favicon.svg" alt="SplitEase Logo" width="38" height="38" style="vertical-align: middle; margin-right: 10px; padding-bottom: 4px;" />SplitEase
+  <img src="public/favicon.svg" alt="SplitEase Logo" width="55" height="55" align="absmiddle" style="vertical-align: middle; margin-right: 12px;" />SplitEase
 </h1>
 
 <p align="center">
